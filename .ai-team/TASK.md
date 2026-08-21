@@ -1,66 +1,61 @@
 # Current Task
 
-- ID: `AR-002`
-- Title: `Publish the public repository and add the detailed assignment task book`
+- ID: `AR-003`
+- Title: `Simplify the assignment plan to module level`
 - Status: `done`
 - Owner: `zzg`
 - Next owner: `user/team`
 
 ## Goal
 
-把已完成的 AutoResearch foundation 发布到 GitHub public 仓库，并在仓库内增加可分配的模块化任务拆解书。任务书必须区分当前基础能力、待开发能力和真实论文/生产外部条件，不把规划写成已验收功能。
+根据用户反馈，把任务拆解入口从 122 个子任务收敛为模块级分配。保留此前详细版作为附录，但当前团队先按模块认领负责人、边界、主要产出、依赖和验收目标。
 
 ## Acceptance scenarios
 
-- [x] `redmaplewww/AutoResearch` 已创建且可见性为 `PUBLIC`。
-- [x] 已将包含 foundation 的 `main` 和保留开发上下文的 feature branch 推送到远程，未使用强制覆盖。
-- [x] `docs/AutoResearch_任务拆解书.md` 覆盖治理、合同、证据、工作流、五 Agent、检索、阅读、创新、执行、写作、审核、知识、画像、自进化、API/UI、安全、运维、真实试点和生产化模块。
-- [x] 每个模块至少拆到有 ID、依赖、负责人建议、规模、交付物和验收门的子任务粒度。
-- [x] README、Project-to-Act 和 VibeCollab 任务状态指向新的任务书，且保留 AR-001 foundation 的非声明边界。
-- [x] 任务书和协作文件不包含 token、密钥、私有来源、原始提示或虚构外部结果。
+- [x] `docs/AutoResearch_任务拆解书.md` 只作为模块级分配入口，覆盖 M00–M17。
+- [x] 每个模块说明目标、边界、主要交付物、前置模块、负责人建议和当前状态。
+- [x] 文档提供模块负责人验收模板和第一批模块分配建议。
+- [x] 原 122 子任务版本保留为 `docs/AutoResearch_任务拆解书_详细版.md`，不丢失后续拆解素材。
+- [x] README、Project-to-Act 和 VibeCollab 任务状态保持一致，不改变五业务 Agent 和证据门禁边界。
 
 ## Invariants
 
-- public 仓库只发布当前允许公开的代码、文档和证据摘要；`.env.local`、`.venv`、运行时目录和嵌套参考仓库继续被忽略。
-- 默认分支必须包含可运行 foundation；不能只发布空仓库或仅发布规划分支。
-- 任务书是分配入口，不取代 `PROJECT_FEATURES.md` 的功能状态唯一性，也不改变五业务 Agent 边界。
-- 未完成真实论文试点、实验、生产数据库、Web UI 和灾备的内容必须保持“待开发/外部阻塞”。
+- 当前入口不要求团队一次性拆到函数、接口或工单；模块负责人后续再自行细化。
+- 详细版是参考材料，不代表所有子任务都已实现或已验收。
+- 真实论文试点、生产数据库、Web UI、灾备和性能仍保持原有“外部阻塞/待开发”状态。
+- 不提交 token、密钥、私有来源、完整论文、原始提示或虚构外部结果。
 
 ## Decisions
 
-- 使用已认证的 `redmaplewww` GitHub 账号创建 `redmaplewww/AutoResearch`，设置为 public；不改用不确定的组织或仓库名。
-- 由 `feat/ar-002-publish-task-plan` 承载本次文档和任务账本变更，完成后合并到 `main`；不重写 AR-001 提交。
-- 任务拆解采用 M00–M17 模块和稳定子任务 ID，使用 W0–W7 波次表达依赖；每项以一个交付物和一个验收门为最小分配单位。
+- 使用 M00–M17 作为稳定模块 ID，先按模块分配负责人。
+- 保留详细拆解版，避免未来重新整理时丢失依赖和验收素材。
+- `.project-to-act` 继续作为长期项目事实源；`.ai-team/TASK.md` 只记录本次短周期交付。
 
 ## Completed
 
-- 创建 public 仓库：`https://github.com/redmaplewww/AutoResearch`。
-- 将 `5fe43f4` foundation 快照推送到 `main` 和 `feat/ar-001-foundation`。
-- 创建 `docs/AutoResearch_任务拆解书.md`，包含模块总览、详细子任务、角色/规模建议、波次、分配包、交接模板、Definition of Done 和分配台账。
-- README 增加任务拆解书入口。
-- 将本次交付切换到新的 VibeCollab 任务 AR-002，保留 AR-001 完成状态和非声明。
+- 将原 `docs/AutoResearch_任务拆解书.md` 移为 `docs/AutoResearch_任务拆解书_详细版.md`。
+- 新建模块级 `docs/AutoResearch_任务拆解书.md`，包含 18 个模块、执行阶段、负责人模板和首批分配建议。
+- 保留 README 任务书入口，并将 AR-003 的状态、范围和下一步写入协作账本。
 
 ## Pending
 
-- GitHub 分支保护、CI workflow、Issue/PR 模板和 release checklist 仍由 M00-05/M00-06 分配开发。
-- 用户/团队需要依据任务书填写 owner、分支/PR、目标日期和实际 evidence ID。
-- M16 真实论文试点仍等待 idea、领域、目标 venue、授权全文和实验资源边界。
+- 用户/团队需要为模块负责人模板填写实际 owner、分支、目标日期和 evidence ID。
+- 模块负责人确认后，再选择需要展开的模块，不默认展开全部模块。
+- 真实论文试点仍等待 idea、领域、目标 venue、授权全文和实验资源边界。
 
 ## Next step
 
-团队从 M00-05、M01-02、M02-07、M04-04 和 M16-01 中选择 owner，按任务书的交接模板建立第一个执行任务；真实试点前继续保持 Preview 边界。
+先认领 M01–M04、M05–M07、M08、M09–M10、M11–M12、M13–M15/M17、M16 这 7 个模块包；完成模块边界确认后，再只对当前瓶颈模块做子任务拆解。
 
 ## Verification
 
-- [x] `gh auth status` 和 `gh api user --jq .login` — 已确认登录账号为 `redmaplewww`。
-- [x] `gh repo view redmaplewww/AutoResearch --json visibility,isEmpty,defaultBranchRef,url` — 仓库为 `PUBLIC`，foundation 已进入 `main`。
-- [x] `git push -u origin main` — 成功。
-- [x] `git push -u origin feat/ar-001-foundation` — 成功。
-- [x] `node .ai-team/check.mjs --base main` — AR-002 acceptance 6/6；本次运行在最终提交前已验证任务状态和变更范围。
-- [x] Project-to-Act root validate、Ruff、`pytest -W error -q`、CLI doctor — root ledger valid；Ruff passed；18 tests passed；doctor 返回 `ok: true` 且 Agent 数为 5；基础快照已有 84% coverage 记录。
+- [x] Project-to-Act `--check` — managed 配置有效，唯一账本保持不变。
+- [x] 模块文档结构检查 — M00–M17 全部存在，详细版文件可访问。
+- [x] `node .ai-team/check.mjs --base main` — AR-003 acceptance 5/5，任务范围和变更同步有效。
+- [x] Project-to-Act `--validate` — managed 配置 valid，issues 为空。
 
 ## Handoff note
 
 - From: `zzg`
 - To: `user/team`
-- Summary: public GitHub 仓库已建立，foundation 已推送；详细任务拆解书已入库。后续按 M00–M17 子任务分配，任何真实论文或生产声明都必须重新通过对应 Gate。
+- Summary: 当前分配入口已经降为模块级；详细拆解保留在附录。先分模块负责人，后续只对真正需要的模块继续细化。

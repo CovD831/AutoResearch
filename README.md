@@ -35,6 +35,7 @@ AutoResearch 是一个以证据为边界、以项目文件夹为账本的 LangGr
 - docs/KNOWLEDGE_AND_EVOLUTION.md：Wiki+Graph、画像、经验与自进化。
 - docs/API.md、docs/OPERATIONS.md、docs/DEVELOPMENT.md：接口、运行和开发。
 - docs/AutoResearch_详细计划书.md：完整产品路线。
-- docs/AutoResearch_任务拆解书.md：按模块、子任务、依赖、负责人和验收门分配工作。
+- docs/AutoResearch_任务拆解书.md：按模块、依赖、负责人和验收目标分配工作。
+- docs/AutoResearch_任务拆解书_详细版.md：需要继续细化时使用的历史详细拆解附录。
 
 项目治理见 .project-to-act，当前协作任务见 .ai-team/TASK.md。
