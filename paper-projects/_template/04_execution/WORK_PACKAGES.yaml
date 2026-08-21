@@ -1,0 +1,17 @@
+schema_version: "1.0"
+project_id: "PAPER-TEMPLATE"
+work_packages: []
+required_fields:
+  - work_package_id
+  - objective
+  - non_goals
+  - input_refs
+  - output_contract
+  - acceptance_checks
+  - dependencies
+  - risk_level
+  - evidence_policy_id
+  - effort_estimate_and_assumptions
+  - rollback
+  - owner
+  - status

@@ -1,0 +1,30 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Runtime state and generated artifacts
+var/
+.langgraph_api/
+
+# Local reference repository; not part of the AutoResearch source tree
+DeepReason-Agents-Framework/
+
+# Editors and OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

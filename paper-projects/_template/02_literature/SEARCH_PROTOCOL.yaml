@@ -1,0 +1,22 @@
+schema_version: "1.0"
+research_question_ref: "待填写"
+search_version: 1
+sources:
+  - openalex
+  - crossref
+  - semantic_scholar
+domain_sources: []
+queries: []
+date_range: null
+languages: []
+include_criteria: []
+exclude_criteria: []
+dedupe_keys:
+  - doi
+  - openalex_id
+  - title_author_year
+retraction_and_correction_check: true
+open_access_preferred: true
+fulltext_policy: "open_or_user_authorized_only"
+stop_condition: "待填写"
+approved_gate_id: null

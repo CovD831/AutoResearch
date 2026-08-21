@@ -1,0 +1,13 @@
+schema_version: "1.0"
+project_id: "PAPER-TEMPLATE"
+items: []
+allowed_statuses:
+  - queued
+  - fulltext_ready
+  - structure_extracted
+  - section_reading
+  - summary_draft
+  - claim_map_ready
+  - innovation_scan
+  - reviewed
+  - published_to_paper_library

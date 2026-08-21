@@ -1,0 +1,19 @@
+schema_version: "1.0"
+project_id: "PAPER-TEMPLATE"
+slug: "replace-me"
+title: "待填写"
+owner: "待填写"
+status: "template_not_instantiated"
+created_at: null
+language: "zh-CN"
+target_venue: null
+research_domains: []
+project_to_act_dir: ".project-to-act"
+langgraph_thread_id: null
+database_project_ref: null
+object_store_prefix: null
+privacy_level: "private"
+external_publication_enabled: false
+notes:
+  - "复制模板后替换所有占位字段。"
+  - "不得在本文件保存 API key、账号令牌或完整敏感个人信息。"
