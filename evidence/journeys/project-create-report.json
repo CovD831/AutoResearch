@@ -1,0 +1,77 @@
+{
+  "target": {
+    "adapter_id": "http:autoresearch-foundation",
+    "url": "http://127.0.0.1:18110/projects",
+    "method": "POST"
+  },
+  "profile": {
+    "agent_id": "autoresearch-foundation",
+    "adapter_id": "http:autoresearch-foundation",
+    "revision": 1
+  },
+  "journey": {
+    "scenario_id": "autoresearch.project.create-isolated",
+    "goal": "Create one isolated governed paper project without overwriting an existing project",
+    "actor": {
+      "role": "customer_simulation"
+    }
+  },
+  "status": "pass",
+  "run": {
+    "run_id": "run_9eb71b84f4394d0c9d035002dac7e716",
+    "scenario_id": "autoresearch.project.create-isolated",
+    "agent_id": "autoresearch-foundation",
+    "profile_revision": 1,
+    "status": "pass",
+    "step_results": [
+      {
+        "step_id": "request",
+        "status": "observed",
+        "observation": {
+          "output": {
+            "project_id": "journey01",
+            "path": "F:\\Codex\\AutoResearch\\var\\journey-projects\\journey01",
+            "status": "active"
+          },
+          "status": "ok",
+          "error": null,
+          "metadata": {
+            "status_code": 201
+          },
+          "observed_at": "2026-08-21T16:35:08.420139+00:00"
+        },
+        "assertion_errors": [],
+        "evidence_ids": []
+      },
+      {
+        "step_id": "outcome",
+        "status": "validated",
+        "observation": {
+          "output": {
+            "project_id": "journey01",
+            "path": "F:\\Codex\\AutoResearch\\var\\journey-projects\\journey01",
+            "status": "active"
+          },
+          "status": "ok",
+          "error": null,
+          "metadata": {
+            "status_code": 201
+          },
+          "observed_at": "2026-08-21T16:35:08.420139+00:00"
+        },
+        "assertion_errors": [],
+        "evidence_ids": []
+      }
+    ],
+    "finding_ids": [],
+    "started_at": "2026-08-21T16:35:08.423648+00:00",
+    "finished_at": "2026-08-21T16:35:08.423648+00:00"
+  },
+  "findings": [],
+  "ledger_records": 5,
+  "ledger_path": "F:\\Codex\\AutoResearch\\evidence\\journeys\\project-create-ledger.sqlite3",
+  "limitations": [
+    "This run covers only the configured HTTP journey.",
+    "No external LLM quality or production write behavior is inferred."
+  ]
+}

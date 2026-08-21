@@ -527,3 +527,9 @@ paper-projects/<project-id>-<slug>/
 `创建论文项目 -> idea 拆解 -> OpenAlex/Crossref 检索 -> 选择 3 篇合规全文 -> 阅读卡 -> 一个创新候选 -> 审核打回/放行 -> 最小工作包 -> 一段带证据引用的相关工作草稿 -> 项目账本同步`。
 
 该切片必须先证明状态恢复、结构化交接、证据不足阻断和人工打回可用，再扩展完整 UI、更多数据库和自进化。
+
+## 24. 0.1.0 Foundation 落地状态（2026-08-22）
+
+首个可运行基础切片已经落地：严格五 Agent、LangGraph 父图/子图、SQLite checkpoint、结构化 handoff、EvidenceItem、L0–L4 Gate、Wiki+Graph 分区、项目模板实例化、论文检索连接器、阅读卡/陪读、创新候选、工作包、证据限定稿件、审核打回、L4 interrupt/resume、画像、经验和 proposal-only 自进化均有代码入口。
+
+该状态只表示基础架构和纵向功能完整，不替代本计划书中生产级完成条件。外部检索质量、真实全文语料、真实实验、PostgreSQL/pgvector/Neo4j、分布式幂等、Web UI、备份恢复和真实论文试点仍按功能账本推进。当前实现映射与边界见 `FUNCTION_MATRIX.md`，测试边界见 `TESTING.md`。

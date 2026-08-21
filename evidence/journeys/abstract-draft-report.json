@@ -1,0 +1,263 @@
+{
+  "target": {
+    "adapter_id": "http:autoresearch-foundation",
+    "url": "http://127.0.0.1:18110/runs",
+    "method": "POST"
+  },
+  "profile": {
+    "agent_id": "autoresearch-foundation",
+    "adapter_id": "http:autoresearch-foundation",
+    "revision": 1
+  },
+  "journey": {
+    "scenario_id": "autoresearch.run.abstract-to-evidence-gap-draft",
+    "goal": "Create reading cards and an internal draft from supplied scholarly records while blocking unsupported results",
+    "actor": {
+      "role": "customer_simulation"
+    }
+  },
+  "status": "pass",
+  "run": {
+    "run_id": "run_3e27bc022fcb4073886eb56fde751918",
+    "scenario_id": "autoresearch.run.abstract-to-evidence-gap-draft",
+    "agent_id": "autoresearch-foundation",
+    "profile_revision": 1,
+    "status": "pass",
+    "step_results": [
+      {
+        "step_id": "request",
+        "status": "observed",
+        "observation": {
+          "output": {
+            "run_id": "run_58459b2ae35b4341",
+            "project_id": "journey01",
+            "status": "blocked",
+            "state": {
+              "schema_version": 1,
+              "project_id": "journey01",
+              "run_id": "run_58459b2ae35b4341",
+              "idea": "Test fail-closed research workflow",
+              "lifecycle_state": "waiting_evidence",
+              "run_status": "blocked",
+              "request_release": false,
+              "search_queries": [
+                "Test fail-closed research workflow",
+                "Test fail-closed research workflow systematic review",
+                "Test fail-closed research workflow benchmark evaluation"
+              ],
+              "seed_papers": [
+                {
+                  "paper_id": "paper_a2fc27c397344535",
+                  "project_id": "journey01",
+                  "title": "Evidence aware workflows",
+                  "abstract": "We propose a provenance method for agent workflows. The method is evaluated on a controlled benchmark. Future work should examine human review.",
+                  "authors": [
+                    "A Researcher"
+                  ],
+                  "year": 2025,
+                  "doi": "10.1000/journey-a",
+                  "url": "https://example.invalid/a",
+                  "source": "user_seed",
+                  "source_record_id": "a",
+                  "full_text_path": null,
+                  "retrieved_at": "2026-08-21T16:35:29.925470Z"
+                },
+                {
+                  "paper_id": "paper_59bfd815fab747b0",
+                  "project_id": "journey01",
+                  "title": "Structured agent handoffs",
+                  "abstract": "This study evaluates bounded handoffs between agents. Experiments use a reproducible task suite. A limitation is incomplete evidence coverage.",
+                  "authors": [
+                    "B Researcher"
+                  ],
+                  "year": 2024,
+                  "doi": "10.1000/journey-b",
+                  "url": "https://example.invalid/b",
+                  "source": "user_seed",
+                  "source_record_id": "b",
+                  "full_text_path": null,
+                  "retrieved_at": "2026-08-21T16:35:29.925470Z"
+                }
+              ],
+              "paper_ids": [
+                "paper_a2fc27c397344535",
+                "paper_59bfd815fab747b0"
+              ],
+              "reading_card_ids": [
+                "card_a04c3b73652a4534",
+                "card_d7f6a5f683f74b04"
+              ],
+              "innovation_ids": [
+                "innovation_f34f26c1f4164303"
+              ],
+              "work_package_ids": [
+                "wp_6fb99534903f495a",
+                "wp_5351c59e29b74332",
+                "wp_3609143f543a4c86",
+                "wp_1401a78a413b42c0"
+              ],
+              "manuscript_id": "manuscript_7fe1f1ca8e6041b7",
+              "review_ids": [
+                "review_9afa0417960c4970",
+                "review_7bbc757569c74107"
+              ],
+              "evidence_ids": [
+                "ev_26ac534935e24dee",
+                "ev_41391f3ff5c3406a",
+                "ev_890dd492af1a4dff",
+                "ev_946e8b8d712c4db4",
+                "ev_3f097272b13943a0",
+                "ev_014efeeb64844901"
+              ],
+              "gate_decision_ids": [
+                "gate_66e017f49d634713",
+                "gate_70dc0c3891f04e9b"
+              ],
+              "handoff": null,
+              "diagnostics": [
+                "Network search is disabled; only user-supplied seed papers were processed."
+              ],
+              "blockers": [
+                "evidence score 35 is below required 75",
+                "required work and result lineage are not closed loop"
+              ],
+              "last_agent": "reviewer",
+              "updated_at": "2026-08-21T16:35:30.203429Z"
+            },
+            "interrupts": []
+          },
+          "status": "ok",
+          "error": null,
+          "metadata": {
+            "status_code": 201
+          },
+          "observed_at": "2026-08-21T16:35:30.212946+00:00"
+        },
+        "assertion_errors": [],
+        "evidence_ids": []
+      },
+      {
+        "step_id": "outcome",
+        "status": "validated",
+        "observation": {
+          "output": {
+            "run_id": "run_58459b2ae35b4341",
+            "project_id": "journey01",
+            "status": "blocked",
+            "state": {
+              "schema_version": 1,
+              "project_id": "journey01",
+              "run_id": "run_58459b2ae35b4341",
+              "idea": "Test fail-closed research workflow",
+              "lifecycle_state": "waiting_evidence",
+              "run_status": "blocked",
+              "request_release": false,
+              "search_queries": [
+                "Test fail-closed research workflow",
+                "Test fail-closed research workflow systematic review",
+                "Test fail-closed research workflow benchmark evaluation"
+              ],
+              "seed_papers": [
+                {
+                  "paper_id": "paper_a2fc27c397344535",
+                  "project_id": "journey01",
+                  "title": "Evidence aware workflows",
+                  "abstract": "We propose a provenance method for agent workflows. The method is evaluated on a controlled benchmark. Future work should examine human review.",
+                  "authors": [
+                    "A Researcher"
+                  ],
+                  "year": 2025,
+                  "doi": "10.1000/journey-a",
+                  "url": "https://example.invalid/a",
+                  "source": "user_seed",
+                  "source_record_id": "a",
+                  "full_text_path": null,
+                  "retrieved_at": "2026-08-21T16:35:29.925470Z"
+                },
+                {
+                  "paper_id": "paper_59bfd815fab747b0",
+                  "project_id": "journey01",
+                  "title": "Structured agent handoffs",
+                  "abstract": "This study evaluates bounded handoffs between agents. Experiments use a reproducible task suite. A limitation is incomplete evidence coverage.",
+                  "authors": [
+                    "B Researcher"
+                  ],
+                  "year": 2024,
+                  "doi": "10.1000/journey-b",
+                  "url": "https://example.invalid/b",
+                  "source": "user_seed",
+                  "source_record_id": "b",
+                  "full_text_path": null,
+                  "retrieved_at": "2026-08-21T16:35:29.925470Z"
+                }
+              ],
+              "paper_ids": [
+                "paper_a2fc27c397344535",
+                "paper_59bfd815fab747b0"
+              ],
+              "reading_card_ids": [
+                "card_a04c3b73652a4534",
+                "card_d7f6a5f683f74b04"
+              ],
+              "innovation_ids": [
+                "innovation_f34f26c1f4164303"
+              ],
+              "work_package_ids": [
+                "wp_6fb99534903f495a",
+                "wp_5351c59e29b74332",
+                "wp_3609143f543a4c86",
+                "wp_1401a78a413b42c0"
+              ],
+              "manuscript_id": "manuscript_7fe1f1ca8e6041b7",
+              "review_ids": [
+                "review_9afa0417960c4970",
+                "review_7bbc757569c74107"
+              ],
+              "evidence_ids": [
+                "ev_26ac534935e24dee",
+                "ev_41391f3ff5c3406a",
+                "ev_890dd492af1a4dff",
+                "ev_946e8b8d712c4db4",
+                "ev_3f097272b13943a0",
+                "ev_014efeeb64844901"
+              ],
+              "gate_decision_ids": [
+                "gate_66e017f49d634713",
+                "gate_70dc0c3891f04e9b"
+              ],
+              "handoff": null,
+              "diagnostics": [
+                "Network search is disabled; only user-supplied seed papers were processed."
+              ],
+              "blockers": [
+                "evidence score 35 is below required 75",
+                "required work and result lineage are not closed loop"
+              ],
+              "last_agent": "reviewer",
+              "updated_at": "2026-08-21T16:35:30.203429Z"
+            },
+            "interrupts": []
+          },
+          "status": "ok",
+          "error": null,
+          "metadata": {
+            "status_code": 201
+          },
+          "observed_at": "2026-08-21T16:35:30.212946+00:00"
+        },
+        "assertion_errors": [],
+        "evidence_ids": []
+      }
+    ],
+    "finding_ids": [],
+    "started_at": "2026-08-21T16:35:30.217458+00:00",
+    "finished_at": "2026-08-21T16:35:30.217458+00:00"
+  },
+  "findings": [],
+  "ledger_records": 5,
+  "ledger_path": "F:\\Codex\\AutoResearch\\evidence\\journeys\\abstract-draft-ledger.sqlite3",
+  "limitations": [
+    "This run covers only the configured HTTP journey.",
+    "No external LLM quality or production write behavior is inferred."
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "target": {
+    "adapter_id": "http:autoresearch-foundation",
+    "url": "http://127.0.0.1:18110/health",
+    "method": "GET"
+  },
+  "profile": {
+    "agent_id": "autoresearch-foundation",
+    "adapter_id": "http:autoresearch-foundation",
+    "revision": 1
+  },
+  "journey": {
+    "scenario_id": "autoresearch.health.read-only",
+    "goal": "确认客户可读取服务健康状态并看到严格五 Agent",
+    "actor": {
+      "role": "customer_simulation"
+    }
+  },
+  "status": "pass",
+  "run": {
+    "run_id": "run_c3297d357d1049d8a7360ccc7991f9c2",
+    "scenario_id": "autoresearch.health.read-only",
+    "agent_id": "autoresearch-foundation",
+    "profile_revision": 1,
+    "status": "pass",
+    "step_results": [
+      {
+        "step_id": "request",
+        "status": "observed",
+        "observation": {
+          "output": {
+            "ok": true,
+            "version": "0.1.0",
+            "python_profile": "3.12+",
+            "agents": [
+              "orchestrator",
+              "paper_search",
+              "paper_reader",
+              "writer",
+              "reviewer"
+            ],
+            "agent_count": 5,
+            "settings": {
+              "llm_provider": "offline",
+              "llm_model": null,
+              "llm_base_url_configured": false,
+              "llm_api_key_configured": false,
+              "network_enabled": false,
+              "db_path": "F:\\Codex\\AutoResearch\\var\\journey\\autoresearch.sqlite3",
+              "checkpoint_path": "F:\\Codex\\AutoResearch\\var\\journey\\checkpoints.sqlite3"
+            },
+            "projects_dir_exists": true,
+            "template_dir_exists": true,
+            "database_ready": true,
+            "checkpoint_database_ready": true,
+            "diagnostic_id": "doctor_289eb8135c7f4758"
+          },
+          "status": "ok",
+          "error": null,
+          "metadata": {
+            "status_code": 200
+          },
+          "observed_at": "2026-08-21T16:34:57.100025+00:00"
+        },
+        "assertion_errors": [],
+        "evidence_ids": []
+      },
+      {
+        "step_id": "outcome",
+        "status": "validated",
+        "observation": {
+          "output": {
+            "ok": true,
+            "version": "0.1.0",
+            "python_profile": "3.12+",
+            "agents": [
+              "orchestrator",
+              "paper_search",
+              "paper_reader",
+              "writer",
+              "reviewer"
+            ],
+            "agent_count": 5,
+            "settings": {
+              "llm_provider": "offline",
+              "llm_model": null,
+              "llm_base_url_configured": false,
+              "llm_api_key_configured": false,
+              "network_enabled": false,
+              "db_path": "F:\\Codex\\AutoResearch\\var\\journey\\autoresearch.sqlite3",
+              "checkpoint_path": "F:\\Codex\\AutoResearch\\var\\journey\\checkpoints.sqlite3"
+            },
+            "projects_dir_exists": true,
+            "template_dir_exists": true,
+            "database_ready": true,
+            "checkpoint_database_ready": true,
+            "diagnostic_id": "doctor_289eb8135c7f4758"
+          },
+          "status": "ok",
+          "error": null,
+          "metadata": {
+            "status_code": 200
+          },
+          "observed_at": "2026-08-21T16:34:57.100025+00:00"
+        },
+        "assertion_errors": [],
+        "evidence_ids": []
+      }
+    ],
+    "finding_ids": [],
+    "started_at": "2026-08-21T16:34:57.105591+00:00",
+    "finished_at": "2026-08-21T16:34:57.105591+00:00"
+  },
+  "findings": [],
+  "ledger_records": 5,
+  "ledger_path": "F:\\Codex\\AutoResearch\\evidence\\journeys\\health-ledger.sqlite3",
+  "limitations": [
+    "This run covers only the configured HTTP journey.",
+    "No external LLM quality or production write behavior is inferred."
+  ]
+}

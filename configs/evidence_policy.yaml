@@ -1,0 +1,29 @@
+schema_version: 1
+risk_levels:
+  L0:
+    description: reversible drafting or retrieval
+    minimum_score: 0
+    minimum_independent_sources: 0
+  L1:
+    description: internal research planning
+    minimum_score: 20
+    minimum_independent_sources: 1
+  L2:
+    description: evidence-backed analytical claim
+    minimum_score: 45
+    minimum_independent_sources: 1
+  L3:
+    description: novelty, result, or manuscript-ready claim
+    minimum_score: 75
+    minimum_independent_sources: 2
+  L4:
+    description: external release or irreversible operation
+    minimum_score: 85
+    minimum_independent_sources: 2
+    human_approval_required: true
+evidence_grade_weights:
+  E0: 5
+  E1: 15
+  E2: 30
+  E3: 45
+  H3: 50

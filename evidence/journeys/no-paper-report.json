@@ -1,0 +1,159 @@
+{
+  "target": {
+    "adapter_id": "http:autoresearch-foundation",
+    "url": "http://127.0.0.1:18110/runs",
+    "method": "POST"
+  },
+  "profile": {
+    "agent_id": "autoresearch-foundation",
+    "adapter_id": "http:autoresearch-foundation",
+    "revision": 1
+  },
+  "journey": {
+    "scenario_id": "autoresearch.run.no-paper-fail-closed",
+    "goal": "Start from an idea and stop as blocked when no real paper is available",
+    "actor": {
+      "role": "customer_simulation"
+    }
+  },
+  "status": "pass",
+  "run": {
+    "run_id": "run_3a06c3606bf149d789d28151a6cc951d",
+    "scenario_id": "autoresearch.run.no-paper-fail-closed",
+    "agent_id": "autoresearch-foundation",
+    "profile_revision": 1,
+    "status": "pass",
+    "step_results": [
+      {
+        "step_id": "request",
+        "status": "observed",
+        "observation": {
+          "output": {
+            "run_id": "run_ae18fc71c1494d83",
+            "project_id": "journey01",
+            "status": "blocked",
+            "state": {
+              "schema_version": 1,
+              "project_id": "journey01",
+              "run_id": "run_ae18fc71c1494d83",
+              "idea": "Test fail-closed research workflow",
+              "lifecycle_state": "waiting_evidence",
+              "run_status": "blocked",
+              "request_release": false,
+              "search_queries": [
+                "Test fail-closed research workflow",
+                "Test fail-closed research workflow systematic review",
+                "Test fail-closed research workflow benchmark evaluation"
+              ],
+              "seed_papers": [],
+              "paper_ids": [],
+              "reading_card_ids": [],
+              "innovation_ids": [],
+              "work_package_ids": [
+                "wp_5c86cd0fb5a947b7",
+                "wp_a01f99886a0e40fd",
+                "wp_dd0296c040264147",
+                "wp_2e31f59616be4b34"
+              ],
+              "manuscript_id": null,
+              "review_ids": [],
+              "evidence_ids": [
+                "ev_26ac534935e24dee"
+              ],
+              "gate_decision_ids": [],
+              "handoff": null,
+              "diagnostics": [
+                "Network search is disabled; only user-supplied seed papers were processed.",
+                "No papers were found; downstream reading is blocked instead of inventing records."
+              ],
+              "blockers": [
+                "No real paper records are available for reading."
+              ],
+              "last_agent": "paper_search",
+              "updated_at": "2026-08-21T16:35:15.807496Z"
+            },
+            "interrupts": []
+          },
+          "status": "ok",
+          "error": null,
+          "metadata": {
+            "status_code": 201
+          },
+          "observed_at": "2026-08-21T16:35:15.816431+00:00"
+        },
+        "assertion_errors": [],
+        "evidence_ids": []
+      },
+      {
+        "step_id": "outcome",
+        "status": "validated",
+        "observation": {
+          "output": {
+            "run_id": "run_ae18fc71c1494d83",
+            "project_id": "journey01",
+            "status": "blocked",
+            "state": {
+              "schema_version": 1,
+              "project_id": "journey01",
+              "run_id": "run_ae18fc71c1494d83",
+              "idea": "Test fail-closed research workflow",
+              "lifecycle_state": "waiting_evidence",
+              "run_status": "blocked",
+              "request_release": false,
+              "search_queries": [
+                "Test fail-closed research workflow",
+                "Test fail-closed research workflow systematic review",
+                "Test fail-closed research workflow benchmark evaluation"
+              ],
+              "seed_papers": [],
+              "paper_ids": [],
+              "reading_card_ids": [],
+              "innovation_ids": [],
+              "work_package_ids": [
+                "wp_5c86cd0fb5a947b7",
+                "wp_a01f99886a0e40fd",
+                "wp_dd0296c040264147",
+                "wp_2e31f59616be4b34"
+              ],
+              "manuscript_id": null,
+              "review_ids": [],
+              "evidence_ids": [
+                "ev_26ac534935e24dee"
+              ],
+              "gate_decision_ids": [],
+              "handoff": null,
+              "diagnostics": [
+                "Network search is disabled; only user-supplied seed papers were processed.",
+                "No papers were found; downstream reading is blocked instead of inventing records."
+              ],
+              "blockers": [
+                "No real paper records are available for reading."
+              ],
+              "last_agent": "paper_search",
+              "updated_at": "2026-08-21T16:35:15.807496Z"
+            },
+            "interrupts": []
+          },
+          "status": "ok",
+          "error": null,
+          "metadata": {
+            "status_code": 201
+          },
+          "observed_at": "2026-08-21T16:35:15.816431+00:00"
+        },
+        "assertion_errors": [],
+        "evidence_ids": []
+      }
+    ],
+    "finding_ids": [],
+    "started_at": "2026-08-21T16:35:15.820940+00:00",
+    "finished_at": "2026-08-21T16:35:15.820940+00:00"
+  },
+  "findings": [],
+  "ledger_records": 5,
+  "ledger_path": "F:\\Codex\\AutoResearch\\evidence\\journeys\\no-paper-ledger.sqlite3",
+  "limitations": [
+    "This run covers only the configured HTTP journey.",
+    "No external LLM quality or production write behavior is inferred."
+  ]
+}

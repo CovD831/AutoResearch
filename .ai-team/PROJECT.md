@@ -19,7 +19,7 @@ Build AutoResearch: a LangGraph-based, evidence-gated research system that takes
 - `src/autoresearch/storage.py`: SQLite canonical store, append-only audit data, artifact references, and checkpoints for the foundational profile.
 - `src/autoresearch/evidence.py` and `gates.py`: evidence policy and final deterministic gate ownership.
 - `src/autoresearch/knowledge.py`: partitioned Wiki+Graph model and tiered retrieval facade.
-- `src/autoresearch/services/`: paper search/reading, profile, project, execution, writing, and evolution services.
+- `src/autoresearch/*_service.py`: paper search/reading, profile, project, execution, writing, and evolution services.
 - `src/autoresearch/agents/`: exactly five business-agent implementations.
 - `src/autoresearch/graph.py`: LangGraph parent graph, lifecycle routing, checkpoint/resume, and handoff validation.
 - `src/autoresearch/api.py` and `cli.py`: supported external boundaries.
@@ -42,5 +42,5 @@ Build AutoResearch: a LangGraph-based, evidence-gated research system that takes
 
 - Install: `py -3.12 -m venv .venv` then `.venv\Scripts\python.exe -m pip install -e ".[dev]"`
 - Test: `.venv\Scripts\python.exe -m pytest -q`
-- Verify: `.venv\Scripts\python.exe -m ruff check src tests` then `.venv\Scripts\python.exe -m pytest -q` then `.venv\Scripts\python.exe -m autoresearch.cli doctor --json`
+- Verify: `.venv\Scripts\python.exe -m ruff check src tests` then `.venv\Scripts\python.exe -m pytest -W error -q` then `.venv\Scripts\autoresearch.exe doctor`
 - Collaboration check: `node .ai-team/check.mjs --base HEAD`

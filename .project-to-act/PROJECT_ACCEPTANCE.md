@@ -5,10 +5,10 @@
 
 ## 当前验收结论
 
-- 结论：P0 规划交付通过；AutoResearch 产品运行时未实现、未验收
-- 验收范围：本轮仅验收详细计划书、功能表、根 Project-to-Act 和论文项目模板
-- 最后检查：2026-08-21（P0 收口检查）
-- 遗留问题：所有产品运行时标准待后续阶段；真实论文 idea、模型配置和部署规模尚待确认
+- 结论：0.1.0 Foundation Preview 基础验收通过；生产级 P1–P6 与真实论文项目仍未验收
+- 验收范围：严格五 Agent 本地架构、基础纵向工作流、CLI/API、证据门禁、项目文件夹投影和隔离客户旅程
+- 最后检查：2026-08-22（foundation 收口检查）
+- 遗留问题：真实论文 idea/gold corpus/实验、生产数据库、重启幂等、备份恢复、Web/认证和真实投稿均未验收
 
 ## 验收标准
 
@@ -24,6 +24,25 @@
 | A-P0-006 | 现有底座能力与缺口基于当前文件和测试，而非推测 | 已通过 | 运行 28 项相关 unittest；检查模板 Agent 数与 pyproject | E-BASE-001 |
 | A-P0-007 | LangGraph 与学术检索选择有当前官方来源 | 已通过 | 核对 LangGraph/OpenAlex/Crossref/Semantic Scholar 官方文档 | E-WEB-001 |
 | A-P0-008 | 计划未把文档或候选底座写成产品已完成 | 已通过 | 搜索完成/已实现/验收措辞并人工复核 | E-PLAN-001 |
+
+### 0.1.0 Foundation Preview 验收标准
+
+| 标准 ID | 标准 | 状态 | 验证方法 | 证据 ID |
+|---|---|---|---|---|
+| A-FND-001 | 业务 Agent registry 与运行时实例恰好五个 | 已通过 | enum/registry 单元测试 + HTTP health | E-RUN-001、E-JOURNEY-001 |
+| A-FND-002 | LangGraph 父图调用五 Agent 子图并持久化 checkpoint | 已通过 | graph 集成测试、checkpoint API 读取 | E-RUN-001 |
+| A-FND-003 | L4 interrupt 使用同 run/thread 恢复 | 已通过 | release pause/resume 集成测试 | E-RUN-001 |
+| A-FND-004 | handoff 拒绝自交接、超长上下文和身份错配设计 | 已通过 | Pydantic 负例和统一 HandoffService 路径 | E-RUN-001 |
+| A-FND-005 | 无论文不进入阅读，缺实验不进入 DRAFT_REVIEWED | 已通过 | 单元/集成 + 两个真实 HTTP blocked 旅程 | E-RUN-001、E-JOURNEY-001 |
+| A-FND-006 | 失效证据、独立来源重复和明确打回 fail-closed | 已通过 | Gate 负例回归 | E-RUN-001 |
+| A-FND-007 | 论文读取、陪读和创新候选保留 locator/证据/UNKNOWN 边界 | 已通过 | seed-paper 工作流和陪读测试 | E-RUN-001 |
+| A-FND-008 | 稿件修改不覆盖原稿、不新增证据并保持不可发布 | 已通过 | revision 回归和项目文件检查 | E-RUN-001 |
+| A-FND-009 | Wiki+Graph 分区阻止跨库边并支持两级检索 | 已通过 | 分区正例/负例 | E-RUN-001 |
+| A-FND-010 | 工作包无有效证据不能标记完成 | 已通过 | ExecutionService 负例 | E-RUN-001 |
+| A-FND-011 | 子项目 manifest/run index/Project-to-Act 反映运行终态 | 已通过 | 模板/运行投影集成测试 | E-PROJECT-001 |
+| A-FND-012 | CLI/API 可运行且配置摘要不泄露秘密 | 已通过 | doctor、ASGI、真实 listener、受管 LLM 最小调用 | E-RUN-001、E-JOURNEY-001、E-LIVE-001 |
+| A-FND-013 | 自进化没有自动改源码/策略的执行路径 | 已通过 | proposal-only 状态测试与接口审查 | E-RUN-001 |
+| A-FND-014 | 文档覆盖架构、功能、接口、运维、安全、开发和测试 | 已通过 | 文件清单与链接检查 | E-RUN-001 |
 
 ### 产品运行时验收标准
 
@@ -58,15 +77,22 @@
 | E-WEB-001 | 2026-08-21 | 官方文档核验 | 0 | URL/抓取日期 2026-08-21 | 核验 LangGraph persistence/subgraphs/interrupts 与 OpenAlex/Crossref/S2 API 边界 | `docs/AutoResearch_详细计划书.md` 官方链接 | 90 天；实现启动时刷新 |
 | E-PLAN-001 | 2026-08-21 | 根 `--validate`；22 术语/五角色/功能 ID/字段/相对链接/措辞/秘密样式检查 | 0 | 计划 SHA-256 `2b0b0d84...60c1b`；功能表 `6708f591...cb0203` | 计划 529 行；五角色恰好 5；86 个功能 ID 唯一且 7 字段合法；链接通过 | `evidence/P0_PLANNING_EVIDENCE.md` | 文件变化前 |
 | E-TPL-001 | 2026-08-21 | 模板 `--validate`；20 个必需路径；外部发布默认关闭；秘密样式检查 | 0 | 模板树 SHA-256 `8e9926a6...3688a2`；21 files | 模板账本有效、结构完整、无密钥样式内容 | `evidence/P0_PLANNING_EVIDENCE.md` | 模板变化前 |
+| E-RUN-001 | 2026-08-22 | Python 3.12 clean install；Ruff；pytest warnings-as-errors；coverage；doctor | 0 | 18 tests；84% statements；LangGraph 1.2.11 | 基础合同、Gate、状态、工作流、CLI/API 和秘密边界通过 | `evidence/FOUNDATION_EVIDENCE.md` | 代码或依赖变化前 |
+| E-JOURNEY-001 | 2026-08-22 | aawo-agent-tester 对真实本地 HTTP listener 执行 health/create/no-paper/abstract-draft 旅程 | 0 | 四份报告 SHA-256 见证据文件 | 四个旅程 status=pass；业务 blocked 与测试 pass 明确分离 | `evidence/journeys/`、`evidence/FOUNDATION_EVIDENCE.md` | HTTP 合同变化前 |
+| E-LIVE-001 | 2026-08-22 | OpenAlex/Crossref/S2 limit=1；受管 DeepSeek JSON connectivity | 部分外部源受限 | OpenAlex/Crossref 成功；S2 HTTPStatusError；LLM call 成功 | 只证明当时边界；不证明检索/生成质量 | `evidence/FOUNDATION_EVIDENCE.md` | 7 天或外部配置变化前 |
+| E-PROJECT-001 | 2026-08-22 | 项目实例化/防覆盖/终态投影测试 | 0 | 同 E-RUN-001 | 子项目 manifest、RUN_INDEX、进度 runtime 区块与稿件路径一致 | `evidence/FOUNDATION_EVIDENCE.md` | 模板或投影代码变化前 |
+| E-COLLAB-001 | 2026-08-22 | VibeCollab check；根/模板 Project-to-Act validate | 0 | AR-001 9/9；两账本 zero issues | 当前 Git 任务、代码、验收和长期账本一致；private sessions disabled | `.ai-team/TASK.md`、`evidence/FOUNDATION_EVIDENCE.md` | TASK 或账本变化前 |
 
 ## Gate 记录
 
 | Gate ID | 日期 | Gate | 对象 | 结果 | 证据 ID | 豁免与确认人 |
 |---|---|---|---|---|---|---|
 | G-P0-001 | 2026-08-21 | P0 规划交付 | 计划书、功能表、根账本、论文项目模板 | PASS | E-PLAN-001、E-TPL-001 | 无豁免 |
+| G-FND-001 | 2026-08-22 | Foundation Preview 本地交付 | 源码、文档、测试、CLI/API、本地客户旅程 | PASS | E-RUN-001、E-JOURNEY-001、E-LIVE-001、E-PROJECT-001 | 无豁免；真实论文与生产 Gate 保持未通过 |
 
 ## 验收记录
 
 按时间倒序追加：日期、检查范围、证据 ID、结果、遗留问题和结论。失败、跳过与过期证据也必须如实记录。
 
+- 2026-08-22｜0.1.0 foundation 收口：18 tests、84% coverage、warnings-as-errors、doctor、四个真实 HTTP 客户旅程、OpenAlex/Crossref 最小 live、S2 受限诊断、受管 LLM 最小 connectivity、子项目运行投影与完整文档｜E-RUN-001、E-JOURNEY-001、E-LIVE-001、E-PROJECT-001｜G-FND-001 PASS｜遗留：严格产品 A-RUN-002–020 多数仍需生产级/真实论文证据｜结论：基础架构和功能纵向切片可运行，不可声明真实论文或生产交付完成。
 - 2026-08-21｜P0 收口：计划书、86 项功能表、根/模板 Project-to-Act、模板结构、相对链接、字段、密钥样式和现有底座核验｜E-BASE-001、E-WEB-001、E-PLAN-001、E-TPL-001｜P0 PASS｜遗留：产品运行时全部阶段尚未实现；真实论文试点未开始｜结论：规划交付完成，项目产品不可声明完成。

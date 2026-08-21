@@ -1,0 +1,18 @@
+schema_version: 1
+workflow_id: autoresearch-default-v1
+stages:
+  - intake
+  - scoped
+  - literature_searched
+  - literature_read
+  - innovation_reviewed
+  - execution_planned
+  - draft_written
+  - draft_reviewed
+  - release_pending
+  - released
+stop_conditions:
+  - evidence_insufficient
+  - handoff_invalid
+  - reviewer_rejected
+  - human_approval_required

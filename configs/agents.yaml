@@ -1,0 +1,17 @@
+schema_version: 1
+agents:
+  - id: orchestrator
+    name: 总控 Agent
+    responsibilities: [idea_decomposition, idea_deepening, planning, routing, work_packages]
+  - id: paper_search
+    name: 论文搜索 Agent
+    responsibilities: [query_planning, scholarly_search, deduplication, provenance]
+  - id: paper_reader
+    name: 论文读取 Agent
+    responsibilities: [paper_reading, structured_summary, claim_extraction, innovation_mining]
+  - id: writer
+    name: 写作 Agent
+    responsibilities: [outline, drafting, revision, polishing, citation_placeholders]
+  - id: reviewer
+    name: 审核 Agent
+    responsibilities: [evidence_audit, novelty_review, manuscript_review, gate_recommendation]
