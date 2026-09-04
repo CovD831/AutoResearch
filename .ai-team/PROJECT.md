@@ -24,7 +24,10 @@ Build AutoResearch: a LangGraph-based, evidence-gated research system that takes
 - `src/autoresearch/graph.py`: LangGraph parent graph, lifecycle routing, checkpoint/resume, and handoff validation.
 - `src/autoresearch/api.py` and `cli.py`: supported external boundaries.
 - `.project-to-act/`: canonical product scope, feature status, version, progress, evidence, and acceptance.
-- `.ai-team/TASK.md`: the single active implementation task and handoff checkpoint.
+- `.ai-team/TASK.md`: the current integration batch and global queue checkpoint.
+- `.ai-team/tasks/`: task-local ledgers for parallel worktrees; each member owns only their task ledger.
+- `docs/rearchitecture/IMPLEMENTATION-ROADMAP.md`: global phases, asynchronous execution, and Gate rules.
+- `docs/rearchitecture/TASK-PACKAGE-REGISTRY.md`: package queue, owner lanes, dependencies, and merge order.
 - `docs/`: architecture, contracts, development, operations, API, and user guides.
 
 ## Invariants

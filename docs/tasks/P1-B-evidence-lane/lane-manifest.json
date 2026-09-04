@@ -1,0 +1,18 @@
+{
+  "lane_id": "P1-B-EVIDENCE-LANE",
+  "owner": "member B",
+  "owner_lane": "evidence/domain",
+  "worktree": "../AutoResearch-p1-b",
+  "base_ref": "8d821c0",
+  "branch_prefix": "codex/",
+  "task_queue": [
+    "P1-B-EVIDENCE-PIPELINE",
+    "P1-B2-EVIDENCE-ADVERSARIAL",
+    "S2-B-AUDIT-EVIDENCE",
+    "S3-B-READER-WRITER-PORTS",
+    "S4-B-REAL-PILOT",
+    "B6-MVP-MANUSCRIPT-DELIVERY"
+  ],
+  "shared_owner": "user/team",
+  "forbidden_shared_paths": ["src/autoresearch/application.py", "src/autoresearch/contracts.py", ".project-to-act/", ".ai-team/TASK.md"]
+}

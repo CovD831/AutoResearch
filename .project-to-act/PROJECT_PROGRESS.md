@@ -6,7 +6,7 @@
 
 | 任务 | 状态 | 负责人 | 完成条件 | 证据 ID | 最后更新 |
 |---|---|---|---|---|---|
-| P1 双 worktree 实施 | 进行中 | 用户/项目负责人；成员 A/B | P1-A 与 P1-B 完成各自 L3、实现、测试、交叉审查并交接；负责人完成主线集成和 Evaluation Section Pipeline 验收 | UD-006、UD-007、P1-WORKTREE-TASK-PLAN | 2026-09-04 |
+| P1 双 worktree + MVP 集成 | 进行中 | 用户/项目负责人；成员 A/B | A/B 任务与 I0–I4 集成任务全部 accepted，并通过最小 Evaluation Section 端到端验收 | UD-006、UD-007、P1-WORKTREE-TASK-PLAN、TASK-PACKAGE-REGISTRY | 2026-09-04 |
 
 ## 当前任务
 

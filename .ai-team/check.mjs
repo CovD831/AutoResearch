@@ -26,14 +26,33 @@ const REQUIRED_SECTIONS = [
   "Handoff note",
 ];
 
-const VALID_STATES = new Set(["planning", "active", "handoff", "blocked", "done"]);
+const VALID_STATES = new Set([
+  "planning",
+  "planned",
+  "waiting-for-gate",
+  "ready-next",
+  "ready",
+  "active",
+  "active-next",
+  "submitted",
+  "reviewing",
+  "changes-requested",
+  "speculative",
+  "integrated",
+  "accepted",
+  "handoff",
+  "blocked",
+  "superseded",
+  "done",
+]);
 
 function parseArgs(argv) {
-  const options = { root: process.cwd(), base: null, json: false };
+  const options = { root: process.cwd(), base: null, taskPath: ".ai-team/TASK.md", json: false };
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === "--root") options.root = resolve(argv[++index]);
     else if (value === "--base") options.base = argv[++index];
+    else if (value === "--task") options.taskPath = argv[++index];
     else if (value === "--json") options.json = true;
     else throw new Error(`Unknown argument: ${value}`);
   }
@@ -65,15 +84,15 @@ function isCollaborationFile(path) {
   );
 }
 
-export function validateRepository({ root = process.cwd(), base = null } = {}) {
+export function validateRepository({ root = process.cwd(), base = null, taskPath = ".ai-team/TASK.md" } = {}) {
   const absoluteRoot = resolve(root);
   const errors = [];
   for (const path of REQUIRED_FILES) {
     if (!existsSync(resolve(absoluteRoot, path))) errors.push(`Missing required file: ${path}`);
   }
 
-  const taskPath = resolve(absoluteRoot, ".ai-team/TASK.md");
-  const task = existsSync(taskPath) ? readFileSync(taskPath, "utf8").replaceAll("\r\n", "\n") : "";
+  const taskFile = resolve(absoluteRoot, taskPath);
+  const task = existsSync(taskFile) ? readFileSync(taskFile, "utf8").replaceAll("\r\n", "\n") : "";
   const agentsPath = resolve(absoluteRoot, "AGENTS.md");
   const agents = existsSync(agentsPath) ? readFileSync(agentsPath, "utf8") : "";
   if (agents && !agents.includes("<!-- repo-task-sync:start -->")) {
@@ -147,8 +166,10 @@ export function validateRepository({ root = process.cwd(), base = null } = {}) {
       const untrackedFiles = untracked ? untracked.split(/\r?\n/).filter(Boolean) : [];
       const files = [...new Set([...trackedFiles, ...untrackedFiles])].sort();
       const nonCollaborationFiles = files.filter((path) => !isCollaborationFile(path));
-      if (nonCollaborationFiles.length > 0 && !files.includes(".ai-team/TASK.md")) {
-        errors.push("Code or product files changed without updating .ai-team/TASK.md in the same PR");
+      const normalizedTaskPath = taskPath.replaceAll("\\", "/");
+      const hasTaskLedger = files.includes(normalizedTaskPath) || files.includes(".ai-team/TASK.md");
+      if (nonCollaborationFiles.length > 0 && !hasTaskLedger) {
+        errors.push(`Code or product files changed without updating ${normalizedTaskPath} in the same PR`);
       }
 
       const numstat = git(absoluteRoot, ["diff", "--numstat", base, "--"]) ?? "";

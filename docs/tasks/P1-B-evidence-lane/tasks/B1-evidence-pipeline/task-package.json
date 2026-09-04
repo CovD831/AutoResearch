@@ -1,0 +1,15 @@
+{
+  "task_id": "P1-B-EVIDENCE-PIPELINE",
+  "phase": "P1/S1",
+  "owner_lane": "evidence/domain",
+  "status": "ready",
+  "base_ref": "8d821c0",
+  "branch": "codex/p1-evidence-pipeline",
+  "depends_on": [],
+  "merge_after": ["P1-A-RUNTIME-RECOVERY"],
+  "allowed_paths": ["src/autoresearch/evidence.py", "src/autoresearch/writing_service.py", "src/autoresearch/pipeline_contracts.py", "src/autoresearch/readiness.py", "src/autoresearch/benchmark_advisor.py", "src/autoresearch/section_validator.py", "tests/test_evidence_admission.py", "tests/test_evaluation_pipeline.py", "tests/test_material_readiness.py", "tests/test_section_validation.py", "docs/rearchitecture/worktrees/B-evidence-pipeline/"],
+  "forbidden_paths": ["src/autoresearch/application.py", "src/autoresearch/contracts.py", "src/autoresearch/capability.py", "src/autoresearch/storage.py"],
+  "deliverables": ["evidence admission", "Evaluation section pipeline", "readiness/benchmark plan", "section validation", "L3/PROGRESS/HANDOFF"],
+  "acceptance_commands": ["ruff check src tests", "pytest", "node .ai-team/check.mjs --task .ai-team/tasks/P1-B-EVIDENCE-PIPELINE.md"],
+  "next_package": "P1-B2-EVIDENCE-ADVERSARIAL"
+}

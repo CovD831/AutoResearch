@@ -10,6 +10,15 @@
 
 按 R004/R005 和 UD-006/UD-007 冻结的 P1 产品切片，在两个独立 worktree 并行实施 Evaluation Section Pipeline。成员自行编写 task-local L3 并直接实施；项目负责人负责共享边界、跨 worktree 决策和最终集成。
 
+## Async execution model
+
+- 全局队列：`docs/rearchitecture/TASK-PACKAGE-REGISTRY.md`。
+- 路线和 Gate：`docs/rearchitecture/IMPLEMENTATION-ROADMAP.md`。
+- 成员任务账本：`.ai-team/tasks/<TASK-ID>.md`；成员更新自己的账本，负责人更新本文件的集成队列。
+- 成员可以在前一 PR `reviewing` 时继续 `ready-next` 或 `speculative` 任务；后续分支必须在前置任务合并后 rebase 到最新 `main`。
+- `speculative` 任务不得合并或标记 accepted，直到其前置 Promotion Gate 通过。
+- ZIP 只用于传输；解压后的任务包源文件必须随代码和 task-local ledger 一起进入分支。
+
 ## Acceptance scenarios
 
 - [x] 现状耦合点基于当前代码、文档和任务账本记录。
@@ -23,6 +32,7 @@
 - [ ] P1-A Runtime/Recovery 通过幂等、replay、recovery 和 legacy/target parity 验收。
 - [ ] P1-B Evidence/Writing Pipeline 通过 Evidence admission、readiness、benchmark plan 和 section validation 验收。
 - [ ] P1 端到端 Evaluation Section Pipeline 在 A 合并后由负责人完成集成验收。
+- [ ] 负责人完成 I0–I4 集成任务，并将 `MVP-CLOSED-MINIMAL-E2E` 标记为 accepted。
 
 ## Invariants
 
@@ -53,7 +63,7 @@
 
 ## Next step
 
-成员完成各自实现后填写 PROGRESS/HANDOFF、运行测试和 `node .ai-team/check.mjs`；A 先合并，B 随后 rebase，负责人完成 application 集成与 P1 验收。
+成员完成各自实现后填写 PROGRESS/HANDOFF、运行测试和 task-local `node .ai-team/check.mjs`；A 先合并，B 随后 rebase，负责人依次完成 I0–I4 集成任务和最小 MVP 验收。
 
 ## Verification
 

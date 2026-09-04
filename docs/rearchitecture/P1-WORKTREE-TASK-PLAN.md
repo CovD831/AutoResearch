@@ -4,6 +4,16 @@
 >
 > 基线：R005 `r2-consumption+p1-freeze-2026-09-04`。
 
+## 异步推进补充
+
+任务包不再按“提交后才临时分发下一包”运行。全局队列见 [IMPLEMENTATION-ROADMAP.md](IMPLEMENTATION-ROADMAP.md) 和 [TASK-PACKAGE-REGISTRY.md](TASK-PACKAGE-REGISTRY.md)。成员完成当前任务并提交 PR 后，可以立即领取同一工作线的 `ready-next` 任务；负责人异步进行审查和合并。
+
+- 当前 PR：`active` / `submitted` / `reviewing`；
+- 下一 PR：`ready-next`，可从当前分支堆叠；
+- 跨阶段任务：前置 Gate 未通过时只能 `waiting-for-gate` 或 `speculative`；
+- 合并前：每个任务必须 rebase 到最新 `main`，并通过自己的 task-local ledger 检查；
+- 阶段晋级：仍由负责人执行 Promotion Gate，不因成员提前完成 speculative 代码而跳过。
+
 正式任务包：
 
 - [P1-A Runtime / Recovery](../tasks/P1-A-runtime-recovery/TASK-PACKAGE.md)

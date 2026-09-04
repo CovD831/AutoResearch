@@ -17,9 +17,23 @@ Treat the repository as the shared memory and the merged commit as the handoff s
 6. Stop and report a conflict if the files disagree or the requested work exceeds the task scope. Session files always lose conflicts against PROJECT, TASK, code, tests, or the current user request.
 7. Implement only the declared next step and preserve recorded decisions.
 
+## Parallel task mode
+
+When multiple worktrees are active, `.ai-team/TASK.md` is the integration queue and current batch record. Each package has its own task-local ledger under `.ai-team/tasks/<TASK-ID>.md`; the member owns that ledger and must not edit another member's ledger.
+
+Use the task-local ledger with:
+
+```bash
+node .ai-team/check.mjs --task .ai-team/tasks/<TASK-ID>.md --base <target-branch>
+```
+
+The package source under `docs/tasks/<TASK-ID>/` remains the human-readable contract. The package's `task-package.json` is the machine-readable source for owner lane, base ref, dependencies, path boundaries, deliverables and acceptance commands.
+
+Members may continue to a `ready-next` or `speculative` package while an earlier PR is under review only when the package declares frozen contracts and isolated paths. A speculative package cannot merge or be marked accepted until its prerequisite Promotion Gate passes.
+
 ## Keep context synchronized
 
-Update `.ai-team/TASK.md` in the same pull request as the code. Keep acceptance checkboxes, completed work, pending work, decisions, next step, owners, and real verification results current. Do not record model reasoning, system/developer prompts, raw tool output, credentials, private source copies, or keyboard activity. Raw user submissions may be recorded only by the private session workflow below.
+Update the task ledger in the same pull request as the code. In parallel task mode, this is `.ai-team/tasks/<TASK-ID>.md`; the integration owner updates `.ai-team/TASK.md` when a task enters review, is merged, or changes the global queue. Keep acceptance checkboxes, completed work, pending work, decisions, next step, owners, and real verification results current. Do not record model reasoning, system/developer prompts, raw tool output, credentials, private source copies, or keyboard activity. Raw user submissions may be recorded only by the private session workflow below.
 
 Use these states:
 
@@ -34,8 +48,8 @@ Use these states:
 1. Finish a merge-safe checkpoint; use a feature flag or the same Draft PR branch when incomplete code cannot safely enter the target branch.
 2. Set `Status` to `handoff` and name `Next owner`.
 3. Record observable completed work, decisions, pending work, the exact next step, and verification evidence.
-4. Run project checks and `node .ai-team/check.mjs --base <target-branch>`.
-5. Commit code and `.ai-team/TASK.md` together, then open or update the pull request.
+4. Run project checks and `node .ai-team/check.mjs --task .ai-team/tasks/<TASK-ID>.md --base <target-branch>`.
+5. Commit code and the task-local ledger together, then open or update the pull request.
 6. Let review and required checks decide whether to merge.
 
 ## Record private Codex sessions

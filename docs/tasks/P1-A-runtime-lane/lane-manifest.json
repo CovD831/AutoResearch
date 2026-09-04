@@ -1,0 +1,17 @@
+{
+  "lane_id": "P1-A-RUNTIME-LANE",
+  "owner": "member A",
+  "owner_lane": "runtime",
+  "worktree": "../AutoResearch-p1-a",
+  "base_ref": "8d821c0",
+  "branch_prefix": "codex/",
+  "task_queue": [
+    "P1-A-RUNTIME-RECOVERY",
+    "P1-A2-RUNTIME-HARDENING",
+    "S2-A-AUDIT-RUNTIME",
+    "S3-A-CAPABILITY-ADAPTERS",
+    "S4-A-BENCHMARK-HARNESS"
+  ],
+  "shared_owner": "user/team",
+  "forbidden_shared_paths": ["src/autoresearch/application.py", "src/autoresearch/contracts.py", ".project-to-act/", ".ai-team/TASK.md"]
+}
