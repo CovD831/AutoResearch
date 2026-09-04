@@ -1,0 +1,120 @@
+{
+  "package_id": "SKILL-TEST-2026-09-03",
+  "profile": "design",
+  "status": "superseded",
+  "baseline_revision": "working-tree-2026-09-03-skill-test-before-review",
+  "documents": {
+    "scope": "00-scope-and-authority.md",
+    "positioning": "01-positioning-and-complexity.md",
+    "l1": "02-l1-target-architecture.md",
+    "mapping": "03-current-to-target-map.md",
+    "l2": [
+      "04-l2-contracts.md"
+    ],
+    "migration": "05-migration-and-evidence.md",
+    "adr": [
+      "06-adr.md"
+    ],
+    "review": "07-review-consumption.md",
+    "review_report": "review-report.json",
+    "review_ledger": "review-ledger.json",
+    "maintenance": "08-maintenance.md",
+    "handoff": "handoff.md"
+  },
+  "gates": {
+    "authority": "pass",
+    "user_decisions": "pass",
+    "l1": "pass",
+    "mapping": "pass",
+    "l2": "pass",
+    "review": "pending",
+    "evidence": "pending",
+    "promotion": "pending"
+  },
+  "reviewer": {
+    "id": "/root/skill_test_reviewer",
+    "independent": true
+  },
+  "review_state": "blocked",
+  "review_round": 2,
+  "max_review_rounds": 3,
+  "review_rounds": [
+    {
+      "round": 1,
+      "review_run_id": "AR-2026-09-03-skill-test-r1",
+      "input_revision": "working-tree-2026-09-03-skill-test-before-review",
+      "trigger": "Initial independent adversarial review of the test package"
+    },
+    {
+      "round": 2,
+      "review_run_id": "AR-2026-09-03-skill-test-r2",
+      "input_revision": "working-tree-2026-09-03-skill-test-before-review",
+      "trigger": "Closure review after Round 1 finding consumption"
+    }
+  ],
+  "state_history": [
+    {
+      "state": "draft",
+      "actor": "Codex",
+      "timestamp": "2026-09-03T00:00:00+08:00",
+      "input_revision": "working-tree-2026-09-03-skill-test-before-review",
+      "evidence_ref": "package-created"
+    },
+    {
+      "state": "review_requested",
+      "actor": "Codex",
+      "timestamp": "2026-09-03T00:00:00+08:00",
+      "input_revision": "working-tree-2026-09-03-skill-test-before-review",
+      "evidence_ref": "review-dispatch-pending"
+    },
+    {
+      "state": "review_received",
+      "actor": "/root/skill_test_reviewer",
+      "timestamp": "2026-09-03T00:00:00+08:00",
+      "input_revision": "working-tree-2026-09-03-skill-test-before-review",
+      "evidence_ref": "review-report.json"
+    },
+    {
+      "state": "consumption_pending",
+      "actor": "Codex",
+      "timestamp": "2026-09-03T00:00:00+08:00",
+      "input_revision": "working-tree-2026-09-03-skill-test-before-review",
+      "evidence_ref": "review-ledger.json"
+    },
+    {
+      "state": "blocked",
+      "actor": "Codex",
+      "timestamp": "2026-09-03T00:00:00+08:00",
+      "input_revision": "working-tree-2026-09-03-skill-test-before-review",
+      "evidence_ref": "AR-2026-09-03-skill-test-r1"
+    },
+    {
+      "state": "review_received",
+      "actor": "/root/skill_test_reviewer",
+      "timestamp": "2026-09-03T00:00:00+08:00",
+      "input_revision": "working-tree-2026-09-03-skill-test-before-review",
+      "evidence_ref": "review-round2-report.json"
+    },
+    {
+      "state": "blocked",
+      "actor": "Codex",
+      "timestamp": "2026-09-03T00:00:00+08:00",
+      "input_revision": "working-tree-2026-09-03-skill-test-before-review",
+      "evidence_ref": "AR-2026-09-03-skill-test-r2"
+    }
+  ],
+  "advancement_trigger": "Independent reviewer report is received, every finding is consumed, and the checker reports a resolved review state.",
+  "promotion_evidence": [
+    "python /Users/abab/.codex/skills/rearchitecture-development-workflow/scripts/check_package_completeness.py docs/rearchitecture/skill-test-2026-09-03",
+    "independent reviewer JSON report",
+    "finding consumption ledger",
+    "state history and review-round provenance"
+  ],
+  "stop_rule": "If the reviewer is not independent, the input revision drifts, a blocking finding lacks resolved evidence, or the checker fails, do not hand off the test package.",
+  "next_task": {
+    "id": "skill-test-evaluation",
+    "owner": "Codex"
+  },
+  "superseded_by": "R-004-TRUST-PROGRAM",
+  "supersession_note": "consolidated into R-002; findings inherited via R002/review-ledger.json"
+}

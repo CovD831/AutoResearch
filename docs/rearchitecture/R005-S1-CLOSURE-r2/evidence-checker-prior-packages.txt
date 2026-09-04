@@ -1,0 +1,14 @@
+# current checker (skill v0.31.0) vs prior packages, 2026-09-03T15:53:49Z
+== R002-literature-pilot
+Package check: FAIL
+- size must be orientation, design or implementation
+- review.status must be pending, consumed or blocked
+== R003-paper-search-adapter
+Package check: FAIL
+- size must be orientation, design or implementation
+- document escapes package directory: ../R002-literature-pilot/01-positioning-and-complexity.md
+- document escapes package directory: ../R002-literature-pilot/02-l1-target-architecture.md
+== R004-trust-program
+Package check: FAIL
+- size must be orientation, design or implementation
+- review.status must be pending, consumed or blocked

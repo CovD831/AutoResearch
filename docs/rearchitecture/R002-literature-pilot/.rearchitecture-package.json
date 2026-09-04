@@ -1,0 +1,106 @@
+{
+  "package_id": "R-002-LITERATURE-PILOT",
+  "profile": "design",
+  "status": "blocked",
+  "baseline_revision": "working-tree-2026-09-03",
+  "current_revision": "working-tree-2026-09-03",
+  "documents": {
+    "scope": "00-scope-and-authority.md",
+    "positioning": "01-positioning-and-complexity.md",
+    "l1": "02-l1-target-architecture.md",
+    "mapping": "03-current-to-target-map.md",
+    "l2": [
+      "04-l2-contracts.md"
+    ],
+    "migration": "05-migration-and-evidence.md",
+    "adr": [
+      "06-adr-r002.md"
+    ],
+    "review": "07-adversarial-and-steelman.md",
+    "review_reports": [
+      "review-report.json"
+    ],
+    "review_request": "review-request.json",
+    "review_ledger": "review-ledger.json",
+    "evidence_registry": "evidence-registry.json",
+    "maintenance": "08-maintenance-and-catalog.md",
+    "handoff": "handoff.md"
+  },
+  "gates": {
+    "authority": "pass",
+    "user_decisions": "pass",
+    "l1": "pass",
+    "mapping": "pass",
+    "l2": "pass",
+    "review": "pending",
+    "evidence": "pending",
+    "promotion": "pending"
+  },
+  "user_decisions": [
+    {"id":"UD-001","decision":"Paper Search / literature pilot","decided_by":"user","timestamp":"2026-09-03T00:00:00+08:00","scope":"R-002-LITERATURE-PILOT","record_ref":"decisions/UD-001-first-slice.json"},
+    {"id":"UD-002","decision":"Local native/fake adapters first; remote/untrusted MCP deferred","decided_by":"user","timestamp":"2026-09-03T00:00:00+08:00","scope":"R-002-LITERATURE-PILOT","record_ref":"decisions/UD-002-capability-boundary.json"},
+    {"id":"UD-003","decision":"Single-process local runtime","decided_by":"user","timestamp":"2026-09-03T00:00:00+08:00","scope":"R-002-LITERATURE-PILOT","record_ref":"decisions/UD-003-deployment-boundary.json"}
+  ],
+  "reviewer": {
+    "id": "/root/r002_architecture_reviewer",
+    "independent": true,
+    "report_status": "received"
+  },
+  "review_state": "blocked",
+  "review_round": 1,
+  "max_review_rounds": 3,
+  "review_rounds": [
+    {
+      "round": 1,
+      "review_run_id": "R-002-LITERATURE-PILOT-review-20260903T110423Z",
+      "input_revision": "working-tree-2026-09-03",
+      "trigger": "initial independent adversarial review"
+    }
+  ],
+  "state_history": [
+    {
+      "state": "draft",
+      "actor": "Codex",
+      "timestamp": "2026-09-03T00:00:00Z",
+      "input_revision": "working-tree-2026-09-03",
+      "evidence_ref": "00-scope-and-authority.md"
+    },
+    {
+      "state": "review_requested",
+      "actor": "review-orchestrator",
+      "timestamp": "2026-09-03T11:04:23.479412+00:00",
+      "input_revision": "working-tree-2026-09-03",
+      "evidence_ref": "review-request.json"
+    },
+    {
+      "state": "review_received",
+      "actor": "/root/r002_architecture_reviewer",
+      "timestamp": "2026-09-03T11:05:00Z",
+      "input_revision": "working-tree-2026-09-03",
+      "evidence_ref": "review-report.json"
+    },
+    {
+      "state": "blocked",
+      "actor": "Codex",
+      "timestamp": "2026-09-03T11:05:01Z",
+      "input_revision": "working-tree-2026-09-03",
+      "evidence_ref": "review-report.json"
+    }
+  ],
+  "advancement_trigger": "Independent review findings are consumed and no unresolved blocking finding remains; then S1 evidence is produced.",
+  "promotion_evidence": [
+    "pytest -q",
+    "ruff check src tests",
+    "legacy/target literature-pilot fixture report"
+  ],
+  "stop_rule": "Keep legacy AutoResearchApplication path if receipt, evidence, checkpoint, or failure semantics differ; remain blocked while prior package findings or user decisions are unresolved.",
+  "next_task": {
+    "id": "R002-decision-gate",
+    "owner": "user/team"
+  },
+  "prior_blocked_packages": [
+    "INDEPENDENT-2026-09-03",
+    "SKILL-TEST-2026-09-03"
+  ],
+  "exception_record": "This design increment is authorized by the user's new planning request; it does not override prior blocking findings or authorize implementation."
+}

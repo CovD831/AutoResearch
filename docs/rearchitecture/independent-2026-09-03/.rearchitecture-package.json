@@ -1,0 +1,123 @@
+{
+  "package_id": "INDEPENDENT-2026-09-03",
+  "profile": "design",
+  "status": "superseded",
+  "baseline_revision": "working-tree-2026-09-03-independent-before-review",
+  "current_revision": "working-tree-2026-09-03-independent-before-review",
+  "documents": {
+    "scope": "00-scope-and-authority.md",
+    "positioning": "01-positioning-and-complexity.md",
+    "l1": "02-l1-target-architecture.md",
+    "mapping": "03-current-to-target-map.md",
+    "l2": [
+      "04-l2-contracts.md",
+      "04b-s1-l3-contract.md"
+    ],
+    "migration": "05-migration-and-evidence.md",
+    "adr": [
+      "06-adr.md"
+    ],
+    "review": "07-review-consumption.md",
+    "review_reports": [
+      "review-report.json",
+      "review-round2-report.json"
+    ],
+    "review_request": "review-request.json",
+    "review_ledger": "review-ledger.json",
+    "evidence_registry": "evidence-registry.json",
+    "maintenance": "08-maintenance.md",
+    "handoff": "handoff.md"
+  },
+  "gates": {
+    "authority": "pass",
+    "user_decisions": "pass",
+    "l1": "pass",
+    "mapping": "pass",
+    "l2": "pass",
+    "review": "pending",
+    "evidence": "pending",
+    "promotion": "pending"
+  },
+  "user_decisions": [
+    {
+      "id": "UD-001",
+      "decision": "design-only until executable S1 evidence exists",
+      "decided_by": "user-delegated conservative default",
+      "timestamp": "2026-09-03T00:00:00+08:00",
+      "scope": "INDEPENDENT-2026-09-03",
+      "record_ref": "decisions/UD-001.json"
+    }
+  ],
+  "reviewer": {
+    "id": "/root/independent_arch_review",
+    "independent": true
+  },
+  "review_state": "blocked",
+  "review_round": 2,
+  "max_review_rounds": 3,
+  "review_rounds": [
+    {
+      "round": 1,
+      "review_run_id": "AR-INDEPENDENT-2026-09-03-01",
+      "input_revision": "working-tree-2026-09-03-independent-before-review",
+      "trigger": "Initial independent review"
+    },
+    {
+      "round": 2,
+      "review_run_id": "AR-INDEPENDENT-2026-09-03-02",
+      "input_revision": "working-tree-2026-09-03-independent-before-review",
+      "trigger": "Closure review after Round 1 consumption"
+    }
+  ],
+  "state_history": [
+    {
+      "state": "draft",
+      "actor": "Codex",
+      "timestamp": "2026-09-03T00:00:00+08:00",
+      "input_revision": "working-tree-2026-09-03-independent-before-review",
+      "evidence_ref": "package-created"
+    },
+    {
+      "state": "review_requested",
+      "actor": "Codex",
+      "timestamp": "2026-09-03T00:00:00+08:00",
+      "input_revision": "working-tree-2026-09-03-independent-before-review",
+      "evidence_ref": "review-dispatch-receipt.json"
+    },
+    {
+      "state": "review_received",
+      "actor": "/root/independent_arch_review",
+      "timestamp": "2026-09-03T00:00:00+08:00",
+      "input_revision": "working-tree-2026-09-03-independent-before-review",
+      "evidence_ref": "review-report.json"
+    },
+    {
+      "state": "consumption_pending",
+      "actor": "Codex",
+      "timestamp": "2026-09-03T00:00:00+08:00",
+      "input_revision": "working-tree-2026-09-03-independent-before-review",
+      "evidence_ref": "review-ledger.json"
+    },
+    {
+      "state": "blocked",
+      "actor": "/root/independent_arch_review",
+      "timestamp": "2026-09-03T00:00:00+08:00",
+      "input_revision": "working-tree-2026-09-03-independent-before-review",
+      "evidence_ref": "review-round2-report.json"
+    }
+  ],
+  "advancement_trigger": "Independent review is received, findings are consumed, and no unresolved blocking finding remains.",
+  "promotion_evidence": [
+    "package completeness checker",
+    "independent review report",
+    "finding consumption ledger",
+    "S1 L3 contract and legacy/target parity evidence"
+  ],
+  "stop_rule": "Any missing artifact, review independence failure, unresolved blocking finding, revision drift, or absent evidence keeps the package blocked.",
+  "next_task": {
+    "id": "S1-paper-search-adapter",
+    "owner": "user/team"
+  },
+  "superseded_by": "R-004-TRUST-PROGRAM",
+  "supersession_note": "L1/L3 inherited and amended by R-002; open findings tracked in R002/review-ledger.json"
+}

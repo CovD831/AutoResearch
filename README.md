@@ -32,10 +32,11 @@ AutoResearch 是一个以证据为边界、以项目文件夹为账本的 LangGr
 - docs/FUNCTION_MATRIX.md：基础版功能表与生产边界。
 - docs/WORKFLOW_AND_STATE.md：状态机、handoff、checkpoint/resume。
 - docs/EVIDENCE_AND_GATES.md：证据等级与 L0–L4 门禁。
-- docs/KNOWLEDGE_AND_EVOLUTION.md：Wiki+Graph、画像、经验与自进化。
+- docs/KNOWLEDGE_AND_EVOLUTION.md：Wiki+Graph、画像、经验与自进化（已冻结，见状态横幅）。
 - docs/API.md、docs/OPERATIONS.md、docs/DEVELOPMENT.md：接口、运行和开发。
-- docs/AutoResearch_详细计划书.md：完整产品路线。
-- docs/AutoResearch_任务拆解书.md：按模块、依赖、负责人和验收目标分配工作。
-- docs/AutoResearch_任务拆解书_详细版.md：需要继续细化时使用的历史详细拆解附录。
+- docs/AutoResearch_详细计划书.md：2026-08 产品基线（历史横幅，长期路线参考）。
+- docs/AutoResearch_任务拆解书.md：2026-08 模块分配快照（历史横幅）；详细版已归档至 docs/archive/。
+- docs/REARCHITECTURE.md：重构程序索引（活动包目录与文档权威地图）。
+- docs/市场调研与定位分析_2026-09.md：市场定位依据。
 
 项目治理见 .project-to-act，当前协作任务见 .ai-team/TASK.md。

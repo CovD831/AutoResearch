@@ -1,0 +1,10 @@
+{
+  "id": "UD-002",
+  "question": "What external capability boundary is in scope for the pilot?",
+  "decision": "Local native/fake adapters first; remote/untrusted MCP deferred",
+  "decided_by": "user",
+  "timestamp": "2026-09-03T00:00:00+08:00",
+  "scope": "R-002-LITERATURE-PILOT",
+  "alternatives": ["local native/fake adapters", "remote MCP", "general plugin runtime"],
+  "record_ref": "decisions/UD-002-capability-boundary.json"
+}

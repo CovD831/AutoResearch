@@ -1,0 +1,10 @@
+{
+  "id": "UD-003",
+  "question": "What deployment boundary is in scope for the pilot?",
+  "decision": "Single-process local runtime",
+  "decided_by": "user",
+  "timestamp": "2026-09-03T00:00:00+08:00",
+  "scope": "R-002-LITERATURE-PILOT",
+  "alternatives": ["single-process local", "service boundary", "distributed workers"],
+  "record_ref": "decisions/UD-003-deployment-boundary.json"
+}

@@ -1,0 +1,533 @@
+[
+  {
+    "finding_id": "AR-001",
+    "severity": "blocking",
+    "consuming_artifact": ".rearchitecture-package.json",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": ".rearchitecture-package.json",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      },
+      {
+        "kind": "path",
+        "ref": "handoff.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      }
+    ],
+    "task_ref": "package-completeness",
+    "test_or_evidence_refs": [
+      {
+        "kind": "path",
+        "ref": "review-dispatch-receipt.json"
+      },
+      {
+        "kind": "record",
+        "ref": "durable decision record",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Package author",
+    "gate": "design handoff",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-002",
+    "severity": "blocking",
+    "consuming_artifact": "04b-s1-l3-contract.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "04b-s1-l3-contract.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      },
+      {
+        "kind": "path",
+        "ref": "05-migration-and-evidence.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      }
+    ],
+    "task_ref": "S1-paper-search-adapter",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "legacy/target fixture",
+        "result_ref": "MISSING-EVIDENCE"
+      },
+      {
+        "kind": "record",
+        "ref": "acceptance tests",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "S1 maintainer",
+    "gate": "implementation handoff",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-003",
+    "severity": "blocking",
+    "consuming_artifact": "04b-s1-l3-contract.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "04b-s1-l3-contract.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      },
+      {
+        "kind": "path",
+        "ref": "04-l2-contracts.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      }
+    ],
+    "task_ref": "typed-paper-search-contract",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "typed model contract tests",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Domain maintainer",
+    "gate": "L2 approval",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-004",
+    "severity": "blocking",
+    "consuming_artifact": "04b-s1-l3-contract.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "04b-s1-l3-contract.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      },
+      {
+        "kind": "path",
+        "ref": "05-migration-and-evidence.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      }
+    ],
+    "task_ref": "evidence-admission-boundary",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "failure injection and atomicity results",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Evidence maintainer",
+    "gate": "S1 promotion",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-005",
+    "severity": "blocking",
+    "consuming_artifact": "04-l2-contracts.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "04-l2-contracts.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      },
+      {
+        "kind": "path",
+        "ref": "05-migration-and-evidence.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      }
+    ],
+    "task_ref": "recovery-contract",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "restart/replay/unknown tests",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Runtime maintainer",
+    "gate": "S1 promotion",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-006",
+    "severity": "blocking",
+    "consuming_artifact": "05-migration-and-evidence.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "05-migration-and-evidence.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      }
+    ],
+    "task_ref": "legacy-target-parity",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "fixture/oracle/comparison artifact",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "S1 maintainer",
+    "gate": "S1 promotion",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-007",
+    "severity": "blocking",
+    "consuming_artifact": "02-l1-target-architecture.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "02-l1-target-architecture.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      },
+      {
+        "kind": "path",
+        "ref": "04-l2-contracts.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      }
+    ],
+    "task_ref": "capability-trust-boundary",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "manifest validation and authorization tests",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Runtime maintainer",
+    "gate": "L1 approval",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-008",
+    "severity": "blocking",
+    "consuming_artifact": "04-l2-contracts.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "04-l2-contracts.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      },
+      {
+        "kind": "path",
+        "ref": "05-migration-and-evidence.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      }
+    ],
+    "task_ref": "evidence-admission-contract",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "candidate/admission/rejection tests",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Evidence maintainer",
+    "gate": "L2 approval",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-009",
+    "severity": "non-blocking",
+    "consuming_artifact": "02-l1-target-architecture.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "02-l1-target-architecture.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      },
+      {
+        "kind": "path",
+        "ref": "04-l2-contracts.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      }
+    ],
+    "task_ref": "projection-ordering",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "projection rebuild note",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Project maintainer",
+    "gate": "S2 review",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-010",
+    "severity": "blocking",
+    "consuming_artifact": "00-scope-and-authority.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "00-scope-and-authority.md",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      },
+      {
+        "kind": "path",
+        "ref": ".rearchitecture-package.json",
+        "anchor": "##",
+        "decision_ref": "ADR"
+      }
+    ],
+    "task_ref": "user-decision-record",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "durable user decision record",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Project owner",
+    "gate": "design handoff",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-001-C2",
+    "severity": "blocking",
+    "consuming_artifact": "07-review-consumption.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-review-consumption.md",
+        "anchor": "Review Consumption",
+        "decision_ref": "06-adr.md"
+      }
+    ],
+    "task_ref": "closure-review",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "resolution evidence pending",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Package author",
+    "gate": "review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-002-C2",
+    "severity": "blocking",
+    "consuming_artifact": "07-review-consumption.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-review-consumption.md",
+        "anchor": "Review Consumption",
+        "decision_ref": "06-adr.md"
+      }
+    ],
+    "task_ref": "closure-review",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "resolution evidence pending",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Package author",
+    "gate": "review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-003-C2",
+    "severity": "blocking",
+    "consuming_artifact": "07-review-consumption.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-review-consumption.md",
+        "anchor": "Review Consumption",
+        "decision_ref": "06-adr.md"
+      }
+    ],
+    "task_ref": "closure-review",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "resolution evidence pending",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Package author",
+    "gate": "review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-004-C2",
+    "severity": "blocking",
+    "consuming_artifact": "07-review-consumption.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-review-consumption.md",
+        "anchor": "Review Consumption",
+        "decision_ref": "06-adr.md"
+      }
+    ],
+    "task_ref": "closure-review",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "resolution evidence pending",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Package author",
+    "gate": "review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-005-C2",
+    "severity": "blocking",
+    "consuming_artifact": "07-review-consumption.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-review-consumption.md",
+        "anchor": "Review Consumption",
+        "decision_ref": "06-adr.md"
+      }
+    ],
+    "task_ref": "closure-review",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "resolution evidence pending",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Package author",
+    "gate": "review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-006-C2",
+    "severity": "blocking",
+    "consuming_artifact": "07-review-consumption.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-review-consumption.md",
+        "anchor": "Review Consumption",
+        "decision_ref": "06-adr.md"
+      }
+    ],
+    "task_ref": "closure-review",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "resolution evidence pending",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Package author",
+    "gate": "review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-007-C2",
+    "severity": "blocking",
+    "consuming_artifact": "07-review-consumption.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-review-consumption.md",
+        "anchor": "Review Consumption",
+        "decision_ref": "06-adr.md"
+      }
+    ],
+    "task_ref": "closure-review",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "resolution evidence pending",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Package author",
+    "gate": "review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "AR-008-C2",
+    "severity": "blocking",
+    "consuming_artifact": "07-review-consumption.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-review-consumption.md",
+        "anchor": "Review Consumption",
+        "decision_ref": "06-adr.md"
+      }
+    ],
+    "task_ref": "closure-review",
+    "test_or_evidence_refs": [
+      {
+        "kind": "record",
+        "ref": "resolution evidence pending",
+        "result_ref": "MISSING-EVIDENCE"
+      }
+    ],
+    "owner": "Package author",
+    "gate": "review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  }
+]

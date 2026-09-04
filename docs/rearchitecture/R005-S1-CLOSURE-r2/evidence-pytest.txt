@@ -1,0 +1,4 @@
+# pytest run on in-flight working tree, 2026-09-03T15:54:08Z
+$ PYTHONPATH=src python3 -m pytest
+....................                                                     [100%]
+20 passed in 0.72s

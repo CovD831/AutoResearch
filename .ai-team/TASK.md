@@ -1,12 +1,76 @@
 # Current Task
 
-- ID: `AR-003`
-- Title: `Simplify the assignment plan to module level`
-- Status: `done`
-- Owner: `zzg`
-- Next owner: `user/team`
+- ID: `P1-DUAL-WORKTREE-IMPLEMENTATION-2026-09-04`
+- Title: `P1 Evaluation Section Pipeline dual-worktree implementation`
+- Status: `active`
+- Owner: `user/team`
+- Next owner: `member A / member B`
 
 ## Goal
+
+按 R004/R005 和 UD-006/UD-007 冻结的 P1 产品切片，在两个独立 worktree 并行实施 Evaluation Section Pipeline。成员自行编写 task-local L3 并直接实施；项目负责人负责共享边界、跨 worktree 决策和最终集成。
+
+## Acceptance scenarios
+
+- [x] 现状耦合点基于当前代码、文档和任务账本记录。
+- [x] 旧 R-001 已标记 abandoned，不再作为当前重构包。
+- [x] 新建 `docs/rearchitecture/skill-test-2026-09-03/` 测试包并按新版 skill 创建 manifest。
+- [x] 启动独立 review sub-agent，保存 Round 1/2 JSON 报告并建立 consumption ledger。
+- [x] 新独立包完成 Round 1/2 审查，结论为 `blocked_for_handoff`。
+- [x] 当前模块到目标模块映射包含 retain/expose/adapt/split 与移除门槛。
+- [x] 第一条迁移切片、legacy/target fixture、失败语义、回滚边界和 promotion gate 已冻结。
+- [x] 首个垂直场景、外部能力边界和 Runtime 部署边界沿用 R-002 中已记录的用户决策。
+- [ ] P1-A Runtime/Recovery 通过幂等、replay、recovery 和 legacy/target parity 验收。
+- [ ] P1-B Evidence/Writing Pipeline 通过 Evidence admission、readiness、benchmark plan 和 section validation 验收。
+- [ ] P1 端到端 Evaluation Section Pipeline 在 A 合并后由负责人完成集成验收。
+
+## Invariants
+
+- 保留恰好五个业务 Agent；skill/MCP/plugin 是能力来源，不增加隐藏 Agent。
+- Runtime 不拥有证据评级、Gate 决策或具体论文/写作工具实现。
+- Evidence Module 是证据状态、失效、替代和 claim linkage 的唯一写入者。
+- 不在 S1 引入通用消息总线、动态卸载、第二套数据库或未被真实消费者证明的抽象。
+- 旧 `AutoResearchApplication` facade 在迁移窗口内继续可运行。
+- P1-A 与 P1-B 使用独占路径；共享 `application.py`、`contracts.py` 和项目级账本由负责人维护。
+
+## Decisions
+
+- D-R001-01：先做设计增量 R-001，再实现 Paper Search Adapter；不一次性重写全部 Agent。
+- D-R001-02：目标 L1 采用 `Thin Runtime -> Capability/Domain -> Evidence/Policy -> Store` 单向依赖。
+- D-R001-03：CapabilityManifest、CapabilityAdapter、InvocationReceipt、EvidenceCandidate 只在 S1 被实现，避免过早平台化。
+- UD-006：首个产品切片为证据约束的 Evaluation Section Pipeline；首版只支持一种论文类型。
+- UD-007：成员可在各自 worktree 自行编写 task-local L3 并直接实施，无需先提交 L3 等待批准。
+
+## Completed
+
+- 读取并核对现有 `AGENTS.md`、`.ai-team`、Project-to-Act、架构/验收文档和当前源码耦合。
+- 新建完整 `docs/rearchitecture/R001/` 架构包；`docs/REARCHITECTURE.md` 降级为摘要入口。
+- 按新版 skill 创建 `.rearchitecture-package.json` 并运行 package completeness checker。
+
+## Pending
+
+- 成员 A/B 创建 worktree、填写 L3 并开始实施；负责人保持共享边界和主线账本同步。
+
+## Next step
+
+成员完成各自实现后填写 PROGRESS/HANDOFF、运行测试和 `node .ai-team/check.mjs`；A 先合并，B 随后 rebase，负责人完成 application 集成与 P1 验收。
+
+## Verification
+
+- [x] R005/UD-006/UD-007 已冻结并生成 P1-A/P1-B 任务包。
+- [x] 两个 worktree 的独占路径、禁止路径和合并顺序已记录。
+- [ ] 成员 A/B 完成 task-local L3、实现和测试。
+- [ ] 运行项目测试、P1 相关 package checks 和 `node .ai-team/check.mjs --base main`。
+
+## Handoff note
+
+- From: `user/team`
+- To: `member A / member B`
+- Summary: P1 双 worktree 实施基线。成员自行填写各自 L3 并实施；不得修改对方独占路径或负责人维护的共享文件。交接时必须同步 task package、`.ai-team/TASK.md`、代码和测试证据。
+
+---
+
+## Previous task: AR-003
 
 根据用户反馈，把任务拆解入口从 122 个子任务收敛为模块级分配。保留此前详细版作为附录，但当前团队先按模块认领负责人、边界、主要产出、依赖和验收目标。
 

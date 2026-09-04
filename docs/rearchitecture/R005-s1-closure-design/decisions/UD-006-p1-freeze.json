@@ -1,0 +1,66 @@
+{
+  "decision_id": "UD-006",
+  "date": "2026-09-04",
+  "title": "Freeze P1 product slice and implementation defaults",
+  "approver": "user/project-owner",
+  "status": "accepted-for-implementation-preparation",
+  "scope": "P1: evidence-bound Evaluation Section Pipeline, with Paper Search as the technical foundation slice",
+  "decisions": [
+    {
+      "id": "D-01",
+      "decision": "Split receipt semantics into completed_empty and unknown_outcome.",
+      "reversal_condition": "A later evidence-backed contract review demonstrates that the distinction is not observable or useful without weakening fail-closed behavior."
+    },
+    {
+      "id": "D-02",
+      "decision": "Pending recovery defaults to explicit failure closure; re-execution requires an explicit, separately authorized operation.",
+      "reversal_condition": "A bounded recovery experiment proves safe re-execution with no duplicate durable facts or external side effects."
+    },
+    {
+      "id": "D-03",
+      "decision": "Prefer a non-persisting search path so Evidence admission is the single durable evidence creation path; fall back to reconcile/reference only if feasibility evidence rejects the preferred path.",
+      "reversal_condition": "Implementation evidence shows a non-persisting path cannot preserve required legacy behavior without unacceptable scope expansion."
+    },
+    {
+      "id": "D-04",
+      "decision": "Treat run receipt ownership and capability invocation idempotency records as distinct facts: Runtime owns run receipt; Capability Adapter owns its invocation idempotency record through the Store idempotency API. R-004 L1 must be synchronized before S1 promotion.",
+      "reversal_condition": "R-004 program review assigns both facts to a single owner or requires the idempotency write to move back into Runtime."
+    },
+    {
+      "id": "D-06",
+      "decision": "The first user-visible product slice is one Evaluation Section Pipeline.",
+      "reversal_condition": "Team review finds a smaller slice that proves the same trust and product-value claims with less risk."
+    },
+    {
+      "id": "D-07",
+      "decision": "The first release supports one paper type and a finite, versioned WritingProfile.",
+      "reversal_condition": "A second real consumer requires a broader profile and the added rules have an explicit owner and acceptance set."
+    },
+    {
+      "id": "D-08",
+      "decision": "Benchmark Advisor v1 produces a plan, candidate baselines, metrics and material checklist; it does not claim experiment results or automatically execute unapproved experiments.",
+      "reversal_condition": "A separately approved Experiment contract adds controlled execution."
+    },
+    {
+      "id": "D-09",
+      "decision": "Missing critical materials block the stage; non-critical gaps return needs_material with an actionable checklist.",
+      "reversal_condition": "A rule-specific risk analysis changes the blocking classification."
+    },
+    {
+      "id": "D-10",
+      "decision": "Writing rules come from project configuration plus a versioned WritingProfile, not from an unversioned prompt or Skill alone.",
+      "reversal_condition": "A future rule-source contract preserves versioning, reproducibility and auditability with a different source."
+    },
+    {
+      "id": "D-11",
+      "decision": "Paper Search remains the technical foundation slice; the product acceptance target is the Evaluation Section Pipeline.",
+      "reversal_condition": "P1 is re-scoped by a new approved product decision."
+    }
+  ],
+  "not_authorized": [
+    "No blanket implementation of all paper-writing modules.",
+    "No S2 start before S1 promotion evidence.",
+    "No main-line integration until each worktree has authored its L3 contract, fixtures, acceptance and rollback note and the project owner has reviewed the handoff."
+  ],
+  "next_step": "Create the P1 implementation package and have each task owner submit a task-local L3 contract for approval."
+}

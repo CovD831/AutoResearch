@@ -1,0 +1,15 @@
+{
+  "review_run_id": "R-002-LITERATURE-PILOT-review-20260903T110423Z",
+  "package_id": "R-002-LITERATURE-PILOT",
+  "input_revision": "working-tree-2026-09-03",
+  "round": 1,
+  "role": "adversarial-reviewer",
+  "write_policy": "read-only",
+  "must_not_edit": [
+    ".rearchitecture-package.json",
+    "canonical architecture documents"
+  ],
+  "required_output": "reviewer-report.json",
+  "dispatch_status": "pending",
+  "requested_at": "2026-09-03T11:04:23.479412+00:00"
+}

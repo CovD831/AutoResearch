@@ -1,0 +1,17 @@
+{
+  "decision_id": "UD-007",
+  "date": "2026-09-04",
+  "title": "Delegate task-local L3 design and implementation to two worktrees",
+  "approver": "user/project-owner",
+  "status": "accepted",
+  "decision": "Two team members may author their own task-local L3 contracts and implement directly in separate worktrees. The project owner owns frozen L1/L2 decisions, shared integration points, merge order, and final acceptance; L3 approval occurs at worktree handoff/integration rather than before local implementation starts.",
+  "constraints": [
+    "Each worktree has exclusive write ownership over assigned paths.",
+    "No member edits the other worktree's owned paths or shared integration paths.",
+    "Shared contract changes are additive in task-owned files; application.py and canonical contract exports are project-owner-owned.",
+    "Every worktree must include its L3 contract, acceptance tests, rollback note and evidence in its handoff.",
+    "A worktree may not silently change UD-006 semantics; deviations require a decision-board entry and owner notification."
+  ],
+  "merge_order": "Worktree A foundation first; Worktree B rebases onto the merged foundation; project owner integrates both into the main line and runs end-to-end acceptance.",
+  "reversal_condition": "Repeated merge conflicts, incompatible contract changes, or inability to produce isolated acceptance evidence requires returning to centrally frozen L3 boundaries."
+}

@@ -1,0 +1,10 @@
+{
+  "review_run_id": "AR-INDEPENDENT-2026-09-03-01",
+  "package_id": "INDEPENDENT-2026-09-03",
+  "input_revision": "working-tree-2026-09-03-independent-before-review",
+  "round": 1,
+  "role": "adversarial-reviewer",
+  "write_policy": "read-only",
+  "required_output": "review-report.json",
+  "dispatch_status": "completed"
+}

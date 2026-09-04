@@ -1,0 +1,10 @@
+{
+  "id": "UD-001",
+  "question": "Should this package remain design-only until executable S1 evidence exists?",
+  "decision": "yes",
+  "decided_by": "user-delegated conservative default",
+  "timestamp": "2026-09-03T00:00:00+08:00",
+  "scope": "INDEPENDENT-2026-09-03",
+  "alternatives": ["design-only", "implementation handoff"],
+  "record_ref": "decisions/UD-001.json"
+}

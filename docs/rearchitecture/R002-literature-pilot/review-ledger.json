@@ -1,0 +1,226 @@
+[
+  {
+    "finding_id": "R002-AR-001",
+    "severity": "blocking",
+    "consuming_artifact": "07-adversarial-and-steelman.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-adversarial-and-steelman.md",
+        "anchor": "Review",
+        "decision_ref": "06-adr-r002.md"
+      }
+    ],
+    "task_ref": {
+      "kind": "path",
+      "ref": "05-migration-and-evidence.md"
+    },
+    "test_or_evidence_refs": [
+      {
+        "kind": "path",
+        "ref": "review-report.json"
+      }
+    ],
+    "owner": "R-002 package owner",
+    "gate": "R-002 review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "R002-AR-002",
+    "severity": "blocking",
+    "consuming_artifact": "07-adversarial-and-steelman.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-adversarial-and-steelman.md",
+        "anchor": "Review",
+        "decision_ref": "06-adr-r002.md"
+      }
+    ],
+    "task_ref": {
+      "kind": "path",
+      "ref": "05-migration-and-evidence.md"
+    },
+    "test_or_evidence_refs": [
+      {
+        "kind": "path",
+        "ref": "review-report.json"
+      }
+    ],
+    "owner": "R-002 package owner",
+    "gate": "R-002 review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "R002-AR-003",
+    "severity": "blocking",
+    "consuming_artifact": "07-adversarial-and-steelman.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-adversarial-and-steelman.md",
+        "anchor": "Review",
+        "decision_ref": "06-adr-r002.md"
+      }
+    ],
+    "task_ref": {
+      "kind": "path",
+      "ref": "05-migration-and-evidence.md"
+    },
+    "test_or_evidence_refs": [
+      {
+        "kind": "path",
+        "ref": "review-report.json"
+      }
+    ],
+    "owner": "R-002 package owner",
+    "gate": "R-002 review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "R002-AR-004",
+    "severity": "blocking",
+    "consuming_artifact": "07-adversarial-and-steelman.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-adversarial-and-steelman.md",
+        "anchor": "Review",
+        "decision_ref": "06-adr-r002.md"
+      }
+    ],
+    "task_ref": {
+      "kind": "path",
+      "ref": "05-migration-and-evidence.md"
+    },
+    "test_or_evidence_refs": [
+      {
+        "kind": "path",
+        "ref": "review-report.json"
+      }
+    ],
+    "owner": "R-002 package owner",
+    "gate": "R-002 review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "R002-AR-005",
+    "severity": "blocking",
+    "consuming_artifact": "07-adversarial-and-steelman.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-adversarial-and-steelman.md",
+        "anchor": "Review",
+        "decision_ref": "06-adr-r002.md"
+      }
+    ],
+    "task_ref": {
+      "kind": "path",
+      "ref": "05-migration-and-evidence.md"
+    },
+    "test_or_evidence_refs": [
+      {
+        "kind": "path",
+        "ref": "review-report.json"
+      }
+    ],
+    "owner": "R-002 package owner",
+    "gate": "R-002 review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "R002-AR-006",
+    "severity": "blocking",
+    "consuming_artifact": "07-adversarial-and-steelman.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-adversarial-and-steelman.md",
+        "anchor": "Review",
+        "decision_ref": "06-adr-r002.md"
+      }
+    ],
+    "task_ref": {
+      "kind": "path",
+      "ref": "05-migration-and-evidence.md"
+    },
+    "test_or_evidence_refs": [
+      {
+        "kind": "path",
+        "ref": "review-report.json"
+      }
+    ],
+    "owner": "R-002 package owner",
+    "gate": "R-002 review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "R002-AR-007",
+    "severity": "blocking",
+    "consuming_artifact": "07-adversarial-and-steelman.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-adversarial-and-steelman.md",
+        "anchor": "Review",
+        "decision_ref": "06-adr-r002.md"
+      }
+    ],
+    "task_ref": {
+      "kind": "path",
+      "ref": "05-migration-and-evidence.md"
+    },
+    "test_or_evidence_refs": [
+      {
+        "kind": "path",
+        "ref": "review-report.json"
+      }
+    ],
+    "owner": "R-002 package owner",
+    "gate": "R-002 review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  },
+  {
+    "finding_id": "R002-AR-008",
+    "severity": "blocking",
+    "consuming_artifact": "07-adversarial-and-steelman.md",
+    "decision": "accept",
+    "consumer_refs": [
+      {
+        "kind": "path",
+        "ref": "07-adversarial-and-steelman.md",
+        "anchor": "Review",
+        "decision_ref": "06-adr-r002.md"
+      }
+    ],
+    "task_ref": {
+      "kind": "path",
+      "ref": "05-migration-and-evidence.md"
+    },
+    "test_or_evidence_refs": [
+      {
+        "kind": "path",
+        "ref": "review-report.json"
+      }
+    ],
+    "owner": "R-002 package owner",
+    "gate": "R-002 review resolution",
+    "status": "pending",
+    "resolution_ref": null
+  }
+]

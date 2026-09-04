@@ -1,0 +1,46 @@
+{
+  "package_id": "R-001",
+  "profile": "design",
+  "status": "superseded",
+  "baseline_revision": "main working tree as inspected on 2026-09-03; no implementation changes from R-001",
+  "documents": {
+    "scope": "00-scope-and-authority.md",
+    "positioning": "01-positioning-and-complexity.md",
+    "l1": "02-l1-target-architecture.md",
+    "mapping": "03-current-to-target-map.md",
+    "l2": [
+      "04-l2-contracts.md"
+    ],
+    "migration": "05-s1-migration-and-evidence.md",
+    "adr": [
+      "06-adr-r001.md"
+    ],
+    "review": "07-adversarial-and-steelman.md",
+    "maintenance": "08-maintenance-and-catalog.md",
+    "handoff": "handoff.md"
+  },
+  "gates": {
+    "authority": "pass",
+    "user_decisions": "pending",
+    "l1": "pass",
+    "mapping": "pass",
+    "l2": "pass",
+    "review": "pending",
+    "evidence": "pending",
+    "promotion": "pending"
+  },
+  "advancement_trigger": "User confirms the first vertical domain, external capability boundary, and Runtime deployment boundary; then S1 L3 contract is frozen.",
+  "promotion_evidence": [
+    "python -m pytest tests/test_capability_adapters.py tests/test_workflow.py",
+    "python -m ruff check src tests",
+    "node .ai-team/check.mjs --base main",
+    "legacy/target receipt, durable-fact, failure, idempotency, and checkpoint parity report"
+  ],
+  "stop_rule": "Do not begin implementation handoff while user_decisions is pending; if parity, ownership, or recovery evidence fails, keep the legacy facade and revise the target contract.",
+  "next_task": {
+    "id": "S1-paper-search-adapter",
+    "owner": "user/team"
+  },
+  "superseded_by": "R-004-TRUST-PROGRAM",
+  "supersession_note": "R-001 was consolidated into R-002; see R002/08-maintenance-and-catalog.md"
+}

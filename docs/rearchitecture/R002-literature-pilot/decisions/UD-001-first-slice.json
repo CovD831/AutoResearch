@@ -1,0 +1,10 @@
+{
+  "id": "UD-001",
+  "question": "What is the first real vertical slice?",
+  "decision": "Paper Search / literature pilot",
+  "decided_by": "user",
+  "timestamp": "2026-09-03T00:00:00+08:00",
+  "scope": "R-002-LITERATURE-PILOT",
+  "alternatives": ["Paper Search", "experiment-to-evidence", "checkpoint/restart"],
+  "record_ref": "decisions/UD-001-first-slice.json"
+}

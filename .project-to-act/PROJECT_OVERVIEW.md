@@ -9,9 +9,9 @@
 - 项目 ID：AR-CORE-001
 - 项目负责人：用户/项目负责人（具体姓名不在账本保存）
 - 风险等级：T4 / 高（长周期多 Agent、外部论文源、实验/写作与可选外部动作）
-- 当前阶段：0.1.0 Foundation Preview 已验收，P1–P5 生产级条件进行中
-- 当前状态：严格五 Agent 本地运行时、CLI/API、基础纵向科研链和论文项目进度投影已交付；真实论文试点与生产部署未完成
-- 最后更新：2026-08-22
+- 当前阶段：P1 Evaluation Section Pipeline 双 worktree 实施
+- 当前状态：R004/R005 与 UD-006/UD-007 已冻结；P1-A Runtime/Recovery 与 P1-B Evidence/Writing Pipeline 已分包，等待成员实施；真实论文试点与生产部署未完成
+- 最后更新：2026-09-04
 
 ## 项目目标
 
@@ -20,6 +20,7 @@
 - 建立可审计证据库、分级证据策略、确定性门禁、状态机、结构化交接、固化工作流、Wiki+Graph 知识体系、用户画像、自进化提案和经验沉淀。
 - 用 Project-to-Act 管理平台建设，并为每个论文项目提供独立、可验证的项目文件夹。
 - 最终通过一个真实论文试点证明：关键 claim 可追溯、Gate 不可绕过、状态可恢复、交接不堆上下文、稿件不伪造引用或结果。
+- 当前首个产品切片：证据约束的 Evaluation Section Pipeline（Paper Search → Evidence admission → Section Plan → Material/Benchmark Readiness → Section Draft → Rule Validation）。
 
 ## 范围
 
@@ -84,5 +85,6 @@
 按时间倒序追加：决定 ID、日期、决定、原因、影响、证据 ID、确认来源和复审条件。
 
 - D-003｜2026-08-22｜采用 VibeCollab repo-task-sync 管理当前 Git 任务，Project-to-Act 继续作为平台长期唯一治理账本，论文子项目保留独立账本｜原因：用户指定拉取 vibecollab skill，并要求项目文件夹管控进度｜影响：.ai-team 管短周期 task/handoff，根和子项目账本管范围/里程碑/验收，禁止三份事实互相覆盖｜证据：E-PROJECT-001、E-JOURNEY-001｜确认来源：用户本轮指令｜复审：协作模型或 canonical ledger 变化时。
+- D-004｜2026-09-04｜采用 P1 双 worktree 实施；成员自行编写 task-local L3 并直接实施｜原因：需要并行推进且避免共享文件冲突｜影响：P1-A 负责 Runtime/Recovery，P1-B 负责 Evidence/Writing Pipeline，负责人维护共享边界和最终集成｜证据：UD-006、UD-007、P1-WORKTREE-TASK-PLAN｜确认来源：用户本轮指令｜复审：P1 集成前。
 - D-002｜2026-08-21｜目标运行时明确为 LangGraph；嵌套 DeepReason 框架只作为能力与测试参考｜原因：用户明确要求 LangGraph，且嵌套仓库 AGENTS.md 的 OpenCode 原生方向不满足本次目标｜影响：新实现不能沿用旧拓扑作为主运行时｜证据：E-BASE-001｜确认来源：用户本轮指令｜复审：除非用户改变技术路线。
 - D-001｜2026-08-21｜业务 Agent 固定为总控、搜索、读取、写作、审核五个；证据/门禁/状态/记忆等均为服务｜原因：严格落实用户角色划分并避免隐藏 Agent 膨胀｜影响：现有 14 Agent 模板必须重构｜证据：E-PLAN-001｜确认来源：用户本轮指令｜复审：仅在用户明确批准角色变化时。
