@@ -6,7 +6,7 @@
 >
 > Owner：成员 B
 >
-> Reviewer：成员 A；最终集成：项目负责人
+> Automated review：GitHub bot/checks；最终 review 和集成：项目负责人
 
 ## 1. 任务目标
 
@@ -129,7 +129,7 @@ tests/test_recovery_contract.py
 - Evidence、readiness、benchmark、section validation 测试通过；
 - 生成一个 Evaluation Section 的可审计 fixture；
 - handoff 写明 changed paths、证据、限制、rollback 和集成步骤；
-- 成员 A 完成交叉审查；
+- 机器人审查报告已附在 PR；项目负责人完成最终审查；
 - 项目负责人确认可以 rebase 到主线。
 
 ## 10. 依赖与交付顺序

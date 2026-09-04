@@ -6,7 +6,7 @@
 >
 > Owner：成员 A
 >
-> Reviewer：成员 B；最终集成：项目负责人
+> Automated review：GitHub bot/checks；最终 review 和集成：项目负责人
 
 ## 1. 任务目标
 
@@ -117,7 +117,7 @@ tests/test_evaluation_pipeline.py
 - parity report 已生成；
 - `ruff`、项目测试和相关 package checks 通过；
 - handoff 写明 changed paths、证据、限制、rollback 和集成步骤；
-- 成员 B 完成交叉审查；
+- 机器人审查报告已附在 PR；项目负责人完成最终审查；
 - 项目负责人确认可以 rebase 到主线。
 
 ## 10. 依赖与交付顺序

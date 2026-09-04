@@ -6,11 +6,12 @@ Before merging a PR, verify:
 
 - changed paths are within the task package;
 - task-local ledger, code, tests, and handoff are in the same PR;
-- required tests and static checks pass;
+- required bot checks, tests, and static checks pass;
 - failure and recovery semantics are tested;
 - evidence reports are reproducible;
 - no secrets, generated databases, unrelated changes, or unauthorized shared-contract edits are present;
-- rollback and rebase instructions are clear.
+- rollback and rebase instructions are clear;
+- the owner has recorded the final review decision.
 
 ## Promotion Gate
 

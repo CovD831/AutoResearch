@@ -154,7 +154,7 @@ codex/p1-evidence-pipeline
 4. B rebase 到 A 合并后的主线。
 5. 负责人完成 `application.py` 和 pipeline 集成。
 6. 重新跑完整 Evaluation Section Pipeline。
-7. A 审 B，B 审 A，负责人做最终验收。
+7. GitHub 机器人先做自动检查；负责人做最终审查和验收。成员只负责开发、测试和交接。
 
 ## 主线完成标准
 

@@ -121,7 +121,7 @@ planned → ready → active → submitted → reviewing → integrated → acce
 - acceptance 场景有证据；
 - 无秘密、原始敏感材料或生成数据库；
 - 无第二 Store、总线、scheduler 或隐藏 Agent；
-- 交叉审查和 rollback 说明完成。
+- 机器人报告、负责人审查和 rollback 说明完成。
 
 ### Promotion Gate
 
