@@ -1,0 +1,4 @@
+interface:
+  display_name: "AutoResearch Team Workflow"
+  short_description: "Manage owner-side AutoResearch workflow"
+  default_prompt: "按 AutoResearch 协作流程检查任务队列、交付和集成 Gate。"
