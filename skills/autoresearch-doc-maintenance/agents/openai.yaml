@@ -1,0 +1,4 @@
+interface:
+  display_name: "AutoResearch Doc Maintenance"
+  short_description: "Update AutoResearch project records after accepted PRs"
+  default_prompt: "根据已合并 PR、测试证据和 handoff 更新 AutoResearch 项目文档。"

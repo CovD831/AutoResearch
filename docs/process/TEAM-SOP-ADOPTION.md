@@ -20,6 +20,8 @@ AutoResearch 增加以下项目专用规则：
 - 负责人 I0–I4 集成线；
 - `MVP-CLOSED-MINIMAL-E2E` 闭环 Gate。
 
+项目还把 PR 后的事实同步单独固化为 `autoresearch-doc-maintenance` skill：代码审查决定能否合并，文档维护 skill 在合并后根据提交、测试和 handoff 更新项目记录。
+
 这些规则由 `skills/autoresearch-team-workflow/` 提供负责人侧 AI 协作支持。成员不需要安装该项目 skill，只需使用仓库内的 `repo-task-sync` 规则和所分发的 lane package。
 
 ## 版本同步
