@@ -1,0 +1,110 @@
+{
+  "schema": "p1-a-parity-report/v1",
+  "paper_result_equal": true,
+  "evidence_equal": true,
+  "wiki_equal": true,
+  "diagnostics_equal": true,
+  "receipt_valid": true,
+  "idempotency_valid": true,
+  "legacy": {
+    "diagnostics": [],
+    "rows": {
+      "papers": [
+        {
+          "title": "Evidence-aware agent workflows",
+          "abstract": "A fixture paper describing auditable research workflows.",
+          "authors": [
+            "A. Researcher"
+          ],
+          "year": 2025,
+          "doi": "10.1000/fixture-a",
+          "url": "https://example.invalid/fixture-a",
+          "source": "fixture",
+          "source_record_id": "fixture-a"
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_type": "paper",
+          "grade": "E1",
+          "title": "Bibliographic record: Evidence-aware agent workflows",
+          "claim": "This scholarly record and its supplied abstract exist in the cited source.",
+          "locator": "bibliographic record/abstract",
+          "independent_source": "10.1000/fixture-a",
+          "source": "fixture"
+        }
+      ],
+      "wiki": [
+        {
+          "partition": "papers",
+          "title": "Evidence-aware agent workflows",
+          "tags": [
+            "fixture",
+            "2025"
+          ],
+          "has_evidence": true
+        }
+      ]
+    }
+  },
+  "target": {
+    "diagnostics": [],
+    "rows": {
+      "papers": [
+        {
+          "title": "Evidence-aware agent workflows",
+          "abstract": "A fixture paper describing auditable research workflows.",
+          "authors": [
+            "A. Researcher"
+          ],
+          "year": 2025,
+          "doi": "10.1000/fixture-a",
+          "url": "https://example.invalid/fixture-a",
+          "source": "fixture",
+          "source_record_id": "fixture-a"
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_type": "paper",
+          "grade": "E1",
+          "title": "Bibliographic record: Evidence-aware agent workflows",
+          "claim": "This scholarly record and its supplied abstract exist in the cited source.",
+          "locator": "bibliographic record/abstract",
+          "independent_source": "10.1000/fixture-a",
+          "source": "fixture"
+        }
+      ],
+      "wiki": [
+        {
+          "partition": "papers",
+          "title": "Evidence-aware agent workflows",
+          "tags": [
+            "fixture",
+            "2025"
+          ],
+          "has_evidence": true
+        }
+      ]
+    },
+    "receipt": {
+      "status": "completed",
+      "outcome_status": "completed",
+      "adapter": "paper_search",
+      "adapter_version": "1",
+      "request_fingerprint": "16d8896d2dd80d8da8065882300b17c9e6ffa0d4f4b7e9f0cd1ed78e9bbc2dbc",
+      "paper_count": 1,
+      "diagnostics": []
+    },
+    "idempotency": {
+      "scope": "paper_search",
+      "key": "run-fixture-001:invocation-fixture-001",
+      "state": "finalized",
+      "request_fingerprint": "16d8896d2dd80d8da8065882300b17c9e6ffa0d4f4b7e9f0cd1ed78e9bbc2dbc",
+      "result_status": "completed",
+      "result_outcome_status": "completed",
+      "result_paper_count": 1
+    }
+  },
+  "overall_equal": true
+}

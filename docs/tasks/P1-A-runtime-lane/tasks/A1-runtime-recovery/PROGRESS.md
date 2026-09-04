@@ -2,7 +2,7 @@
 
 | 日期 | 状态 | 完成事项 | 证据 | 风险/阻塞 | 下一步 |
 |---|---|---|---|---|---|
-| 2026-09-04 | ready | 任务包已分配，等待成员创建 worktree | 本任务包 | L3 尚未填写 | 成员 A 编写 L3 并开始实现 |
+| 2026-09-04 | handed-off | 完成 invocation contracts、幂等存储扩展、reserve-first adapter、fixture、专项/全量测试和可重跑 parity 报告 | `codex/p1-runtime-recovery`；`parity-report.json`；专项 9 passed；全量 27 passed；ruff/compileall passed | 真实网络 connector、跨进程锁和主线集成仍待负责人验收 | 负责人审查后 rebase/合并；随后由主线完成 P1 端到端集成 |
 
 ## 更新规则
 
