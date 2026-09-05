@@ -8,7 +8,11 @@ from test_capability_adapter import FakeSearchService, fixture_paper, fixture_re
 
 from autoresearch.capability import PaperSearchCapabilityAdapter, PendingInvocationError
 from autoresearch.evidence import EvidenceService
-from autoresearch.invocation_contracts import InvocationStatus, request_fingerprint
+from autoresearch.invocation_contracts import (
+    InvocationPhase,
+    InvocationStatus,
+    request_fingerprint,
+)
 from autoresearch.knowledge import KnowledgeService
 from autoresearch.search_service import PaperSearchService
 from autoresearch.storage import RecordStore
@@ -77,6 +81,40 @@ def test_storage_lists_pending_and_finalized_rows(tmp_path: Path):
 
     assert len(rows) == 1
     assert rows[0]["record"]["state"] == "pending"
+    assert rows[0]["record"]["phase"] == InvocationPhase.RESERVED.value
+
+
+def test_service_returned_result_can_be_recovered_without_second_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    store = RecordStore(tmp_path / "runtime.sqlite3")
+    service = FakeSearchService(papers=[fixture_paper("demo")])
+    adapter = PaperSearchCapabilityAdapter(service, store)
+    request = fixture_request()
+    original_finalize = store.finalize_idempotent
+
+    def crash_before_finalize(scope, key, result):
+        raise RuntimeError("simulated crash before finalization")
+
+    monkeypatch.setattr(store, "finalize_idempotent", crash_before_finalize)
+    with pytest.raises(RuntimeError, match="simulated crash"):
+        adapter.invoke(request)
+
+    pending = store.get_idempotent(adapter.scope, f"{request.run_id}:{request.invocation_id}")
+    assert pending["state"] == "pending"
+    assert pending["phase"] == InvocationPhase.SERVICE_RETURNED.value
+    assert "staged_result" in pending
+
+    monkeypatch.setattr(store, "finalize_idempotent", original_finalize)
+    restarted_service = FakeSearchService(papers=[fixture_paper("demo")])
+    recovered = PaperSearchCapabilityAdapter(restarted_service, store).recover_pending(
+        request.run_id,
+        request.invocation_id,
+        reason="restart detected a staged service result",
+    )
+
+    assert recovered.receipt.outcome_status == InvocationStatus.COMPLETED
+    assert restarted_service.calls == 0
 
 
 class FixtureConnector:

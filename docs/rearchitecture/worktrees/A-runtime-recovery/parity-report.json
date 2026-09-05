@@ -100,6 +100,7 @@
       "scope": "paper_search",
       "key": "run-fixture-001:invocation-fixture-001",
       "state": "finalized",
+      "phase": "finalized",
       "request_fingerprint": "16d8896d2dd80d8da8065882300b17c9e6ffa0d4f4b7e9f0cd1ed78e9bbc2dbc",
       "result_status": "completed",
       "result_outcome_status": "completed",

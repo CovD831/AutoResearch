@@ -7,7 +7,7 @@ import pytest
 
 from autoresearch.capability import InvocationConflictError, PaperSearchCapabilityAdapter
 from autoresearch.contracts import PaperRecord
-from autoresearch.invocation_contracts import InvocationStatus, PaperSearchRequest
+from autoresearch.invocation_contracts import InvocationPhase, InvocationStatus, PaperSearchRequest
 from autoresearch.search_service import SearchOutcome
 from autoresearch.storage import RecordStore
 
@@ -116,12 +116,12 @@ def test_reservation_exists_before_service_side_effect(tmp_path: Path):
 
     def inspect_reservation():
         record = store.get_idempotent("paper_search", f"{request.run_id}:{request.invocation_id}")
-        observed.append(record["state"] if record else None)
+        observed.append((record["state"], record["phase"]) if record else None)
 
     service = FakeSearchService(papers=[fixture_paper("demo")], on_call=inspect_reservation)
     PaperSearchCapabilityAdapter(service, store).invoke(request)
 
-    assert observed == ["pending"]
+    assert observed == [("pending", InvocationPhase.SERVICE_STARTED.value)]
 
 
 def test_timeout_is_unknown_and_replayable(tmp_path: Path):

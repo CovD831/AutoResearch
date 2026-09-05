@@ -6,6 +6,7 @@ from autoresearch.contracts import PaperRecord
 from autoresearch.invocation_contracts import (
     CapabilityManifest,
     EvidenceCandidate,
+    InvocationPhase,
     InvocationReceipt,
     InvocationStatus,
     PaperSearchInvocation,
@@ -188,6 +189,17 @@ class PaperSearchCapabilityAdapter:
             project_id=request.project_id,
             actor="capability_adapter",
         )
+        self.store.mark_idempotent_phase(
+            self.scope,
+            key,
+            InvocationPhase.SERVICE_STARTED.value,
+        )
+        self.store.append_event(
+            "capability.service_started",
+            {"invocation_id": request.invocation_id},
+            project_id=request.project_id,
+            actor="capability_adapter",
+        )
         try:
             outcome = self.service.search(
                 request.project_id,
@@ -207,6 +219,22 @@ class PaperSearchCapabilityAdapter:
             status = InvocationStatus.FAILED
 
         invocation = self._build_result(request, fingerprint, status, papers, diagnostics)
+        self.store.mark_idempotent_phase(
+            self.scope,
+            key,
+            InvocationPhase.SERVICE_RETURNED.value,
+            staged_result=invocation.model_dump(mode="json"),
+        )
+        self.store.append_event(
+            "capability.service_returned",
+            {
+                "invocation_id": request.invocation_id,
+                "status": status.value,
+                "paper_ids": [paper.paper_id for paper in papers],
+            },
+            project_id=request.project_id,
+            actor="capability_adapter",
+        )
         self.store.finalize_idempotent(
             self.scope,
             key,
@@ -240,6 +268,25 @@ class PaperSearchCapabilityAdapter:
             raise KeyError(f"unknown idempotency record: {self.scope}:{key}")
         if existing.get("state") != "pending":
             raise RuntimeError("idempotency record is already finalized")
+        staged_result = existing.get("staged_result")
+        if isinstance(staged_result, dict):
+            invocation = PaperSearchInvocation.model_validate(staged_result)
+            self.store.finalize_idempotent(
+                self.scope,
+                key,
+                invocation.model_dump(mode="json"),
+            )
+            self.store.append_event(
+                "capability.invocation_recovered",
+                {
+                    "invocation_id": invocation_id,
+                    "status": invocation.receipt.outcome_status.value,
+                    "reason": "finalized staged service result",
+                },
+                project_id=invocation.request.project_id,
+                actor="capability_adapter",
+            )
+            return invocation
         request = PaperSearchRequest.model_validate(existing.get("request", {}))
         fingerprint = existing.get("request_fingerprint") or request_fingerprint(request)
         invocation = self._build_result(request, fingerprint, outcome_status, [], [reason])

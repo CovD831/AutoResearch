@@ -152,6 +152,7 @@ def build_report() -> dict[str, Any]:
             "scope": target_row["scope"],
             "key": target_row["idempotency_key"],
             "state": idempotency["state"],
+            "phase": idempotency.get("phase"),
             "request_fingerprint": idempotency["request_fingerprint"],
             "result_status": idempotency["result"]["receipt"]["status"],
             "result_outcome_status": idempotency["result"]["receipt"]["outcome_status"],

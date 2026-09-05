@@ -20,6 +20,15 @@ class InvocationStatus(StrEnum):
     REPLAYED = "replayed"
 
 
+class InvocationPhase(StrEnum):
+    """Durable progress markers inside a still-pending invocation."""
+
+    RESERVED = "reserved"
+    SERVICE_STARTED = "service_started"
+    SERVICE_RETURNED = "service_returned"
+    FINALIZED = "finalized"
+
+
 class CapabilityManifest(BaseModel):
     """Minimal S1 manifest; trust assignment remains outside the adapter."""
 

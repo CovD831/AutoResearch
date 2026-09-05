@@ -11,7 +11,7 @@
 
 - L3 文件：`L3.md`
 - changed paths：`src/autoresearch/capability.py`、`src/autoresearch/storage.py`、`src/autoresearch/invocation_contracts.py`、A1 测试/fixture、`parity_report.py`、本任务账本文件。
-- 测试命令和结果：`ruff check src tests docs/rearchitecture/worktrees/A-runtime-recovery/parity_report.py` 通过；`compileall -q src` 通过；A1 专项 9 passed；`pytest -W error -q` 27 passed。
+- 测试命令和结果：`ruff check src tests` 通过；`compileall -q src` 通过；A1 专项 10 passed；`pytest -W error -q` 28 passed。
 - parity report：运行 `python docs/rearchitecture/worktrees/A-runtime-recovery/parity_report.py` 生成 `parity-report.json`，报告 `overall_equal=true`，覆盖 paper、Evidence、Wiki、diagnostics、receipt 和幂等行的脱敏语义投影。
 - recovery evidence：`tests/test_recovery_contract.py` 覆盖 pending 显式 fail、跨 `RecordStore` 实例 replay、pending 行枚举和 legacy/target parity；`tests/test_capability_adapter.py` 覆盖 reserve-first、exact replay、冲突、空结果/未知结果和 timeout。
 - rollback 方式：整体回滚 A1 提交即可；旧 `PaperSearchService` 和 `remember_idempotent` 保留，删除 adapter/合同/fixture/测试不会影响旧 facade。
@@ -22,4 +22,10 @@
 ## 自动审查与负责人审查
 
 - 机器人报告：task-local `node .ai-team/check.mjs --task .ai-team/tasks/P1-A-RUNTIME-RECOVERY.md --base main` 通过；项目级 `--base main` 暂阻塞，因为全局 `.ai-team/TASK.md` 由主线负责人维护。
-- 项目负责人结论：待审查。
+- 项目负责人结论：用户已完成 P1-A 验收；提交前审查中。项目级 `node .ai-team/check.mjs --base main` 仍因共享 `.ai-team/TASK.md` 未同步而阻塞，待负责人集成时处理。
+
+## 用户验收门禁
+
+- 自动化证据不等于用户验收；用户已确认专项测试结果、状态语义、replay/recovery 行为和 parity 报告。
+- 当前仍为 `handoff`，尚未声明 `accepted/done`，因为提交和主线集成尚未完成。
+- 用户确认前未推送、未合并、未扩大 P1-A 范围；下一步等待提交授权。
