@@ -3,7 +3,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from autoresearch.benchmark_advisor import BenchmarkAdvisor
 from autoresearch.contracts import (
+    ArtifactRef,
     EvidenceGrade,
     EvidenceType,
     InnovationCandidate,
@@ -13,6 +15,18 @@ from autoresearch.contracts import (
 )
 from autoresearch.evidence import EvidenceService
 from autoresearch.llm import LLMService
+from autoresearch.pipeline_contracts import (
+    BenchmarkPlan,
+    EvaluationSectionPipelineResult,
+    MaterialReadinessResult,
+    ReadinessStatus,
+    SectionDraft,
+    SectionPlan,
+    SectionValidationReport,
+    WritingProfile,
+)
+from autoresearch.readiness import EvaluationReadinessService
+from autoresearch.section_validator import SectionValidator
 from autoresearch.storage import RecordStore
 
 
@@ -124,6 +138,459 @@ class WritingService:
         )
         self.write_project_file(manuscript)
         return manuscript
+
+    @staticmethod
+    def _unique(values: list[str]) -> list[str]:
+        return [value for value in dict.fromkeys(value for value in values if value)]
+
+    def build_writing_profile(
+        self,
+        project_id: str,
+        *,
+        section_name: str = "Evaluation",
+        version: str = "v1",
+        voice: str = "evidence-first",
+        citation_style: str = "inline-id",
+    ) -> WritingProfile:
+        profile = WritingProfile(
+            project_id=project_id,
+            section_name=section_name,
+            version=version,
+            voice=voice,
+            citation_style=citation_style,
+        )
+        self.store.put(
+            "writing_profile",
+            profile.profile_id,
+            profile,
+            project_id=project_id,
+            partition="projects",
+        )
+        self.store.append_event(
+            "writing.profile_created",
+            {
+                "profile_id": profile.profile_id,
+                "project_id": project_id,
+                "section_name": section_name,
+                "version": version,
+            },
+            project_id=project_id,
+            actor="writing_service",
+        )
+        return profile
+
+    def plan_evaluation_section(
+        self,
+        project_id: str,
+        idea: str,
+        cards: list[ReadingCard],
+        innovations: list[InnovationCandidate] | None = None,
+        evidence_ids: list[str] | None = None,
+        *,
+        profile: WritingProfile | None = None,
+    ) -> SectionPlan:
+        profile = profile or self.build_writing_profile(project_id)
+        innovations = innovations or []
+        derived_evidence_ids = self._unique(
+            [
+                *(evidence_ids or []),
+                *[evidence_id for card in cards for evidence_id in card.evidence_ids],
+                *[
+                    evidence_id
+                    for innovation in innovations
+                    for evidence_id in innovation.evidence_ids
+                ],
+            ]
+        )
+        resolved_evidence = self.evidence.resolve(derived_evidence_ids)
+        artifact_refs = [
+            ArtifactRef(
+                artifact_id=card.card_id,
+                kind="reading_card",
+                summary=card.findings[0][:300] if card.findings else card.research_question[:300],
+            )
+            for card in cards
+        ]
+        claims: list[str] = []
+        claim_evidence_map: dict[str, list[str]] = {}
+        for card in cards:
+            for finding in card.findings[:1]:
+                claims.append(finding)
+                claim_evidence_map.setdefault(finding, [])
+                claim_evidence_map[finding] = self._unique(
+                    [*claim_evidence_map[finding], *card.evidence_ids]
+                )
+        for innovation in innovations:
+            claim = f"Hypothesis: {innovation.statement}"
+            claims.append(claim)
+            claim_evidence_map.setdefault(claim, [])
+            claim_evidence_map[claim] = self._unique(
+                [*claim_evidence_map[claim], *innovation.evidence_ids]
+            )
+        if not claims and idea.strip():
+            claims.append(f"Hypothesis: {idea[:240]}")
+            claim_evidence_map[claims[-1]] = [
+                evidence.evidence_id for evidence in resolved_evidence
+            ]
+        claims = self._unique(claims)
+        gaps: list[str] = []
+        if not cards:
+            gaps.append("No reading card has been collected yet.")
+        elif len(cards) < 2:
+            gaps.append("A second comparator reading card is still missing.")
+        if not resolved_evidence:
+            gaps.append("No valid evidence item is available for the section.")
+        if cards and not any(card.limitations for card in cards):
+            gaps.append("No explicit limitation was extracted from the reading cards.")
+        if innovations:
+            gaps.extend(
+                self._unique(
+                    [
+                        f"Falsification pending: {innovation.falsification_test}"
+                        for innovation in innovations
+                    ]
+                )
+            )
+        plan = SectionPlan(
+            project_id=project_id,
+            objective=(
+                "Draft an evidence-first evaluation section that stays plan-only until "
+                "real results are registered."
+            ),
+            claims=claims,
+            claim_evidence_map=claim_evidence_map,
+            evidence_ids=[item.evidence_id for item in resolved_evidence],
+            artifact_refs=artifact_refs,
+            experiment_dependencies=self._unique(
+                [
+                    "planned benchmark only",
+                    *(
+                        innovation.falsification_test
+                        for innovation in innovations
+                        if innovation.falsification_test
+                    ),
+                ]
+            ),
+            gaps=self._unique(gaps),
+            profile_id=profile.profile_id,
+        )
+        self.store.put(
+            "section_plan",
+            plan.plan_id,
+            plan,
+            project_id=project_id,
+            partition="projects",
+        )
+        self.store.append_event(
+            "section.planned",
+            {
+                "plan_id": plan.plan_id,
+                "project_id": project_id,
+                "claim_count": len(plan.claims),
+                "evidence_count": len(plan.evidence_ids),
+                "gap_count": len(plan.gaps),
+            },
+            project_id=project_id,
+            actor="writing_service",
+        )
+        return plan
+
+    def advise_benchmark_plan(
+        self,
+        plan: SectionPlan,
+        cards: list[ReadingCard],
+        *,
+        innovations: list[InnovationCandidate] | None = None,
+    ) -> BenchmarkPlan:
+        benchmark_plan = BenchmarkAdvisor().propose(
+            plan,
+            cards,
+            innovations=innovations,
+        )
+        self.store.put(
+            "benchmark_plan",
+            benchmark_plan.benchmark_plan_id,
+            benchmark_plan,
+            project_id=plan.project_id,
+            partition="projects",
+        )
+        self.store.append_event(
+            "section.benchmark_planned",
+            {
+                "benchmark_plan_id": benchmark_plan.benchmark_plan_id,
+                "plan_id": plan.plan_id,
+                "planned_only": benchmark_plan.planned_only,
+            },
+            project_id=plan.project_id,
+            actor="writing_service",
+        )
+        return benchmark_plan
+
+    def assess_evaluation_readiness(
+        self,
+        plan: SectionPlan,
+        benchmark_plan: BenchmarkPlan,
+        cards: list[ReadingCard],
+        *,
+        profile: WritingProfile | None = None,
+    ) -> MaterialReadinessResult:
+        readiness = EvaluationReadinessService(self.evidence).assess(
+            plan,
+            benchmark_plan,
+            cards,
+            profile=profile,
+        )
+        self.store.put(
+            "material_readiness",
+            readiness.readiness_id,
+            readiness,
+            project_id=plan.project_id,
+            partition="projects",
+        )
+        self.store.append_event(
+            "section.readiness_assessed",
+            {
+                "readiness_id": readiness.readiness_id,
+                "plan_id": plan.plan_id,
+                "status": readiness.status.value,
+            },
+            project_id=plan.project_id,
+            actor="writing_service",
+        )
+        return readiness
+
+    def draft_evaluation_section(
+        self,
+        plan: SectionPlan,
+        benchmark_plan: BenchmarkPlan,
+        readiness: MaterialReadinessResult,
+        *,
+        profile: WritingProfile | None = None,
+    ) -> SectionDraft:
+        if readiness.status == ReadinessStatus.BLOCKED:
+            raise PermissionError("evaluation section is blocked by missing required material")
+        profile = profile or self.build_writing_profile(plan.project_id)
+        claim_lines = []
+        for claim in plan.claims:
+            evidence_ids = ", ".join(plan.claim_evidence_map.get(claim, [])) or "none"
+            claim_lines.append(f"- {claim}\n  - evidence: {evidence_ids}")
+        evidence_lines = [
+            f"- {evidence_id}"
+            for evidence_id in self._unique(
+                [*plan.evidence_ids, *readiness.evidence_ids]
+            )
+        ]
+        benchmark_lines = [
+            f"- benchmark: {benchmark_plan.benchmark_name}",
+            f"- baselines: {', '.join(benchmark_plan.baseline) or 'none'}",
+            f"- metrics: {', '.join(benchmark_plan.metrics) or 'none'}",
+            f"- required materials: {', '.join(benchmark_plan.required_materials) or 'none'}",
+            f"- risks: {', '.join(benchmark_plan.risks) or 'none'}",
+            "- result state: planned only",
+        ]
+        missing_lines = [
+            f"- {item}" for item in self._unique(
+                [*readiness.missing_required, *readiness.missing_optional, *plan.gaps]
+            )
+        ]
+        if not missing_lines:
+            missing_lines = ["- none"]
+        unknown_lines = [
+            f"- {item}" for item in self._unique(
+                [*plan.gaps, *readiness.missing_optional]
+            )
+        ]
+        if not unknown_lines:
+            unknown_lines = ["- none"]
+        limitation_lines = [
+            f"- {item}"
+            for item in self._unique(
+                plan.gaps or ["No additional limitation captured."]
+            )
+        ]
+        body = "\n".join(
+            [
+                "# Evaluation",
+                "",
+                "## Objective",
+                "",
+                plan.objective,
+                "",
+                "## Claims",
+                "",
+                "\n".join(claim_lines) if claim_lines else "- none",
+                "",
+                "## Evidence",
+                "",
+                "\n".join(evidence_lines) if evidence_lines else "- none",
+                "",
+                "## Benchmark Plan",
+                "",
+                "\n".join(benchmark_lines),
+                "",
+                "## Missing Materials",
+                "",
+                "\n".join(missing_lines),
+                "",
+                "## Unknowns",
+                "",
+                "\n".join(unknown_lines),
+                "",
+                "## Limitations",
+                "",
+                "\n".join(limitation_lines),
+                "",
+                "## Notes",
+                "",
+                "This section remains plan-only and does not report measured outcomes.",
+            ]
+        )
+        draft = SectionDraft(
+            project_id=plan.project_id,
+            section_id=plan.plan_id,
+            profile_id=profile.profile_id,
+            plan_id=plan.plan_id,
+            benchmark_plan_id=benchmark_plan.benchmark_plan_id,
+            title=plan.section_name,
+            body=body,
+            claims=plan.claims,
+            claim_evidence_map=plan.claim_evidence_map,
+            evidence_ids=self._unique([*plan.evidence_ids, *readiness.evidence_ids]),
+            unresolved_gaps=self._unique(
+                [*readiness.missing_required, *readiness.missing_optional, *plan.gaps]
+            ),
+            limitations=self._unique(plan.gaps),
+            observed_result_summary=None,
+            review_ready=readiness.status != ReadinessStatus.BLOCKED,
+            notes=self._unique(readiness.action_items),
+        )
+        self.store.put(
+            "section_draft",
+            draft.draft_id,
+            draft,
+            project_id=plan.project_id,
+            partition="projects",
+        )
+        self.store.append_event(
+            "section.drafted",
+            {
+                "draft_id": draft.draft_id,
+                "plan_id": plan.plan_id,
+                "review_ready": draft.review_ready,
+            },
+            project_id=plan.project_id,
+            actor="writing_service",
+        )
+        return draft
+
+    def validate_evaluation_section(
+        self,
+        plan: SectionPlan,
+        benchmark_plan: BenchmarkPlan,
+        readiness: MaterialReadinessResult,
+        draft: SectionDraft,
+        *,
+        profile: WritingProfile | None = None,
+    ) -> SectionValidationReport:
+        report = SectionValidator().validate(
+            plan,
+            draft,
+            readiness,
+            benchmark_plan,
+            profile=profile,
+        )
+        self.store.put(
+            "section_validation",
+            report.report_id,
+            report,
+            project_id=plan.project_id,
+            partition="projects",
+        )
+        self.store.append_event(
+            "section.validated",
+            {
+                "report_id": report.report_id,
+                "plan_id": plan.plan_id,
+                "verdict": report.verdict.value,
+            },
+            project_id=plan.project_id,
+            actor="writing_service",
+        )
+        return report
+
+    def compose_evaluation_section(
+        self,
+        project_id: str,
+        idea: str,
+        cards: list[ReadingCard],
+        innovations: list[InnovationCandidate] | None = None,
+        evidence_ids: list[str] | None = None,
+        *,
+        profile: WritingProfile | None = None,
+    ) -> EvaluationSectionPipelineResult:
+        profile = profile or self.build_writing_profile(project_id)
+        plan = self.plan_evaluation_section(
+            project_id,
+            idea,
+            cards,
+            innovations=innovations,
+            evidence_ids=evidence_ids,
+            profile=profile,
+        )
+        benchmark_plan = self.advise_benchmark_plan(
+            plan,
+            cards,
+            innovations=innovations,
+        )
+        readiness = self.assess_evaluation_readiness(
+            plan,
+            benchmark_plan,
+            cards,
+            profile=profile,
+        )
+        draft: SectionDraft | None = None
+        validation: SectionValidationReport | None = None
+        if readiness.status != ReadinessStatus.BLOCKED:
+            draft = self.draft_evaluation_section(
+                plan,
+                benchmark_plan,
+                readiness,
+                profile=profile,
+            )
+            validation = self.validate_evaluation_section(
+                plan,
+                benchmark_plan,
+                readiness,
+                draft,
+                profile=profile,
+            )
+        result = EvaluationSectionPipelineResult(
+            profile=profile,
+            plan=plan,
+            benchmark_plan=benchmark_plan,
+            readiness=readiness,
+            draft=draft,
+            validation=validation,
+        )
+        self.store.put(
+            "evaluation_section_pipeline",
+            f"{plan.plan_id}:{readiness.readiness_id}",
+            result,
+            project_id=project_id,
+            partition="projects",
+        )
+        self.store.append_event(
+            "section.pipeline_composed",
+            {
+                "plan_id": plan.plan_id,
+                "readiness_id": readiness.readiness_id,
+                "status": readiness.status.value,
+                "verdict": validation.verdict.value if validation is not None else None,
+            },
+            project_id=project_id,
+            actor="writing_service",
+        )
+        return result
 
     @staticmethod
     def _numbers(text: str) -> set[str]:
