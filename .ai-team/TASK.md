@@ -33,6 +33,7 @@
 - [x] P1-B Evidence/Writing Pipeline 通过 Evidence admission、readiness、benchmark plan 和 section validation 验收；project owner accepted for integration, mainline integration pending.
 - [ ] P1 端到端 Evaluation Section Pipeline 在 A 合并后由负责人完成集成验收。
 - [ ] 负责人完成 I0–I4 集成任务，并将 `MVP-CLOSED-MINIMAL-E2E` 标记为 accepted。
+- [x] 2026-09-07 owner 深度审查（PR #1/#2）发现项已落入 B2/A2 泳道 TASK-SPECS 作为 Gate 条款：B2 Gate 阻断项为 invalidated-evidence fail-open；A2 吸纳跨进程 TOCTOU、phase-aware recovery 与失败标签收窄。
 
 ## Invariants
 

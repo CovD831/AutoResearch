@@ -18,6 +18,11 @@
 - 主要交付：重复/冲突 candidate、伪造数字、无 locator、缺 baseline、过期 evidence、planned-as-result、规则边界 fixture 和报告。
 - 必须满足：任何无证据关键 claim 都不能 verified；冲突不覆盖事实；未知、失败和 limitation 保留在输出；错误必须可定位。
 - 验收：正例/负例矩阵可离线重跑，所有 fail-open 场景均被阻断。
+- **Owner review 补充条款（2026-09-07 深度审查，E-B1-REVIEW-FINDINGS，B2 Gate 前置）**：
+  - **[Gate 阻断] F1 失效证据 fail-open**：`evidence.py` 的 `resolve(valid_only=False)` 不过滤 invalidated evidence，readiness 与 section validator 对失效证据放行并可给 VERIFIED（`readiness.py:25,32-33`、`section_validator.py:40`）。B2 必须让 readiness/validator 默认只消费 `valid` 证据，或对失效证据显式 fail-closed，并附对抗性 fixture 与回归测试。
+  - **[必须关闭] F3 死枚举**：`EvidenceAdmissionStatus.BLOCKED` 不可达，L3 承诺的三个 admission 失败态只实现两个（`evidence.py`）。B2 需实现或显式删除该状态并回写 L3。
+  - **[必须关闭] F2 locator 折叠**：`_source_key` 中 locator 归一化 `None → ""`，同源不同段落无 locator 时被折叠为 conflict（`evidence.py:51-57`）。B2 对抗性 fixture 需覆盖该场景。
+  - **[测试] 失效证据场景零覆盖**：B2 需补充 invalidated-evidence 的 admission/readiness/validator 全链路测试。
 
 ## B3 — S2 Audit Evidence
 

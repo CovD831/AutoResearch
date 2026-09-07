@@ -19,6 +19,11 @@
 - 必须满足：每个失败窗口都能重现；不确定结果不能被归类为成功；测试可离线运行；报告记录 request fingerprint、receipt、durable facts 和副作用计数。
 - 禁止：改变 R005 已冻结语义；绕过 A1 recovery API；修改 B 线独占路径。
 - 验收：故障矩阵全覆盖，至少包含 timeout、进程重启、evidence-before-receipt、重复提交和冲突 fingerprint。
+- **Owner review 补充条款（2026-09-07 深度审查，E-A1-REVIEW-FINDINGS，A2 Gate 前置）**：
+  - **[必须关闭] F-1 跨实例 TOCTOU**：`storage.py` 的 `mark_idempotent_phase`/`finalize` 用进程内 `_lock`，多实例下 finalized 记录可被并发 mark 覆盖回 pending（深度审查实验证实，后果 fail-closed 但破坏 receipt 不变量）。A2 需引入跨进程安全的状态迁移（SQLite 条件 UPDATE `WHERE phase IN (...)` 或等价物）并附多进程回归测试。
+  - **[必须关闭] F-2/`recover_pending` 语义**：`recover_pending` 不区分 phase 一律按 FAILED 处理，"service-started 中断 → unknown_outcome" 仅靠调用方约定。A2 需把 phase 感知恢复下沉到 recovery 本体，并以 fault-injection 测试固定。
+  - **[必须关闭] F-3 失败标签过宽**：非 timeout 异常一律收口为 `failed`，把"不确定"标成"确定失败"。A2 需区分确定性失败与未知结果（对齐 A1 文档的 unknown_outcome 语义）。
+  - **[测试] 非法 phase 转换测试不在常规 pytest 套件**：仅存在于验收脚本。A2 需把 phase guard、TOCTOU 等关键回归纳入 `pytest` 常规路径。
 
 ## A3 — S2 Audit Runtime
 
