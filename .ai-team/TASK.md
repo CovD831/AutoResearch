@@ -29,7 +29,7 @@
 - [x] 当前模块到目标模块映射包含 retain/expose/adapt/split 与移除门槛。
 - [x] 第一条迁移切片、legacy/target fixture、失败语义、回滚边界和 promotion gate 已冻结。
 - [x] 首个垂直场景、外部能力边界和 Runtime 部署边界沿用 R-002 中已记录的用户决策。
-- [ ] P1-A Runtime/Recovery 通过幂等、replay、recovery 和 legacy/target parity 验收。
+- [x] P1-A Runtime/Recovery 通过幂等、replay、recovery 和 legacy/target parity 验收；project owner accepted for integration (deep review PR #2, 2026-09-07), mainline integration pending.
 - [x] P1-B Evidence/Writing Pipeline 通过 Evidence admission、readiness、benchmark plan 和 section validation 验收；project owner accepted for integration, mainline integration pending.
 - [ ] P1 端到端 Evaluation Section Pipeline 在 A 合并后由负责人完成集成验收。
 - [ ] 负责人完成 I0–I4 集成任务，并将 `MVP-CLOSED-MINIMAL-E2E` 标记为 accepted。
