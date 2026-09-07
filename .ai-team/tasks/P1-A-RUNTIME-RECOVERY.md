@@ -2,7 +2,7 @@
 
 - ID: `P1-A-RUNTIME-RECOVERY`
 - Title: `Runtime / Capability / Recovery`
-- Status: `ready`
+- Status: `handoff`
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -12,11 +12,11 @@
 
 ## Acceptance scenarios
 
-- [ ] 相同 identity 和 fingerprint 只调用 connector 一次。
-- [ ] fingerprint 冲突明确拒绝。
-- [ ] `completed_empty` 与 `unknown_outcome` 区分。
-- [ ] pending、timeout、restart 和 recover/fail 均有可重跑测试。
-- [ ] legacy/target parity report 可重跑。
+- [x] 相同 identity 和 fingerprint 只调用 connector 一次。
+- [x] fingerprint 冲突明确拒绝。
+- [x] `completed_empty` 与 `unknown_outcome` 区分。
+- [x] pending、timeout、restart 和 recover/fail 均有可重跑测试。
+- [x] legacy/target parity report 可重跑。
 
 ## Invariants
 
@@ -30,25 +30,31 @@
 
 ## Completed
 
-- 任务包和 worktree 边界已准备。
+- 任务包和 worktree 边界已准备；L3、实现、fixture 和测试已完成。
 
 ## Pending
 
-- 成员 A 填写 L3 并实施。
+- 已完成 L3、实现、fixture、专项/全量测试和 parity 报告；专项 10 passed、全量 28 passed，结果已写入 task-local handoff。用户已完成 P1-A 验收；提交前仍需完成负责人审查。
 
 ## Next step
 
-创建 `codex/p1-runtime-recovery` worktree，填写 L3，实施并提交验证证据。
+负责人审查 `HANDOFF.md`、parity 报告和分支 diff；确认共享边界后 rebase/合并。
 
 ## Verification
 
-- [ ] `ruff check src tests`
-- [ ] P1-A 相关 pytest
-- [ ] parity/recovery report
-- [ ] `node .ai-team/check.mjs --task .ai-team/tasks/P1-A-RUNTIME-RECOVERY.md`
+- [x] `ruff check src tests`（通过；另含 parity 脚本）
+- [x] P1-A 相关 pytest（10 passed；全量 `pytest -W error -q` 为 28 passed）
+- [x] parity/recovery report（`docs/rearchitecture/worktrees/A-runtime-recovery/parity-report.json`，`overall_equal=true`）
+- [x] `node .ai-team/check.mjs --task .ai-team/tasks/P1-A-RUNTIME-RECOVERY.md --base main`（valid）
 
 ## Handoff note
 
 - From: `member A`
 - To: `user/team`
-- Required: changed paths、测试、parity/recovery evidence、rollback、已知限制和 rebase 说明。
+- Required: changed paths、测试、parity/recovery evidence、rollback、已知限制和 rebase 说明，均见 `HANDOFF.md`。
+
+## User validation gate
+
+- [x] 用户运行或复核 P1-A 专项验收场景。
+- [x] 用户确认自动化测试通过不等于本人验收通过。
+- [x] 用户确认前不推送、不合并、不标记 `accepted/done`。

@@ -211,3 +211,125 @@ class RecordStore:
                 (scope, key, self._json(result), utc_now().isoformat()),
             )
         return cursor.rowcount == 1
+
+    def get_idempotent(self, scope: str, key: str) -> dict[str, Any] | None:
+        """Return the durable invocation record, including pending state."""
+
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT result_json FROM idempotency WHERE scope=? AND idempotency_key=?",
+                (scope, key),
+            ).fetchone()
+        return json.loads(row["result_json"]) if row else None
+
+    def reserve_idempotent(self, scope: str, key: str, request: dict[str, Any]) -> bool:
+        """Atomically reserve an invocation before any connector side effect."""
+
+        now = utc_now().isoformat()
+        record = {
+            "state": "pending",
+            "phase": "reserved",
+            "request": request,
+            "request_fingerprint": request.get("request_fingerprint"),
+            "created_at": now,
+            "updated_at": now,
+        }
+        with self._lock, self.connection() as connection:
+            cursor = connection.execute(
+                """
+                INSERT OR IGNORE INTO idempotency
+                    (scope, idempotency_key, result_json, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (scope, key, self._json(record), now),
+            )
+        return cursor.rowcount == 1
+
+    def mark_idempotent_phase(
+        self,
+        scope: str,
+        key: str,
+        phase: str,
+        *,
+        staged_result: dict[str, Any] | None = None,
+    ) -> None:
+        """Record progress within a pending invocation before finalization."""
+
+        transitions = {
+            "reserved": {"service_started"},
+            "service_started": {"service_returned"},
+            "service_returned": set(),
+        }
+        with self._lock, self.connection() as connection:
+            row = connection.execute(
+                "SELECT result_json FROM idempotency WHERE scope=? AND idempotency_key=?",
+                (scope, key),
+            ).fetchone()
+            if row is None:
+                raise KeyError(f"unknown idempotency record: {scope}:{key}")
+            record = json.loads(row["result_json"])
+            if record.get("state") != "pending":
+                raise RuntimeError("idempotency record is already finalized")
+            current = record.get("phase", "reserved")
+            if phase not in transitions.get(current, set()):
+                raise RuntimeError(f"invalid invocation phase transition: {current} -> {phase}")
+            record["phase"] = phase
+            if staged_result is not None:
+                record["staged_result"] = staged_result
+            record["updated_at"] = utc_now().isoformat()
+            connection.execute(
+                """
+                UPDATE idempotency SET result_json=?, created_at=created_at
+                WHERE scope=? AND idempotency_key=?
+                """,
+                (self._json(record), scope, key),
+            )
+
+    def finalize_idempotent(self, scope: str, key: str, result: dict[str, Any]) -> None:
+        """Finalize a pending invocation without changing its identity."""
+
+        with self._lock, self.connection() as connection:
+            row = connection.execute(
+                "SELECT result_json FROM idempotency WHERE scope=? AND idempotency_key=?",
+                (scope, key),
+            ).fetchone()
+            if row is None:
+                raise KeyError(f"unknown idempotency record: {scope}:{key}")
+            existing = json.loads(row["result_json"])
+            if existing.get("state") != "pending":
+                raise RuntimeError("idempotency record is already finalized")
+            now = utc_now().isoformat()
+            record = {
+                **existing,
+                "state": "finalized",
+                "phase": "finalized",
+                "result": result,
+                "updated_at": now,
+            }
+            connection.execute(
+                """
+                UPDATE idempotency SET result_json=?, created_at=created_at
+                WHERE scope=? AND idempotency_key=?
+                """,
+                (self._json(record), scope, key),
+            )
+
+    def list_idempotent(self, scope: str | None = None) -> list[dict[str, Any]]:
+        """List invocation records for parity and diagnostics."""
+
+        query = "SELECT scope, idempotency_key, result_json FROM idempotency"
+        params: tuple[Any, ...] = ()
+        if scope is not None:
+            query += " WHERE scope=?"
+            params = (scope,)
+        query += " ORDER BY created_at, scope, idempotency_key"
+        with self.connection() as connection:
+            rows = connection.execute(query, params).fetchall()
+        return [
+            {
+                "scope": row["scope"],
+                "idempotency_key": row["idempotency_key"],
+                "record": json.loads(row["result_json"]),
+            }
+            for row in rows
+        ]
