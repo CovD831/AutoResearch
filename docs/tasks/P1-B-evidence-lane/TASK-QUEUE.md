@@ -2,7 +2,7 @@
 
 | Task | 状态 | 依赖 | 交付重点 |
 |---|---|---|---|
-| B1 P1-B Evidence/Evaluation Pipeline | ready | — | admission、readiness、benchmark plan、section validation |
+| B1 P1-B Evidence/Evaluation Pipeline | handed-off | — | admission、readiness、benchmark plan、section validation |
 | B2 P1-B Evidence Adversarial | ready-next | B1 | 冲突、缺口、规则和 fail-closed fixture |
 | B3 S2 Audit Evidence | waiting-for-gate | S1 promotion | verdict、reconciliation、candidate 回流 |
 | B4 S3 Reader/Writer Ports | planned | S2 promotion | typed reader/writer、LLM/MCP contract |

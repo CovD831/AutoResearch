@@ -2,7 +2,7 @@
   "task_id": "P1-B-EVIDENCE-PIPELINE",
   "phase": "P1/S1",
   "owner_lane": "evidence/domain",
-  "status": "ready",
+  "status": "handed-off",
   "base_ref": "8d821c0",
   "branch": "codex/p1-evidence-pipeline",
   "depends_on": [],
