@@ -1,0 +1,18 @@
+{
+  "project_id": "demo",
+  "run_id": "run-fixture-001",
+  "invocation_id": "invocation-fixture-001",
+  "query": "evidence-aware agent workflows",
+  "limit": 5,
+  "papers": [
+    {
+      "title": "Evidence-aware agent workflows",
+      "abstract": "A fixture paper describing auditable research workflows.",
+      "authors": ["A. Researcher"],
+      "year": 2025,
+      "doi": "10.1000/fixture-a",
+      "url": "https://example.invalid/fixture-a",
+      "source_record_id": "fixture-a"
+    }
+  ]
+}
