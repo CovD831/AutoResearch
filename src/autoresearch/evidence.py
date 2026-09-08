@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 
 from autoresearch.contracts import EvidenceItem
 from autoresearch.pipeline_contracts import (
@@ -16,6 +17,8 @@ class EvidenceService:
         self.store = store
 
     def add(self, item: EvidenceItem, *, actor: str = "system") -> EvidenceItem:
+        if not item.locator or not item.locator.strip():
+            raise ValueError("evidence locator is required")
         existing = self.store.get("evidence", item.evidence_id)
         if existing is not None and existing != item.model_dump(mode="json"):
             raise ValueError(f"evidence is immutable: {item.evidence_id}")
@@ -56,12 +59,55 @@ class EvidenceService:
             cls._normalize(item.locator),
         )
 
+    @staticmethod
+    def _expiry_reason(item: EvidenceItem) -> str | None:
+        expires_at = item.metadata.get("expires_at")
+        if expires_at is None:
+            return None
+        if not isinstance(expires_at, str) or not expires_at.strip():
+            return "evidence expiry metadata is malformed"
+        try:
+            parsed = datetime.fromisoformat(expires_at.strip().replace("Z", "+00:00"))
+        except ValueError:
+            return "evidence expiry metadata is malformed"
+        if parsed.tzinfo is None:
+            return "evidence expiry metadata must include a timezone"
+        if parsed <= datetime.now(UTC):
+            return f"evidence expired at {expires_at}"
+        return None
+
+    def validity_reason(self, evidence_id: str) -> str | None:
+        raw = self.store.get("evidence", evidence_id)
+        if raw is None:
+            return None
+        item = EvidenceItem.model_validate(raw)
+        status = self.store.get("evidence_status", evidence_id)
+        if not item.valid:
+            return "evidence is marked invalid"
+        if status and not status.get("valid", True):
+            return str(status.get("reason") or "evidence was invalidated")
+        return self._expiry_reason(item)
+
     def admit_candidate(
         self,
         candidate: EvidenceCandidate,
         *,
         actor: str = "system",
     ) -> EvidenceAdmissionResult:
+        if not candidate.locator or not candidate.locator.strip():
+            result = EvidenceAdmissionResult(
+                project_id=candidate.project_id,
+                candidate_id=candidate.candidate_id,
+                status=EvidenceAdmissionStatus.BLOCKED,
+                reasons=["candidate locator is required"],
+            )
+            self.store.append_event(
+                "evidence.candidate_blocked",
+                result,
+                project_id=candidate.project_id,
+                actor=actor,
+            )
+            return result
         existing_items = self.list(candidate.project_id)
         candidate_duplicate_key = self._duplicate_key(candidate)
         candidate_source_key = self._source_key(candidate)
@@ -140,19 +186,20 @@ class EvidenceService:
         raw = self.store.get("evidence", evidence_id)
         if raw is None:
             return None
-        status = self.store.get("evidence_status", evidence_id)
-        if status and not status.get("valid", True):
+        if self.validity_reason(evidence_id) is not None:
             raw["valid"] = False
         return EvidenceItem.model_validate(raw)
 
     def resolve(
         self,
         evidence_ids: list[str],
+        *,
+        valid_only: bool = False,
     ) -> list[EvidenceItem]:
         resolved = []
         for evidence_id in dict.fromkeys(evidence_ids):
             item = self.get(evidence_id)
-            if item is not None:
+            if item is not None and (not valid_only or item.valid):
                 resolved.append(item)
         return resolved
 

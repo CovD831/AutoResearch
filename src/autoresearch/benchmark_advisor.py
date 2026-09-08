@@ -12,9 +12,9 @@ class BenchmarkAdvisor:
         *,
         innovations: list[InnovationCandidate] | None = None,
     ) -> BenchmarkPlan:
-        baseline = [card.method for card in cards if card.method][:2]
-        if not baseline:
-            baseline = ["closest registered comparator"]
+        baseline = list(
+            dict.fromkeys(card.method.strip() for card in cards if card.method.strip())
+        )[:2]
 
         metrics = ["evidence traceability", "benchmark comparability", "failure visibility"]
         if any("latency" in claim.lower() for claim in plan.claims):

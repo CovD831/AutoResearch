@@ -1,0 +1,39 @@
+{
+  "task_id": "P1-B2-EVIDENCE-ADVERSARIAL",
+  "phase": "P1/S1",
+  "owner_lane": "evidence/domain",
+  "status": "active",
+  "base_ref": "main@c1dbefc",
+  "branch": "codex/p1-evidence-adversarial",
+  "depends_on": ["P1-B-EVIDENCE-PIPELINE"],
+  "merge_after": ["P1-B"],
+  "next_package": "S2-B-AUDIT-EVIDENCE",
+  "allowed_paths": [
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/readiness.py",
+    "src/autoresearch/benchmark_advisor.py",
+    "src/autoresearch/section_validator.py",
+    "src/autoresearch/writing_service.py",
+    "tests/test_evidence_adversarial.py",
+    "tests/test_fail_closed_rules.py",
+    "docs/tasks/P1-B-evidence-lane/tasks/B2-evidence-adversarial/"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/application.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/capability.py",
+    "src/autoresearch/graph.py",
+    "src/autoresearch/agents/",
+    ".project-to-act/",
+    ".ai-team/TASK.md"
+  ],
+  "deliverables": [
+    "locator fail-closed admission",
+    "invalid and expired evidence filtering",
+    "concrete baseline readiness gate",
+    "plan-only and numeric-result adversarial validation",
+    "offline B2 tests",
+    "L3/PROGRESS/HANDOFF"
+  ]
+}
