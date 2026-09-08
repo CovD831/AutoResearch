@@ -1,0 +1,271 @@
+{
+  "schema": "p1-a2-fault-matrix/v1",
+  "scenarios": [
+    {
+      "scenario_id": "timeout",
+      "request_fingerprint": "d1764c469e91a79977b63d4ad1ddeae52c6bc880d73a5127d0945276976490d7",
+      "receipt": {
+        "invocation_id": "timeout",
+        "status": "unknown_outcome",
+        "outcome_status": "unknown_outcome",
+        "adapter": "paper_search",
+        "adapter_version": "1",
+        "request_fingerprint": "d1764c469e91a79977b63d4ad1ddeae52c6bc880d73a5127d0945276976490d7",
+        "paper_ids": [],
+        "diagnostics": [
+          "provider timeout; outcome is unknown"
+        ],
+        "created_at": "2026-09-08T05:27:51.420712Z",
+        "updated_at": "2026-09-08T05:27:51.420712Z"
+      },
+      "replay_status": "replayed",
+      "durable_facts": {
+        "papers": 0,
+        "evidence": 0,
+        "wiki": 0,
+        "audit_events": 4
+      },
+      "durable_record": {
+        "state": "finalized",
+        "phase": "finalized",
+        "has_staged_result": true,
+        "has_final_result": true,
+        "final_status": "unknown_outcome"
+      },
+      "connector_calls": 1,
+      "diagnostics": [
+        "provider timeout; outcome is unknown"
+      ],
+      "side_effect_count": 1,
+      "passed": true
+    },
+    {
+      "scenario_id": "process_restart",
+      "request_fingerprint": "645102c6fd374b7e37067aafe81f1c59988a0d45be0899186c36b44521a17e70",
+      "receipt": {
+        "invocation_id": "a2-crash-after-service-started",
+        "status": "unknown_outcome",
+        "outcome_status": "unknown_outcome",
+        "adapter": "paper_search",
+        "adapter_version": "1",
+        "request_fingerprint": "645102c6fd374b7e37067aafe81f1c59988a0d45be0899186c36b44521a17e70",
+        "paper_ids": [],
+        "diagnostics": [
+          "restart found service_started without durable provider result; recovery found service_started without staged result"
+        ],
+        "created_at": "2026-09-08T05:27:53.227369Z",
+        "updated_at": "2026-09-08T05:27:53.227369Z"
+      },
+      "before": {
+        "scenario_id": "a2-crash-after-service-started",
+        "request_fingerprint": "645102c6fd374b7e37067aafe81f1c59988a0d45be0899186c36b44521a17e70",
+        "returncode": 37,
+        "state": "pending",
+        "phase": "service_started",
+        "has_staged_result": false,
+        "has_final_result": false,
+        "connector_calls": 1
+      },
+      "durable_facts": {
+        "papers": 0,
+        "evidence": 0,
+        "wiki": 0,
+        "audit_events": 3
+      },
+      "durable_record": {
+        "state": "finalized",
+        "phase": "finalized",
+        "has_staged_result": false,
+        "has_final_result": true,
+        "final_status": "unknown_outcome"
+      },
+      "connector_calls": 1,
+      "diagnostics": [
+        "restart found service_started without durable provider result; recovery found service_started without staged result"
+      ],
+      "side_effect_count": 1,
+      "passed": true
+    },
+    {
+      "scenario_id": "evidence_before_receipt",
+      "request_fingerprint": "350c3a8b64cac056da8df01e05897aa09b9d28a4712c331c6fa79228680aecee",
+      "crash": {
+        "returncode": 43,
+        "stdout": "",
+        "stderr": "",
+        "facts_marker": true
+      },
+      "receipt": {
+        "invocation_id": "evidence-before-receipt",
+        "status": "unknown_outcome",
+        "outcome_status": "unknown_outcome",
+        "adapter": "paper_search",
+        "adapter_version": "1",
+        "request_fingerprint": "350c3a8b64cac056da8df01e05897aa09b9d28a4712c331c6fa79228680aecee",
+        "paper_ids": [],
+        "diagnostics": [
+          "restart found durable evidence before receipt; recovery found service_started without staged result"
+        ],
+        "created_at": "2026-09-08T05:27:55.246511Z",
+        "updated_at": "2026-09-08T05:27:55.246511Z"
+      },
+      "before": {
+        "state": "pending",
+        "phase": "service_started",
+        "has_staged_result": false,
+        "has_final_result": false,
+        "final_status": null
+      },
+      "after": {
+        "state": "finalized",
+        "phase": "finalized",
+        "has_staged_result": false,
+        "has_final_result": true,
+        "final_status": "unknown_outcome"
+      },
+      "durable_facts_before": {
+        "papers": 1,
+        "evidence": 1,
+        "wiki": 1,
+        "audit_events": 4
+      },
+      "durable_facts_after": {
+        "papers": 1,
+        "evidence": 1,
+        "wiki": 1,
+        "audit_events": 5
+      },
+      "connector_calls": 1,
+      "diagnostics": [
+        "restart found durable evidence before receipt; recovery found service_started without staged result"
+      ],
+      "durable_facts": {
+        "papers": 1,
+        "evidence": 1,
+        "wiki": 1,
+        "audit_events": 5
+      },
+      "side_effect_count": 1,
+      "passed": true
+    },
+    {
+      "scenario_id": "partial_write",
+      "request_fingerprint": "804fd1e5ecec84f0f130225a5b76dadd04437deef014f154ee5399bebb1d8edc",
+      "crash": {
+        "returncode": 41,
+        "stdout": "",
+        "stderr": ""
+      },
+      "receipt": {
+        "invocation_id": "partial-write",
+        "status": "completed",
+        "outcome_status": "completed",
+        "adapter": "paper_search",
+        "adapter_version": "1",
+        "request_fingerprint": "804fd1e5ecec84f0f130225a5b76dadd04437deef014f154ee5399bebb1d8edc",
+        "paper_ids": [
+          "paper-fixture-a"
+        ],
+        "diagnostics": [],
+        "created_at": "2026-09-08T05:27:57.264513Z",
+        "updated_at": "2026-09-08T05:27:57.265513Z"
+      },
+      "before": {
+        "state": "pending",
+        "phase": "service_returned",
+        "has_staged_result": true,
+        "has_final_result": false,
+        "final_status": null
+      },
+      "after": {
+        "state": "finalized",
+        "phase": "finalized",
+        "has_staged_result": true,
+        "has_final_result": true,
+        "final_status": "completed"
+      },
+      "durable_facts_before": {
+        "papers": 1,
+        "evidence": 1,
+        "wiki": 1,
+        "audit_events": 6
+      },
+      "durable_facts_after": {
+        "papers": 1,
+        "evidence": 1,
+        "wiki": 1,
+        "audit_events": 7
+      },
+      "connector_calls": 1,
+      "diagnostics": [],
+      "durable_facts": {
+        "papers": 1,
+        "evidence": 1,
+        "wiki": 1,
+        "audit_events": 7
+      },
+      "side_effect_count": 1,
+      "passed": true
+    },
+    {
+      "scenario_id": "duplicate_submission",
+      "request_fingerprint": "0a497a70a01a41f8c3f805b6019d8ea7c724892721e7547f6a8ce7ddc064e8f1",
+      "receipt": {
+        "invocation_id": "duplicate",
+        "status": "completed",
+        "outcome_status": "completed",
+        "adapter": "paper_search",
+        "adapter_version": "1",
+        "request_fingerprint": "0a497a70a01a41f8c3f805b6019d8ea7c724892721e7547f6a8ce7ddc064e8f1",
+        "paper_ids": [
+          "paper-fixture-a"
+        ],
+        "diagnostics": [],
+        "created_at": "2026-09-08T05:27:58.659229Z",
+        "updated_at": "2026-09-08T05:27:58.659229Z"
+      },
+      "replay_status": "replayed",
+      "durable_facts": {
+        "papers": 1,
+        "evidence": 1,
+        "wiki": 1,
+        "audit_events": 7
+      },
+      "connector_calls": 1,
+      "side_effect_count": 1,
+      "passed": true
+    },
+    {
+      "scenario_id": "conflicting_fingerprint",
+      "request_fingerprint": "2686b73b88003a71a05b599315357878eab0469baaa67436c4f8e195390bf93a",
+      "receipt": {
+        "invocation_id": "conflict",
+        "status": "completed",
+        "outcome_status": "completed",
+        "adapter": "paper_search",
+        "adapter_version": "1",
+        "request_fingerprint": "2686b73b88003a71a05b599315357878eab0469baaa67436c4f8e195390bf93a",
+        "paper_ids": [
+          "paper-fixture-a"
+        ],
+        "diagnostics": [],
+        "created_at": "2026-09-08T05:27:59.423390Z",
+        "updated_at": "2026-09-08T05:27:59.423390Z"
+      },
+      "rejection": {
+        "exception": "InvocationConflictError",
+        "message": "invocation identity is already bound to another request"
+      },
+      "durable_facts": {
+        "papers": 0,
+        "evidence": 0,
+        "wiki": 0,
+        "audit_events": 4
+      },
+      "connector_calls": 1,
+      "side_effect_count": 1,
+      "passed": true
+    }
+  ],
+  "overall_passed": true
+}

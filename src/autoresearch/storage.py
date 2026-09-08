@@ -245,6 +245,26 @@ class RecordStore:
             )
         return cursor.rowcount == 1
 
+    def _update_idempotent_if_current(
+        self,
+        scope: str,
+        key: str,
+        previous_json: str,
+        record: dict[str, Any],
+    ) -> None:
+        """Persist a record only when the database still contains the read snapshot."""
+
+        with self._lock, self.connection() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE idempotency SET result_json=?, created_at=created_at
+                WHERE scope=? AND idempotency_key=? AND result_json=?
+                """,
+                (self._json(record), scope, key, previous_json),
+            )
+            if cursor.rowcount != 1:
+                raise RuntimeError("stale idempotency update rejected")
+
     def mark_idempotent_phase(
         self,
         scope: str,
@@ -267,23 +287,18 @@ class RecordStore:
             ).fetchone()
             if row is None:
                 raise KeyError(f"unknown idempotency record: {scope}:{key}")
-            record = json.loads(row["result_json"])
-            if record.get("state") != "pending":
-                raise RuntimeError("idempotency record is already finalized")
-            current = record.get("phase", "reserved")
-            if phase not in transitions.get(current, set()):
-                raise RuntimeError(f"invalid invocation phase transition: {current} -> {phase}")
-            record["phase"] = phase
-            if staged_result is not None:
-                record["staged_result"] = staged_result
-            record["updated_at"] = utc_now().isoformat()
-            connection.execute(
-                """
-                UPDATE idempotency SET result_json=?, created_at=created_at
-                WHERE scope=? AND idempotency_key=?
-                """,
-                (self._json(record), scope, key),
-            )
+            previous_json = row["result_json"]
+        record = json.loads(previous_json)
+        if record.get("state") != "pending":
+            raise RuntimeError("idempotency record is already finalized")
+        current = record.get("phase", "reserved")
+        if phase not in transitions.get(current, set()):
+            raise RuntimeError(f"invalid invocation phase transition: {current} -> {phase}")
+        record["phase"] = phase
+        if staged_result is not None:
+            record["staged_result"] = staged_result
+        record["updated_at"] = utc_now().isoformat()
+        self._update_idempotent_if_current(scope, key, previous_json, record)
 
     def finalize_idempotent(self, scope: str, key: str, result: dict[str, Any]) -> None:
         """Finalize a pending invocation without changing its identity."""
@@ -295,24 +310,19 @@ class RecordStore:
             ).fetchone()
             if row is None:
                 raise KeyError(f"unknown idempotency record: {scope}:{key}")
-            existing = json.loads(row["result_json"])
-            if existing.get("state") != "pending":
-                raise RuntimeError("idempotency record is already finalized")
-            now = utc_now().isoformat()
-            record = {
-                **existing,
-                "state": "finalized",
-                "phase": "finalized",
-                "result": result,
-                "updated_at": now,
-            }
-            connection.execute(
-                """
-                UPDATE idempotency SET result_json=?, created_at=created_at
-                WHERE scope=? AND idempotency_key=?
-                """,
-                (self._json(record), scope, key),
-            )
+            previous_json = row["result_json"]
+        existing = json.loads(previous_json)
+        if existing.get("state") != "pending":
+            raise RuntimeError("idempotency record is already finalized")
+        now = utc_now().isoformat()
+        record = {
+            **existing,
+            "state": "finalized",
+            "phase": "finalized",
+            "result": result,
+            "updated_at": now,
+        }
+        self._update_idempotent_if_current(scope, key, previous_json, record)
 
     def list_idempotent(self, scope: str | None = None) -> list[dict[str, Any]]:
         """List invocation records for parity and diagnostics."""
