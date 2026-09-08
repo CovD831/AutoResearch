@@ -51,6 +51,7 @@
 - D-R001-03：CapabilityManifest、CapabilityAdapter、InvocationReceipt、EvidenceCandidate 只在 S1 被实现，避免过早平台化。
 - UD-006：首个产品切片为证据约束的 Evaluation Section Pipeline；首版只支持一种论文类型。
 - UD-007：成员可在各自 worktree 自行编写 task-local L3 并直接实施，无需先提交 L3 等待批准。
+- D-SYNC-01：成员 PR 以 `.ai-team/tasks/<TASK-ID>.md` 账本满足 repo-task-sync 同步检查；`check.mjs` 接受任意变更的成员账本作为有效 ledger，共享 `.ai-team/TASK.md` 集成队列仍由负责人维护（2026-09-08，PR #4 审查后落地，修复成员账本在 `docs/tasks/` 下被机器人无视的死锁）。
 
 ## Completed
 
