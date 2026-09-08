@@ -167,9 +167,21 @@ export function validateRepository({ root = process.cwd(), base = null, taskPath
       const files = [...new Set([...trackedFiles, ...untrackedFiles])].sort();
       const nonCollaborationFiles = files.filter((path) => !isCollaborationFile(path));
       const normalizedTaskPath = taskPath.replaceAll("\\", "/");
-      const hasTaskLedger = files.includes(normalizedTaskPath) || files.includes(".ai-team/TASK.md");
+      const memberLedgers = files.filter(
+        (path) => path.startsWith(".ai-team/tasks/") && path.endsWith(".md"),
+      );
+      const hasTaskLedger =
+        files.includes(normalizedTaskPath) ||
+        files.includes(".ai-team/TASK.md") ||
+        memberLedgers.length > 0;
       if (nonCollaborationFiles.length > 0 && !hasTaskLedger) {
-        errors.push(`Code or product files changed without updating ${normalizedTaskPath} in the same PR`);
+        const ledgerHint =
+          normalizedTaskPath === ".ai-team/TASK.md"
+            ? ".ai-team/TASK.md or a member ledger under .ai-team/tasks/"
+            : `${normalizedTaskPath}, .ai-team/TASK.md, or a member ledger under .ai-team/tasks/`;
+        errors.push(
+          `Code or product files changed without updating ${ledgerHint} in the same PR`,
+        );
       }
 
       const numstat = git(absoluteRoot, ["diff", "--numstat", base, "--"]) ?? "";

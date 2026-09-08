@@ -19,13 +19,6 @@
 - [x] 草稿含无结果工件支撑的结果型数字断言时，verdict 为 revise 且 issue 指明该断言。
 - [x] 绑定失效证据 ID 的草稿无法产生 verified。
 
-## Invariants
-
-- 不新增 agent/store/bus/scheduler，不做网络调用，不改 Audit/S2 合同。
-- Evidence Module 保持证据状态/失效/替代/claim linkage 的唯一写入者。
-- 不修改 blocked-compose 语义：blocked readiness 仍短路在 draft/validation 之前。
-- 共享契约、application/storage/capability/graph、`.ai-team/TASK.md`、`.project-to-act/` 均未触碰。
-
 ## Decisions
 
 - 过期/格式错/无时区的 `expires_at` 一律判失效（fail-closed），仅在有效支持解析中剔除，不删除证据。
