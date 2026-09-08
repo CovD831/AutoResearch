@@ -28,6 +28,11 @@ class EvaluationReadinessService:
             for evidence_id in dict.fromkeys(plan.evidence_ids)
             if (reason := self.evidence.validity_reason(evidence_id)) is not None
         }
+        unknown_evidence = [
+            evidence_id
+            for evidence_id in dict.fromkeys(plan.evidence_ids)
+            if self.evidence.get(evidence_id) is None
+        ]
         missing_required: list[str] = []
         missing_optional: list[str] = []
         action_items: list[str] = []
@@ -44,9 +49,9 @@ class EvaluationReadinessService:
             missing_required.append("benchmark metrics")
         if not any(value.strip() for value in benchmark_plan.required_materials):
             missing_required.append("benchmark required materials")
-        if not benchmark_plan.planned_only or (
-            benchmark_plan.observed_result_summary
-            and benchmark_plan.observed_result_summary.strip()
+        if (
+            not benchmark_plan.planned_only
+            or benchmark_plan.observed_result_summary is not None
         ):
             missing_required.append("planned-only benchmark guard")
 
@@ -54,6 +59,12 @@ class EvaluationReadinessService:
             missing_optional.append("invalid supporting evidence")
             for evidence_id, reason in invalid_evidence.items():
                 action_items.append(f"Remove invalid evidence {evidence_id}: {reason}.")
+        if unknown_evidence:
+            missing_optional.append("unknown supporting evidence")
+            for evidence_id in unknown_evidence:
+                action_items.append(
+                    f"Unknown evidence id {evidence_id}: not found in the evidence store."
+                )
 
         if len(cards) < 2 and cards:
             missing_optional.append("secondary comparator card")

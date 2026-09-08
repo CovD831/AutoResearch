@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoResearch：像给小朋友讲科研流水线</title>
+  <style>
+    :root { --ink:#182230; --muted:#5d6b7a; --paper:#fffdf7; --blue:#dff2ff; --green:#e4f8e9; --yellow:#fff1bf; --pink:#ffe5eb; --line:#cbd5e1; }
+    * { box-sizing:border-box; } body { margin:0; font-family: system-ui, -apple-system, "PingFang SC", sans-serif; color:var(--ink); background:linear-gradient(135deg,#edf7ff,#fffaf0); }
+    main { max-width:1000px; margin:0 auto; padding:42px 22px 64px; } h1 { font-size:clamp(30px,5vw,54px); margin:0 0 12px; letter-spacing:-.04em; } h2 { margin-top:42px; font-size:28px; } p { line-height:1.7; color:var(--muted); }
+    .hero { background:var(--paper); border:2px solid var(--line); border-radius:28px; padding:30px; box-shadow:0 18px 50px #9bb7cc33; } .tag { display:inline-block; padding:7px 12px; border-radius:999px; background:#182230; color:white; font-size:13px; }
+    .flow { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; align-items:stretch; margin:24px 0; } .step { position:relative; padding:18px 12px; border:2px solid var(--line); border-radius:18px; text-align:center; background:white; font-weight:700; } .step small { display:block; margin-top:7px; color:var(--muted); font-weight:500; } .step:not(:last-child)::after { content:'→'; position:absolute; right:-17px; top:35%; font-size:24px; color:#7b8a99; z-index:2; }
+    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; } .card { border:2px solid var(--line); border-radius:18px; padding:18px; background:white; } .card .emoji { font-size:34px; } .card h3 { margin:8px 0 5px; } .card p { font-size:14px; margin:0; }
+    .gate { display:grid; grid-template-columns:1fr 1fr; gap:14px; } .gate div { border-radius:18px; padding:18px; border:2px solid var(--line); } .pass { background:var(--green); } .stop { background:var(--pink); } .note { background:var(--yellow); border-radius:18px; padding:18px; margin-top:18px; }
+    code { background:#eef2f7; border-radius:6px; padding:2px 6px; } .footer { margin-top:42px; font-size:13px; color:var(--muted); }
+    @media (max-width:760px) { .flow { grid-template-columns:1fr; } .step:not(:last-child)::after { content:'↓'; right:47%; top:auto; bottom:-25px; } .gate { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body><main>
+  <section class="hero">
+    <span class="tag">ELI5 · 超直观版</span>
+    <h1>AutoResearch 是一条“不会乱说话”的科研流水线</h1>
+    <p>你给它一个研究想法，它会像一个小研究团队一样：先定题，再找论文，读论文，想创新，安排实验，写草稿，最后审核。每一步都要带证据；证据不够，红灯就会亮，流程停下来。</p>
+  </section>
+
+  <h2>1. 一次研究是怎么走的？</h2>
+  <div class="flow">
+    <div class="step" style="background:var(--blue)">💡 想法<small>把 idea 说清楚</small></div>
+    <div class="step" style="background:var(--blue)">🔎 找论文<small>只认真实记录</small></div>
+    <div class="step" style="background:var(--green)">📖 读论文<small>带定位做笔记</small></div>
+    <div class="step" style="background:var(--yellow)">🧪 做计划<small>创新与实验工作包</small></div>
+    <div class="step" style="background:var(--pink)">✍️ 写与审<small>证据够才可放行</small></div>
+  </div>
+
+  <h2>2. 五个 Agent，各司其职</h2>
+  <div class="cards">
+    <div class="card"><div class="emoji">🧭</div><h3>总控 Agent</h3><p>像项目经理：拆解问题、生成研究章程和工作包，但不能自己宣布“有创新”。</p></div>
+    <div class="card"><div class="emoji">🔍</div><h3>论文搜索 Agent</h3><p>像图书管理员：去重、整理题录；找不到论文时不会凭空编造。</p></div>
+    <div class="card"><div class="emoji">📚</div><h3>论文读取 Agent</h3><p>像陪读老师：根据全文或摘要做 ReadingCard，并标出引用位置。</p></div>
+    <div class="card"><div class="emoji">📝</div><h3>写作 Agent</h3><p>像写作助手：把已放行的证据写进草稿；缺实验就明确写“这里缺证据”。</p></div>
+    <div class="card"><div class="emoji">🛡️</div><h3>审核 Agent</h3><p>像质检员：检查证据、来源和缺口，不能修改证据后再自己批准。</p></div>
+  </div>
+
+  <h2>3. “红绿灯”为什么重要？</h2>
+  <div class="gate"><div class="pass"><h3>🟢 绿灯</h3><p>证据分数、独立来源和工作闭环都够，才能进入下一阶段。</p></div><div class="stop"><h3>🔴 红灯</h3><p>没有真实论文、证据失效、来源不足、稿件有未解决缺口，流程会停在 <code>WAITING_EVIDENCE</code>。</p></div></div>
+  <div class="note"><strong>最严格的一关：外部发布。</strong><br>即使稿件证据很强，L4 发布仍必须暂停，等待一位具名的人类审批；拒绝就记为拒绝，不能偷偷绕过。</div>
+
+  <h2>4. 它把什么东西记在账本里？</h2>
+  <p>每个项目都有自己的文件夹（<code>paper-projects/&lt;project_id&gt;</code>），SQLite 保存规范记录和审计事件，另一个 SQLite 保存 LangGraph 的 checkpoint。这样流程中断后可以用同一个 <code>run_id</code> 恢复，而不是从头猜。</p>
+
+  <h2>5. 你可以怎么运行？</h2>
+  <p>项目要求 Python 3.12+。典型命令是：<code>pip install -e ".[dev]"</code> → <code>autoresearch doctor</code> → <code>autoresearch init-project demo "Evidence-aware agents"</code> → <code>autoresearch run demo --idea "你的研究想法"</code>。默认离线运行；联网和模型需要显式配置。</p>
+  <p class="footer">对应代码入口：<code>src/autoresearch/application.py</code>、<code>src/autoresearch/graph.py</code>、<code>src/autoresearch/agents/</code>。当前仓库版本标注为 0.1.0 foundation：基础纵向切片已成形，但不是生产级多租户系统。</p>
+</main></body></html>

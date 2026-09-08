@@ -31,12 +31,14 @@ class SectionValidator:
             r"\b(?:accuracy|precision|recall|f1(?:[- ]score)?|auc|latency|"
             r"error(?: rate)?|success rate|quality|performance|score)\b"
             r"[^\n.]{0,80}\b(?:improv\w*|reduc\w*|increas\w*|decreas\w*|"
-            r"outperform\w*|achiev\w*|reach\w*|obtain\w*)\b"
+            r"outperform\w*|achiev\w*|reach\w*|obtain\w*|attain\w*|yield\w*|"
+            r"deliver\w*)\b"
             r"[^\n.]{0,40}\b\d+(?:\.\d+)?%?(?:\s*(?:ms|s|seconds?|points?))?\b",
             re.IGNORECASE,
         ),
         re.compile(
-            r"\b(?:achiev\w*|reach\w*|obtain\w*|record\w*)\b"
+            r"\b(?:achiev\w*|reach\w*|obtain\w*|record\w*|attain\w*|yield\w*|"
+            r"deliver\w*)\b"
             r"[^\n.]{0,50}\b\d+(?:\.\d+)?%?\b[^\n.]{0,25}\b"
             r"(?:accuracy|precision|recall|f1(?:[- ]score)?|auc|latency|"
             r"error(?: rate)?|success rate|quality|performance|score)\b",
@@ -90,7 +92,7 @@ class SectionValidator:
                 checked_evidence_ids=readiness.evidence_ids,
             )
 
-        if draft.observed_result_summary:
+        if draft.observed_result_summary is not None:
             issues.append("observed results must not appear in an evaluation section draft")
             required_changes.append("remove observed result text and keep the benchmark plan only")
         draft_claims = set(draft.claims)
@@ -103,7 +105,7 @@ class SectionValidator:
         if not benchmark_plan.planned_only:
             issues.append("benchmark plan is not marked as planned-only")
             required_changes.append("reset benchmark plan to planned-only")
-        if benchmark_plan.observed_result_summary:
+        if benchmark_plan.observed_result_summary is not None:
             issues.append("benchmark plan carries an observed result summary")
             required_changes.append("remove observed result summary")
         if not any(value.strip() for value in benchmark_plan.baseline):

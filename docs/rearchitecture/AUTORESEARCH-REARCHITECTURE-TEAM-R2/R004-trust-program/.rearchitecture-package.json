@@ -1,0 +1,59 @@
+{
+  "package_id": "R-004-TRUST-PROGRAM",
+  "profile": "design+program",
+  "status": "active",
+  "supersedes": [
+    "R-001",
+    "SKILL-TEST-2026-09-03",
+    "INDEPENDENT-2026-09-03"
+  ],
+  "baseline_revision": "working-tree-2026-09-03-r002; foundation 0.1.0; includes docs/市场调研与定位分析_2026-09.md",
+  "documents": {
+    "scope": "00-scope-and-authority.md",
+    "positioning": "01-positioning-and-complexity.md",
+    "l1": "02-l1-target-architecture.md",
+    "mapping": "03-current-to-target-map.md",
+    "l2": [
+      "04-l2-contracts.md"
+    ],
+    "l3_s1": [
+      "04b-s1-l3-contract.md"
+    ],
+    "migration": "05-migration-and-evidence.md",
+    "adr": [
+      "06-adr-r002.md"
+    ],
+    "review": "07-adversarial-review.md",
+    "review_ledger": "review-ledger.json",
+    "maintenance": "08-maintenance-and-catalog.md",
+    "handoff": "handoff.md"
+  },
+  "gates": {
+    "authority": "pass",
+    "user_decisions": "pass (UD-001..003 canonical in R-002-LITERATURE-PILOT; additional decisions in 06-adr ADR-2/3)",
+    "l1": "pass (amended: audit boundary, trust tier, five-role reinterpretation)",
+    "mapping": "pass",
+    "l2": "conditional (S1 fields established; Audit Module conditional; S3/S4 open)",
+    "s1_l3": "deferred: S1 implementation authority is R-003 (this file is program-side baseline)",
+    "review": "pass with 3 open findings owned by implementation gates (self-review, no independent reviewer)",
+    "implementation": "S1 owned by in-flight R-003; R-004 owns S0 inventory script + S2 readiness gate",
+    "promotion": "pending"
+  },
+  "advancement_trigger": "S1 legacy/target fixture, sole-writer, idempotency and recovery evidence all pass; then S1 promotes and S2 audit module implementation may start.",
+  "promotion_evidence": [
+    "python scripts/dependency_inventory.py > docs/rearchitecture/R002/evidence/inventory-target.txt (diff vs inventory-baseline.txt)",
+    "python -m pytest tests/test_capability_adapters.py tests/test_recovery_contract.py tests/test_architecture_dependencies.py tests/test_workflow.py",
+    "python -m ruff check src tests",
+    "node .ai-team/check.mjs --base main",
+    "legacy/target receipt, durable-fact, failure, idempotency and checkpoint parity report"
+  ],
+  "stop_rule": "Do not start S2 implementation before R-003 promotion evidence passes and is consumed here; parity, sole-writer, unknown-outcome or recovery failure stops promotion and keeps the legacy facade; findings AR-OLD-002/004/005/006 stay open until their implementation evidence exists (tracked in R-003).",
+  "next_task": {
+    "id": "S0-inventory-script; then consume R-003 promotion evidence as S1 gate",
+    "owner": "user/team"
+  },
+  "defers_to": [
+    "R-002-LITERATURE-PILOT",
+    "R-003-PAPER-SEARCH-ADAPTER"
+  ]
+}

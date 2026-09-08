@@ -1,0 +1,1 @@
+{"package_id":"R-003-PAPER-SEARCH-ADAPTER","round":1,"input_revision":"working-tree-2026-09-03","scope":"Paper Search adapter L3, replay, evidence candidates, legacy compatibility","questions":["Are ownership and replay semantics unambiguous?","Does the slice preserve five-Agent and EvidenceService invariants?","Is rollback and acceptance evidence sufficient?"]}

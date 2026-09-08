@@ -6,6 +6,9 @@
 | 2026-09-07 | implemented | Added locator fail-closed admission, expiry/invalidity filtering, concrete-baseline readiness, and result-like numeric validation | `src/autoresearch/{evidence,readiness,benchmark_advisor,section_validator,writing_service}.py`; B2 tests | Run focused tests and inspect any regressions |
 | 2026-09-07 | tested | Focused B2 plus B1 regression suite passed `19 passed`; full warning-as-error suite passed `35 passed`; ruff, repository check, Project-to-Act validation, and diff check passed | Historical verification captured in the earlier `verification-report.json` revision | Historical next step at that time: commit locally and rebase after B1 merge; superseded by the 2026-09-08 revalidation with `47 passed` |
 | 2026-09-08 | revalidated | Recovered B2 directly from B1-integrated `main@c1dbefc`; the focused suite passed `19 passed` and the full suite passed `47 passed` in the local PowerShell verification | `verification-report.json`; current base `c1dbefc9edd3b53798c321cac06537a6faba5d3d` | Commit the verified B2 changes, push `codex/p1-evidence-adversarial`, and open the PR |
+| 2026-09-08 | owner-followup | PR #4 merged after owner added the member ledger to the fork branch; owner follow-up unified whitespace summary semantics (non-`None` = present), added unknown-evidence-id reporting, extended result verbs (attain/yield/deliver), and added expired-e2e, whitespace, unknown-id, negative-regex, and verb tests | Owner review `reviews/PR4-B2-deep-review.md`; follow-up branch `owner/b2-followup`; focused `18 passed`, full suite `55 passed`, ruff clean | Merge the follow-up PR, then close the PR #4 review findings |
 
-The B2 branch does not modify `.ai-team/TASK.md`, `.project-to-act/`, shared
-contracts, application orchestration, storage, or capability code.
+The B2 branch does not modify `.project-to-act/`, shared contracts,
+application orchestration, storage, or capability code. Integration records
+(shared TASK.md acceptance, member ledger, registry) are maintained by the
+project owner per D-SYNC-01.
