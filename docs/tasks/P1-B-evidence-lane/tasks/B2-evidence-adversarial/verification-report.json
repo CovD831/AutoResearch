@@ -1,0 +1,56 @@
+{
+  "evidence_id": "E-B2-VERIFY-20260908",
+  "task_id": "P1-B2-EVIDENCE-ADVERSARIAL",
+  "recorded_at": "2026-09-08 Asia/Shanghai",
+  "revision": "main@c1dbefc9edd3b53798c321cac06537a6faba5d3d; B2 recovered working tree before commit",
+  "environment": {
+    "python": "3.12.14",
+    "pytest": "9.1.1",
+    "ruff": "0.16.6",
+    "network": "not used"
+  },
+  "commands": [
+    {
+      "command": "pytest tests/test_evidence_adversarial.py tests/test_fail_closed_rules.py tests/test_evidence_admission.py tests/test_evaluation_pipeline.py tests/test_material_readiness.py tests/test_section_validation.py -q",
+      "exit_code": 0,
+      "result": "19 passed"
+    },
+    {
+      "command": "pytest -W error -q",
+      "exit_code": 0,
+      "result": "47 passed"
+    },
+    {
+      "command": "ruff check src tests",
+      "exit_code": 0,
+      "result": "All checks passed"
+    },
+    {
+      "command": "node .ai-team/check.mjs --json",
+      "exit_code": 0,
+      "result": "valid: true"
+    },
+    {
+      "command": "project-to-act --check",
+      "exit_code": 0,
+      "result": "managed and configured"
+    },
+    {
+      "command": "project-to-act --validate",
+      "exit_code": 0,
+      "result": "valid: true; issues: []"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "passed"
+    }
+  ],
+  "scope": {
+    "forbidden_paths_changed": [],
+    "network_or_real_materials": false,
+    "new_agents_stores_buses_or_schedulers": false,
+    "blocked_compose_semantics_changed": false
+  },
+  "known_follow_up": "Commit the verified B2 changes, push codex/p1-evidence-adversarial to the personal fork, then open the B2 PR against CovD831/AutoResearch:main."
+}

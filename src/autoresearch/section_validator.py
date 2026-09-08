@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from autoresearch.pipeline_contracts import (
     BenchmarkPlan,
     MaterialReadinessResult,
@@ -24,6 +26,39 @@ class SectionValidator:
         "## Limitations",
         "## Notes",
     ]
+    RESULT_NUMBER_PATTERNS = (
+        re.compile(
+            r"\b(?:accuracy|precision|recall|f1(?:[- ]score)?|auc|latency|"
+            r"error(?: rate)?|success rate|quality|performance|score)\b"
+            r"[^\n.]{0,80}\b(?:improv\w*|reduc\w*|increas\w*|decreas\w*|"
+            r"outperform\w*|achiev\w*|reach\w*|obtain\w*)\b"
+            r"[^\n.]{0,40}\b\d+(?:\.\d+)?%?(?:\s*(?:ms|s|seconds?|points?))?\b",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b(?:achiev\w*|reach\w*|obtain\w*|record\w*)\b"
+            r"[^\n.]{0,50}\b\d+(?:\.\d+)?%?\b[^\n.]{0,25}\b"
+            r"(?:accuracy|precision|recall|f1(?:[- ]score)?|auc|latency|"
+            r"error(?: rate)?|success rate|quality|performance|score)\b",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\b\d+(?:\.\d+)?%?\s+"
+            r"(?:accuracy|precision|recall|f1(?:[- ]score)?|auc|latency|"
+            r"error(?: rate)?|success rate|quality|performance|score)\b",
+            re.IGNORECASE,
+        ),
+    )
+
+    @classmethod
+    def _result_like_numeric_claims(cls, body: str) -> list[str]:
+        return list(
+            dict.fromkeys(
+                match.group(0).strip()
+                for pattern in cls.RESULT_NUMBER_PATTERNS
+                for match in pattern.finditer(body)
+            )
+        )
 
     def validate(
         self,
@@ -37,7 +72,7 @@ class SectionValidator:
         issues: list[str] = []
         required_changes: list[str] = []
         allowed_claims = set(plan.claims)
-        allowed_evidence_ids = set(plan.evidence_ids)
+        allowed_evidence_ids = set(readiness.evidence_ids)
 
         if readiness.status == ReadinessStatus.BLOCKED:
             issues.extend(readiness.missing_required)
@@ -71,6 +106,14 @@ class SectionValidator:
         if benchmark_plan.observed_result_summary:
             issues.append("benchmark plan carries an observed result summary")
             required_changes.append("remove observed result summary")
+        if not any(value.strip() for value in benchmark_plan.baseline):
+            issues.append("benchmark plan has no concrete baseline")
+            required_changes.append("define a concrete baseline before verification")
+        for result_claim in self._result_like_numeric_claims(draft.body):
+            issues.append(f"unsupported result-like numeric claim: {result_claim}")
+            required_changes.append(
+                "remove unverified numeric outcomes and keep the benchmark plan-only"
+            )
         if draft.section_id != plan.plan_id:
             issues.append("draft section id does not match the plan")
             required_changes.append("align the draft section id with the plan")

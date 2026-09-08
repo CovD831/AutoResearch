@@ -202,7 +202,7 @@ class WritingService:
                 ],
             ]
         )
-        resolved_evidence = self.evidence.resolve(derived_evidence_ids)
+        resolved_evidence = self.evidence.resolve(derived_evidence_ids, valid_only=True)
         artifact_refs = [
             ArtifactRef(
                 artifact_id=card.card_id,
