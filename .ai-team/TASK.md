@@ -34,6 +34,7 @@
 - [ ] P1 端到端 Evaluation Section Pipeline 在 A 合并后由负责人完成集成验收。
 - [ ] 负责人完成 I0–I4 集成任务，并将 `MVP-CLOSED-MINIMAL-E2E` 标记为 accepted。
 - [x] 2026-09-07 owner 深度审查（PR #1/#2）发现项已落入 B2/A2 泳道 TASK-SPECS 作为 Gate 条款：B2 Gate 阻断项为 invalidated-evidence fail-open；A2 吸纳跨进程 TOCTOU、phase-aware recovery 与失败标签收窄。
+- [x] 2026-09-08 P1-B2 Evidence Adversarial 已实现并合入主线（PR #4 + owner 跟进修复），B2 Gate 阻断项 invalidated-evidence fail-open 已关闭；成员账本由 owner 按 D-SYNC-01 补齐至 `.ai-team/tasks/`。
 
 ## Invariants
 

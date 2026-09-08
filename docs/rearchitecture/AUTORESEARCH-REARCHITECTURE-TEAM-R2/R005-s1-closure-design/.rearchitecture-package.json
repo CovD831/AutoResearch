@@ -1,0 +1,55 @@
+{
+  "package_id": "R-005-S1-CLOSURE",
+  "size": "design",
+  "baseline_revision": "git-46fbd7a43c01bebb+in-flight-s1-adapter-2026-09-03",
+  "current_revision": "git-46fbd7a43c01bebb+in-flight-s1-adapter-2026-09-03+r2-consumption",
+  "documents": {
+    "scope": "00-scope.md",
+    "positioning": "01-positioning.md",
+    "l1": "02-l1-target.md",
+    "mapping": "03-current-to-target-map.md",
+    "l2": [
+      "04-l2-contracts.md"
+    ],
+    "adr": [
+      "05-adr.md"
+    ],
+    "handoff": "06-handoff.md",
+    "review_request": "review-request.json",
+    "review_report": "review-report.json",
+    "review_round2_report": "review-round2-report.md",
+    "review_ledger": "review-ledger.json"
+  },
+  "review": {
+    "status": "consumed",
+    "reviewer": "subagent-adversarial-arch-ar5 (headless general-purpose sub-agent via claude CLI -p, fresh context, review-only: Read/Grep/Glob)",
+    "review_rounds": [
+      {
+        "round": 1,
+        "request": "review-request.json",
+        "report": "review-report.json",
+        "input_revision": "git-46fbd7a43c01bebb+in-flight-s1-adapter-2026-09-03",
+        "findings": 6,
+        "blocking": 3,
+        "overall": "blocked",
+        "closure_cycle": "not spent: all three blocking findings resolved by document amendments (02/04/05 ADR-7/ADR-8); per review.md the closure cycle is optional and was not budgeted"
+      },
+      {
+        "round": 2,
+        "request": "review-round2-report.md",
+        "report": "review-round2-report.md",
+        "input_revision": "git-46fbd7a43c01bebb+in-flight-s1-adapter-2026-09-03+r1-consumption",
+        "findings": 4,
+        "blocking": 0,
+        "overall": "advisory findings consumed",
+        "closure_cycle": "not required: all findings were non-blocking and consumed by handoff/L2 ledger amendments"
+      }
+    ]
+  },
+  "next_task": {
+    "id": "S1-CLOSURE-EVIDENCE",
+    "owner": "user/team"
+  },
+  "advancement_trigger": "R-003 promotion evidence exists and is reproducible: legacy/target parity report plus restart/timeout/unknown-outcome recovery evidence produced by the frozen commands, and R003-AR-005 together with AR-OLD-002/004/005/006 all resolved; then S1 may promote and the S2 gate unlocks per R-004 stop_rule.",
+  "stop_rule": "Stop and keep the legacy facade if parity shows receipt/durable-fact/checkpoint inequivalence, if a pending/unknown invocation can be silently marked successful, or if a blocking review finding cannot be repaired within design-only scope; revise the L2 contract instead of promoting."
+}

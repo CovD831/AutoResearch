@@ -1,0 +1,47 @@
+{
+  "case_id": "focus-repro-smoke-german-dt-l1-v0",
+  "status": "draft",
+  "research_object": {
+    "task": "counterfactual explanation generation for tree ensembles",
+    "dataset": "cf_german_test",
+    "train_dataset": "cf_german_train",
+    "model_type": "dt",
+    "method": "FOCUS",
+    "distance_function": "l1"
+  },
+  "procedure": {
+    "num_iter": 1000,
+    "sigma": 10.0,
+    "temperature": 1.0,
+    "distance_weight": 0.01,
+    "learning_rate": 0.001,
+    "optimizer": "adam",
+    "seed": {
+      "value": null,
+      "status": "unknown"
+    }
+  },
+  "observed_fields": [
+    "dataset",
+    "distance_function",
+    "unchanged_ever",
+    "mean_dist",
+    "time_min"
+  ],
+  "comparison_targets": [
+    "original_result_table_refs",
+    "reproduction_result_table_refs",
+    "numeric_difference",
+    "direction_consistency",
+    "unsupported_or_missing_claims"
+  ],
+  "pending": [
+    "original paper table and figure IDs",
+    "gold numeric values",
+    "numeric tolerances",
+    "pinned repository commit",
+    "license record",
+    "smoke run receipt"
+  ]
+}
+

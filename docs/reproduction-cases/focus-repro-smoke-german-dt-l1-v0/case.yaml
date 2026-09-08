@@ -1,0 +1,85 @@
+case_id: focus-repro-smoke-german-dt-l1-v0
+status: candidate
+track: reproduction_generation
+paper_type: empirical_reproduction_report
+
+upstream:
+  original_paper:
+    title: "FOCUS: Flexible Optimizable Counterfactual Explanations for Tree Ensembles"
+    venue: AAAI
+    year: 2022
+    doi: 10.1609/aaai.v36i5.20468
+    source_status: metadata_verified
+    local_artifact: null
+  reproduction_repository:
+    url: https://github.com/kyosek/focus-reproducibility
+    ref: master
+    pinned_commit: null
+    license_status: pending_audit
+
+generation_inputs:
+  data:
+    test: data/cf_german_test.tsv
+    train: data/cf_german_train.tsv
+  model: retrained_models/dt_cf_german_train.pkl
+  environment: requirements.txt
+  allowed_references: allowed_references/
+  original_paper_text: evaluator_only
+
+parameters:
+  model_type: dt
+  num_iter: 1000
+  sigma: 10.0
+  temperature: 1.0
+  distance_weight: 0.01
+  lr: 0.001
+  optimizer: adam
+  data_name: cf_german_test
+  distance_function: l1
+  seed:
+    value: null
+    status: unknown
+
+execution:
+  working_directory: upstream_repository_root
+  command:
+    - python
+    - src/main.py
+    - dt
+    - "1000"
+    - "10.0"
+    - "1.0"
+    - "0.01"
+    - "0.001"
+    - adam
+    - cf_german_test
+    - l1
+  timeout_seconds: null
+  retry_limit: 0
+  recovery: unsupported_until_wrapper_exists
+
+outputs:
+  result_directory: results/l1/cf_german_test/dt/
+  stats_pattern: results/**/*_cf_stats.txt
+  distance_csv: cfe_dt_cf_german_train.csv
+  required_artifacts:
+    - run_manifest
+    - stdout_log
+    - stderr_log
+    - environment_record
+    - stats_output
+    - distance_csv
+
+gold:
+  schema: expected_schema.json
+  numeric_values: pending_extraction
+  tolerances: pending_extraction
+  original_table_refs: pending_extraction
+
+known_risks:
+  - README command syntax differs from the positional argparse interface in src/main.py.
+  - The upstream CLI does not expose a random seed.
+  - Python 3.7 and legacy dependencies require an isolated environment.
+  - Pickle model compatibility depends on the runtime versions.
+  - The distance CSV is written at repository root while statistics are written below results/.
+

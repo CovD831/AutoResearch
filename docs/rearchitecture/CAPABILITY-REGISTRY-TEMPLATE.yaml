@@ -1,0 +1,104 @@
+# Capability Registry template v0.1
+# This file declares an adapter. It does not grant authority to write Evidence or Gate state.
+capability_name: paper_reader
+display_name: Paper Reader
+version: 0.1.0
+kind: native # native | skill | mcp | external_service
+adapter: autoresearch.capabilities.paper_reader
+
+selection:
+  enabled_by_default: true
+  priority: 10
+  supports_offline: true
+  selection_tags: [scientific_pdf, structured_extraction]
+  replaces: []
+
+input:
+  schema: PaperReadRequest
+  max_context_items: 12
+  required_fields:
+    - project_id
+    - run_id
+    - invocation_id
+    - paper_ref
+
+output:
+  schema: ReadingBundle
+  optional_outputs:
+    - EvidenceCandidate
+    - ArtifactRef
+  required_receipt: true
+
+trust:
+  tier: local # local | reviewed_external | unreviewed_external
+  network_required: false
+  external_write: false
+  handles_untrusted_input: true
+
+execution:
+  idempotency: required
+  replay: exact
+  timeout_seconds: 120
+  failure_states:
+    - parse_error
+    - unavailable
+    - failed
+    - unknown
+  implicit_fallback: false
+  concurrency: single_invocation
+  deterministic: best_effort
+  input_fingerprint: required
+
+resources:
+  cpu: "1+"
+  memory_mb: 2048
+  disk_mb: 4096
+  gpu: optional
+  estimated_latency_seconds: 30
+
+data_contract:
+  accepted_media_types: [application/pdf, text/html]
+  max_input_bytes: 52428800
+  retention: caller_managed
+  uploads_external_data: false
+
+evidence:
+  emits_candidates: true
+  direct_evidence_write: false
+  admission_owner: evidence_service
+
+artifacts:
+  emits_artifacts: true
+  artifact_kinds:
+    - reading_bundle
+    - locator_index
+
+compatibility:
+  contract_version: l2
+  backward_compatible_with: []
+  parity_required_against: legacy_reader
+
+security:
+  sandbox_required: true
+  allowed_network_domains: []
+  secrets_required: false
+  untrusted_output: true
+  external_side_effect_approval: none
+
+health:
+  readiness_check: required
+  liveness_check: required
+  conformance_tests: tests/capabilities/test_paper_reader_contract.py
+
+lifecycle:
+  status: active # draft | active | deprecated | retired
+  owner: capability-team
+  introduced_at: 2026-09-04
+  deprecation_notice_days: 30
+
+observability:
+  required_events:
+    - capability.invoked
+    - capability.completed
+    - capability.failed
+  redact_inputs: true

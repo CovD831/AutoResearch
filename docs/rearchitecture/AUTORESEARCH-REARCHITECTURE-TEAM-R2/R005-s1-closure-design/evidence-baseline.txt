@@ -1,0 +1,17 @@
+# baseline revision
+46fbd7a43c01bebb312a1239368980cb2f6db0bb
+
+# working tree status (in-flight user modifications = baseline)
+ M .ai-team/TASK.md
+ M src/autoresearch/application.py
+ M src/autoresearch/contracts.py
+ M src/autoresearch/storage.py
+?? docs/REARCHITECTURE.md
+?? docs/eli5.html
+?? docs/rearchitecture/
+?? "docs/\345\270\202\345\234\272\350\260\203\347\240\224\344\270\216\345\256\232\344\275\215\345\210\206\346\236\220_2026-09.md"
+?? src/autoresearch/capability.py
+?? tests/test_capability_adapter.py
+
+# date
+2026-09-03T15:53:48Z

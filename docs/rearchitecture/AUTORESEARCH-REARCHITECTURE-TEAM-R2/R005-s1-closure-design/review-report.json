@@ -1,0 +1,111 @@
+{
+  "package_id": "R-005-S1-CLOSURE",
+  "input_revision": "git-46fbd7a43c01bebb+in-flight-s1-adapter-2026-09-03",
+  "reviewer": "subagent-adversarial-arch-ar5",
+  "findings": [
+    {
+      "id": "AR5-001",
+      "statement": "04-B's established framing that the adapter '只产候选、不写证据状态' while EvidenceService is the sole evidence writer is systemically false: adapter.invoke (capability.py:73) calls PaperSearchService.search, whose _persist (search_service.py:169) calls EvidenceService.add directly, so every target-path invocation already writes durable EvidenceItems outside the candidate boundary. B-1 is therefore not an additive 'wire candidates to EvidenceService' task as framed — wiring it naively would produce a second EvidenceItem per paper (the service-written item and a candidate-derived item, distinct evidence_ids), and closing R003-AR-005 via this plan would either double-write evidence truth or require an undeclared removal gate to suppress the service-internal evidence write. The sole-writer boundary S1 is meant to prove is mischaracterized in the map and L2.",
+      "severity": "blocking",
+      "evidence_refs": [
+        "src/autoresearch/capability.py",
+        "src/autoresearch/search_service.py",
+        "src/autoresearch/evidence.py",
+        "docs/rearchitecture/R005-s1-closure-design/04-l2-contracts.md"
+      ],
+      "recommendation": "Amend 04-B to state that the target path's durable evidence currently originates inside the wrapped legacy service, and freeze the required change before B-1: either make the target path invoke a non-persisting search so candidate admission is the sole creation path, or specify candidate admission as deduplicating/reconciling against the already-written EvidenceItem; record this as an explicit removal/redirect gate owned by the S1 implementer, not as an additive wiring step."
+    },
+    {
+      "id": "AR5-002",
+      "statement": "02-l1-target's bounded restatement asserts '对 L1 零修改' and '与 R-004 L1 一致 / L1 pass (unchanged)' while its writer row assigns 'run receipt 唯一写入者 = adapter（经 store 幂等表）' — contradicting the canonical R-004 L1 it links as owner, which assigns 'invocation receipt | Thin Runtime' and prohibits 'Agent/Skill/MCP/Adapter → Store 直写' (R-004-02 table and line 62). If 'run receipt' denotes R-004's 'invocation receipt', this is an unflagged L1 change; if it denotes a different fact, the relation to R-004's receipt writer is undefined. Either way one durable fact has two writers across canonical documents and the package's central 'gap is evidence-only, not boundary' premise is unsupported.",
+      "severity": "blocking",
+      "evidence_refs": [
+        "docs/rearchitecture/R005-s1-closure-design/02-l1-target.md",
+        "docs/rearchitecture/R004-trust-program/02-l1-target-architecture.md",
+        "src/autoresearch/capability.py"
+      ],
+      "recommendation": "Record an explicit L1 delta/ADR (adapter owns the idempotent invocation record via store idempotency methods; reconcile R-004-02's writer row and its Adapter→Store direct-write prohibition), or correct the restatement to match R-004-02 exactly; do not assert 'pass (unchanged)' while reassigning the receipt writer."
+    },
+    {
+      "id": "AR5-003",
+      "statement": "The parity plan that is the package's reason for existing (04 B-2, 06 task 1) does not define the compared objects: it promises 'receipt/durable facts/checkpoint 状态等价' between legacy direct PaperSearchService.search and the adapter path, but neither fixture leg writes a LangGraph checkpoint or a run record (no graph/checkpointer is reachable from either), so 'checkpoint parity' has no defined object; and because both legs run the same underlying service, each leg generates fresh paper/evidence/wiki ids, so 'durable facts equivalence' is only meaningful under canonicalization rules that the package defers (04 says '06 给出最小集', and 06 gives only a one-line task, no assertion set). R003-AR-005's parity half therefore remains un-frozen and can be satisfied by a 'both ran' pass.",
+      "severity": "blocking",
+      "evidence_refs": [
+        "docs/rearchitecture/R005-s1-closure-design/04-l2-contracts.md",
+        "docs/rearchitecture/R005-s1-closure-design/06-handoff.md",
+        "src/autoresearch/capability.py",
+        "src/autoresearch/search_service.py"
+      ],
+      "recommendation": "Freeze the parity assertion model now rather than in the implementation package: fixture isolation (separate stores), canonicalization of auto-generated ids/evidence_ids, the exact durable-fact equality predicate (paper content set, evidence count/content, diagnostics, receipt semantics, idempotency-row presence), and either a concrete definition of what 'checkpoint' means for these two legs or removal of the word from the claim."
+    },
+    {
+      "id": "AR5-004",
+      "statement": "06-handoff states 'docs/REARCHITECTURE.md 已追加 R-005 条目（本包入口）', but the repository file docs/REARCHITECTURE.md contains no R-005 (or R-004/R-003) entry — it still presents only the R-001 package — so the discoverability claim recorded in the handoff is false; the adjacent backlog bullet already concedes the header still points to R-001.",
+      "severity": "non-blocking",
+      "evidence_refs": [
+        "docs/rearchitecture/R005-s1-closure-design/06-handoff.md",
+        "docs/REARCHITECTURE.md"
+      ],
+      "recommendation": "Either append the R-005/R-004 entry to docs/REARCHITECTURE.md before the handoff is consumed, or correct the bullet to record the discoverability gap as pending (as its own backlog line already implies)."
+    },
+    {
+      "id": "AR5-005",
+      "statement": "03-current-to-target-map's evidence.py row defers candidate-wiring design to '04 开放 claim C-3', but 04 defines no C-series claims — only A-1..A-5 and B-1..B-2 — so the map references a nonexistent design artifact, and the actual home for that design (B-1) is left unlinked.",
+      "severity": "non-blocking",
+      "evidence_refs": [
+        "docs/rearchitecture/R005-s1-closure-design/03-current-to-target-map.md",
+        "docs/rearchitecture/R005-s1-closure-design/04-l2-contracts.md"
+      ],
+      "recommendation": "Point the map's wiring note at 04's B-1 (or add the referenced C-3 claim) so the reader reaches the owning claim."
+    },
+    {
+      "id": "AR5-006",
+      "statement": "The R-003 ledger repair performed and recorded by this package (00-scope, ADR-4, UD-004) marks R003-AR-003 'resolved' citing tests/test_capability_adapter.py as evidence, but that file contains only replay-without-second-connector-call and conflicting-replay-by-query cases; nothing in it exercises seed-content replay/conflict, so the cited evidence does not demonstrate the resolved behavior (seed canonicalization), which is only visible by code inspection of capability.py request construction.",
+      "severity": "non-blocking",
+      "evidence_refs": [
+        "tests/test_capability_adapter.py",
+        "src/autoresearch/capability.py",
+        "docs/rearchitecture/R003-paper-search-adapter/review-ledger.json"
+      ],
+      "recommendation": "Re-cite the resolution to capability.py:45-51 (request canonicalization) or add a seed-content replay/conflict test so the ledger evidence actually matches the resolved finding."
+    },
+    {
+      "id": "F-R5-2-01",
+      "statement": "receipt 的 unknown 语义可能混淆确定的零结果与 provider 不确定结果。",
+      "severity": "non-blocking",
+      "evidence_refs": ["src/autoresearch/capability.py", "docs/rearchitecture/R005-s1-closure-design/04-l2-contracts.md"],
+      "recommendation": "在 S1 L3 冻结时拆分 completed_empty 与 unknown_outcome，或明确记录合并语义及其代价。"
+    },
+    {
+      "id": "F-R5-2-02",
+      "statement": "parity durable-facts 清单应覆盖 _persist 写入的 WikiPage。",
+      "severity": "non-blocking",
+      "evidence_refs": ["src/autoresearch/search_service.py", "docs/rearchitecture/R005-s1-closure-design/04-l2-contracts.md"],
+      "recommendation": "将 WikiPage 纳入 B-2 的精确比较清单。"
+    },
+    {
+      "id": "F-R5-2-03",
+      "statement": "候选准入方案的崩溃窗口与 pending recover 语义需要显式决策门。",
+      "severity": "non-blocking",
+      "evidence_refs": ["docs/rearchitecture/R005-s1-closure-design/04-l2-contracts.md", "docs/rearchitecture/R005-s1-closure-design/06-handoff.md"],
+      "recommendation": "在 L3 冻结时明确 recover 是标记失败还是允许重执行，并规定证据先落盘而 receipt 未 finalize 时的处置。"
+    },
+    {
+      "id": "F-R5-2-04",
+      "statement": "ADR 编号谱系需与 R-004 实际 ADR-1..4 保持一致。",
+      "severity": "non-blocking",
+      "evidence_refs": ["docs/rearchitecture/R004-trust-program/06-adr-r002.md", "docs/rearchitecture/R005-s1-closure-design/05-adr.md"],
+      "recommendation": "修正编号谱系说明。"
+    }
+  ],
+  "steelman": {
+    "strongest_support": "The package's core discovery is real, newly recorded, and actionable: PaperSearchCapabilityAdapter is constructed at application.py:76 and never invoked, and EvidenceCandidate has no consumer (evidence-consumers.txt) — a genuine evidence gap that explains why R-003's closure review (R003-AR-005) could not proceed and S2 stayed locked. ADR-4/UD-004 (repair-first, no fabricated exception) correctly re-grades only what the current tree now evidences, ADR-6 keeps closure cheap (one frozen pytest command plus on-disk report; zero new nouns, no new verification framework), and the claim table (A-3/A-4/A-5/B-1/B-2) maps every remaining gap to a named finding/gate so the next package can execute rather than re-archaeologize. The conservative exclusions (no runtime change, no S2/S3/S4, no manifest rewrites of superseded packages) respect the R-004 stop_rule and doc-gates.",
+    "strongest_opposition": "The package's settled labels are not settled: the L1 restatement claims 'pass (unchanged)' while reassigning the invocation-receipt writer to the adapter against R-004's 'Thin Runtime' and its Adapter→Store direct-write prohibition; the 'adapter only produces candidates / Evidence Module sole writer' boundary is systemically false because adapter.invoke drives EvidenceService.add through the wrapped legacy service, so the planned B-1 wiring would double-write durable evidence; and the parity plan that justifies the package (B-2/06 task 1) leaves 'checkpoint' without an object on either fixture leg and durable-facts equality without canonicalization rules. It also asserts one tree-facing fact that is false (R-005 entry in docs/REARCHITECTURE.md). The package converts a real gap into a task list whose items rest on unresolved authority and evidence-model contradictions, so it cannot yet be executed as a frozen plan.",
+    "decision_refs": [
+      "05-adr.md",
+      "02-l1-target.md",
+      "04-l2-contracts.md"
+    ]
+  },
+  "overall": "blocked"
+}

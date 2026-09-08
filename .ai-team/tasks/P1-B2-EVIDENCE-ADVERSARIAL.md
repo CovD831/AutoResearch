@@ -2,7 +2,7 @@
 
 - ID: `P1-B2-EVIDENCE-ADVERSARIAL`
 - Title: `P1-B2 Evidence adversarial hardening (locators, expiry, baselines, plan-only)`
-- Status: `reviewing`
+- Status: `integrated`
 - Owner: `member B (wangdafa750)`
 - Next owner: `project owner`
 
@@ -31,11 +31,15 @@
 - 过期/格式错/无时区的 `expires_at` 一律判失效（fail-closed），仅在有效支持解析中剔除，不删除证据。
 - validator 的允许证据集从 `plan.evidence_ids` 改为 readiness 解析后的 `readiness.evidence_ids`。
 - 结果型数字断言采用小型正则 allowlist，命中即 revise；Evidence ID、页码、年份、计划计数不视为结果断言。
+- Owner 跟进（2026-09-08）：空白/空串 `observed_result_summary` 视为已携带观测结果（仅 `None` 表示无），readiness 提前阻断、validation 一致拦截。
+- Owner 跟进（2026-09-08）：plan 中不存在的证据 ID 计入 `unknown supporting evidence` 并写明 action item，不再静默消失。
+- Owner 跟进（2026-09-08）：结果动词表补 attain/yield/deliver，收窄正则漏报面。
 
 ## Completed
 
 - 交付 `evidence.py`/`readiness.py`/`benchmark_advisor.py`/`section_validator.py`/`writing_service.py` 加固与 `tests/test_evidence_adversarial.py`、`tests/test_fail_closed_rules.py` 离线对抗测试。
 - 任务包源文件（TASK-PACKAGE/L3/PROGRESS/HANDOFF/task-package.json/verification-report）随分支提交。
+- Owner 跟进：PR #4 合并前由 owner 补齐本账本；合并后落地三项收紧修复与 5 个新测试（`owner/b2-followup`）。
 
 ## Pending
 
@@ -51,6 +55,7 @@ owner 验收 B2；随后 S2-B-AUDIT-EVIDENCE 仍受 S1 promotion gate 约束，�
 - [x] 全量 `pytest -W error -q` `47 passed`（owner 复核 2026-09-08）。
 - [x] `ruff check src tests` 通过（owner 复核）。
 - [x] `node .ai-team/check.mjs` 结构校验通过。
+- [x] Owner 跟进后：focused `18 passed`（含 5 个新测试），全量 `55 passed`，ruff 通过，check.mjs `valid: true`（2026-09-08）。
 
 ## Handoff note
 
