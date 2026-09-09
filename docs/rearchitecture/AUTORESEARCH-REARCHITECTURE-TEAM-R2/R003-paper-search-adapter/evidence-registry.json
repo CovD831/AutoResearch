@@ -1,6 +1,0 @@
-[
-  {"evidence_id":"EV-R003-RUFF","kind":"command","input_revision":"working-tree-2026-09-03","result_artifact":"evidence-ruff.txt","scope":"R003 source and tests"},
-  {"evidence_id":"EV-R003-PYTEST","kind":"command","input_revision":"working-tree-2026-09-03","result_artifact":"evidence-pytest.txt","scope":"R003 test suite"},
-  {"evidence_id":"EV-R003-COMPILE","kind":"command","input_revision":"working-tree-2026-09-03","result_artifact":"evidence-compile.txt","scope":"R003 source compilation"},
-  {"evidence_id":"EV-R003-PARITY","kind":"report","input_revision":"working-tree-2026-09-03","result_artifact":"parity-report.md","scope":"legacy/target parity and restart recovery","status":"pending"}
-]
