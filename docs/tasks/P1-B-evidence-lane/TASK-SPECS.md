@@ -32,6 +32,7 @@
 - 必须满足：Audit 不直接写 EvidenceItem；确定性 verdict 与 unknown 分开；冲突和替代关系可追溯；网络不可用 fail-closed。
 - 验收：S2 标注 fixture 的 verdict、回流和审计报告可重跑。
 - **Owner scope 裁决（2026-09-09，成员问询后登记）**：S2 **不包含 MCP 协议实现**。B3 交付 Audit evidence contract、存在性/撤稿/更正/locator 规则、AuditReport artifact、candidate 回流；MCP 适配归 S3（B4 的 LLM/MCP adapter contract）。B3 的 contract 必须与传输协议无关，验收标准是标注 fixture 可重跑，不是"MCP 可调用"。
+- **D-S2-01（2026-09-09，owner 集成裁决）**：B3 实现以 `src/autoresearch/audit_evidence.py` 落地（A3 保留 canonical `audit.py`），record kind `audit_evidence_report`、事件 `audit_evidence.*`。语义统一以 B3 严格语义为准（binding 需有效证据绑定、corrected/superseded 关系可追溯即 PASS、locator 空词条 fail-closed 为 unknown）；A3 运行时对应类别在 S2 promotion 集成窗口对齐。
 
 ## B4 — S3 Reader / Writer Ports
 

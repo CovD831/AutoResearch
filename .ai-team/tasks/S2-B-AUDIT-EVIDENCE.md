@@ -2,8 +2,8 @@
 
 - ID: `S2-B-AUDIT-EVIDENCE`
 - Title: `Audit evidence module: verdicts, reconciliation, candidate 回流`
-- Status: `reviewing`
-- Status note: PR #9，revision 97cd226；owner 判定 blocked，等布局裁决后 rebase。本文件由负责人按 D-SYNC-01 于 2026-09-09 补建（成员 PR 未带 `.ai-team/tasks/` 账本，导致 Task contract / repo-task-sync CI 失败；参照 PR #4 先例由 owner 补齐）。
+- Status: `integrated`
+- Status note: 2026-09-09 成员 PR #9 经 owner 按 D-S2-01 集成调整（改名/kind 分家/locator fail-closed 修复）后经 PR #10 合入主线；S2 promotion/O6 验收前 NOT accepted。本文件由负责人按 D-SYNC-01 于 2026-09-09 补建（成员 PR 未带 `.ai-team/tasks/` 账本，导致 Task contract / repo-task-sync CI 失败；参照 PR #4 先例由 owner 补齐）。
 - Owner: `member B`
 - Next owner: `user/team`
 
@@ -16,7 +16,7 @@
 - [x] 16 个 focused 测试覆盖任务包验收矩阵 12 项（存在性/捏造/撤稿/更正可追溯/resolver 不可用 fail-closed/locator unknown 与 mismatch/未绑定 claim/in-runtime 准入/重复与冲突/standalone 无副作用/幂等与快照版本身份/确定性与方法分离）。
 - [x] 全量 97 passed（`-p no:cacheprovider`，owner 本地复现 exit 0）；ruff clean（owner 复现）。
 - [x] Evidence sole-writer 边界：audit 模块零处 `RecordStore.put("evidence", ...)`；`_AdmissionOnlyGateway` 测试锁定 admission-only 契约。
-- [ ] PR #9 合入主线（blocked，见 Pending）。
+- [x] PR #9 经 owner 集成调整（D-S2-01）后合入主线（PR #10）。
 
 ## Invariants
 
@@ -41,9 +41,16 @@
 
 ## Pending
 
-- **等 owner 裁决后 rebase**：与 S2-A（PR #8，已合并 `dae10f3`）结构性撞车——allowed_paths 重叠 `src/autoresearch/audit.py`/`tests/test_audit_module.py`（add/add），双方均写 record kind `audit_report`（schema/键策略不同）；base 落后（dad4658）。S2 包拆分未分区 audit 文件命名空间，属 owner 侧任务包缺陷，非成员实现走样。
-- rebase 时一并修复（owner 非阻断发现）：`_claim_matches_text` 空词条 claim 自动 pass locator（应 unknown）；并发相同 audit 重复追加 `audit.report_created` 事件（无 reservation，与 A 线各缺一半，集成时统一）；PR 标题笔误（`B3feat` → `feat(S2-B)`）。
+- ~~等 owner 裁决后 rebase~~ → 已裁决（D-S2-01）并由 owner 完成集成（见下）。
 - S2 promotion/O6 验收与 accepted 标记由 owner 按全局路线判定。
+- A3 运行时与 B3 语义对齐（binding/corrected/locator）为 owner follow-up（PR #11 后续窗口）。
+
+## Owner integration record（2026-09-09，D-S2-01，PR #10）
+
+- 裁决落地：模块改名 `src/autoresearch/audit_evidence.py`、测试 `tests/test_audit_evidence.py`、fixture `tests/fixtures/audit_evidence/`；record kind `audit_evidence_report`、事件 `audit_evidence.*`，与 A3 运行时的 `audit_report`/`audit.*` 分家。
+- 集成修复：`_claim_matches_text` 空词条/空 claim 由隐式 PASS 改 UNKNOWN（fail-closed），新增 `test_vague_claim_locator_is_unknown_not_fail_open`；语义裁决以本模块严格语义为准。
+- 合并验证：owner 分支全量 **105 passed**（88 主线 + 16 本模块 + 1 新增）、ruff clean、check.mjs valid。
+- PR #9（97cd226）以 superseded 关闭；成员实现全部保留，仅位置/命名按裁决调整，无质量打回。
 
 ## Next step
 
