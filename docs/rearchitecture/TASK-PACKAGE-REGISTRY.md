@@ -17,8 +17,10 @@
 | P1-B2-EVIDENCE-ADVERSARIAL | P1/S1 | evidence/domain | `codex/p1-evidence-adversarial` merged via PR #4 + owner follow-up | accepted | P1-B | P1-B | — | S2-B |
 | S2-A-AUDIT-RUNTIME | S2 | runtime | `codex/s2-a-audit-runtime` merged via PR #8 (`dae10f3`) + owner follow-up PR #11（F-9/F-10） | accepted（O6 S2 promotion，2026-09-10：四项核验通过） | `main@6b706df`（实际 base `main@15a5490`） | S1 promotion | — | S3-A |
 | S2-B-AUDIT-EVIDENCE | S2 | evidence/domain | `codex/s2-audit-evidence`（PR #9）经 owner D-S2-01 集成调整后以 PR #10 合入（`2d4029a`） | accepted（O6 S2 promotion，2026-09-10：四项核验通过） | `main@6b706df`（实际 base `main@dad4658`） | S1 promotion | — | S3-B |
-| S3-A-CAPABILITY-ADAPTERS | S3 | runtime | reserved | ready（O6 S2 promotion，2026-09-10） | S2 promotion | S2 promotion | — | S4-A |
-| S3-B-READER-WRITER-PORTS | S3 | evidence/domain | reserved | ready（O6 S2 promotion，2026-09-10） | S2 promotion | S2 promotion | — | S4-B |
+| S3-A-CAPABILITY-ADAPTERS | S3 | runtime | reserved | ready（O6 S2 promotion，2026-09-10） | S2 promotion | S2 promotion | — | S3-A2 |
+| S3-A2-PROVIDER-LANE | S3 | runtime | reserved | planned（追加包 2026-09-10：ProviderLane + 真实检索，见 A 线 TASK-SPECS A6） | A4 accepted + S3 promotion | S3 promotion | — | S4-A |
+| S3-B-READER-WRITER-PORTS | S3 | evidence/domain | reserved | ready（O6 S2 promotion，2026-09-10） | S2 promotion | S2 promotion | — | S3-B2 |
+| S3-B2-DATA-SOURCES | S3 | evidence/domain | reserved | planned（追加包 2026-09-10：Crossref/Retraction Watch + PDF 解析，见 B 线 TASK-SPECS B7） | B4 accepted + S3 promotion | S3 promotion | — | S4-B |
 | S4-A-BENCHMARK-HARNESS | S4 | runtime | reserved | planned | S3 promotion | S3 promotion | — | — |
 | S4-B-REAL-PILOT | S4 | evidence/domain | reserved | planned | S3 promotion | S3 promotion | — | — |
 | I0-SHARED-CONTRACT-INTEGRATION | MVP | integration/lead | `main` | integrated | P1-A + P1-B | P1-A, P1-B | I1 | — |
