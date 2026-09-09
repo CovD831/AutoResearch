@@ -31,7 +31,7 @@
 - [x] 首个垂直场景、外部能力边界和 Runtime 部署边界沿用 R-002 中已记录的用户决策。
 - [x] P1-A Runtime/Recovery 通过幂等、replay、recovery 和 legacy/target parity 验收；project owner accepted for integration (deep review PR #2, 2026-09-07), mainline integration pending.
 - [x] P1-B Evidence/Writing Pipeline 通过 Evidence admission、readiness、benchmark plan 和 section validation 验收；project owner accepted for integration, mainline integration pending.
-- [ ] P1 端到端 Evaluation Section Pipeline 在 A 合并后由负责人完成集成验收。
+- [x] P1 端到端 Evaluation Section Pipeline 在 A 合并后由负责人完成集成验收（I2，2026-09-09：离线主线 E2E `tests/test_mainline_e2e.py` 全链路 VERIFIED，六阶段状态与证据可追溯；S1 promotion 完成，S2-A/S2-B 转 ready）。
 - [ ] 负责人完成 I0–I4 集成任务，并将 `MVP-CLOSED-MINIMAL-E2E` 标记为 accepted。
 - [x] 2026-09-07 owner 深度审查（PR #1/#2）发现项已落入 B2/A2 泳道 TASK-SPECS 作为 Gate 条款：B2 Gate 阻断项为 invalidated-evidence fail-open；A2 吸纳跨进程 TOCTOU、phase-aware recovery 与失败标签收窄。
 - [x] 2026-09-08 P1-B2 Evidence Adversarial 已实现并合入主线（PR #4 + owner 跟进修复），B2 Gate 阻断项 invalidated-evidence fail-open 已关闭；成员账本由 owner 按 D-SYNC-01 补齐至 `.ai-team/tasks/`。
@@ -39,6 +39,7 @@
 - [x] 2026-09-09 A2 owner 跟进（PR #7）关闭 PR #5 深审发现项：F-4 审计事件并入记录转换事务（原子）、`StaleIdempotencyWriteError`、`_status` 词边界嗅探收窄、recovery API 清理（删死参数、`fail_pending` 限 reserved）；F-3 真实 connector 验收挂账 S4-B，F-8 挂账 owner。
 - [x] 2026-09-09 I0 共享合同集成完成：审计确认 `EvidenceCandidate` 是唯一跨 lane 同名漂移（A/B 字段集几乎不相交），统一为 `contracts.py` 超集类型（D-I0-01），两 lane re-export 兼容，新增 I0 组合测试（A 线 invocation 候选 → B 线准入贯通 + 单类断言）；全量 `75 passed`、ruff、check.mjs valid。
 - [x] 2026-09-09 I1 Pipeline Orchestration 完成：`PaperSearchAgent` 搜索路径改经 `InvocationBoundedSearchPort`（A2 幂等边界——同 (project, query, limit, seeds) 确定性幂等键，重复调用 replay、pending 崩溃记录自动 phase-driven 恢复、failed/unknown receipt 持久化，重试策略归 audit lane）；application 新增 `run_evaluation_section` 编排入口（plan→benchmark→readiness→draft→validate 五步，blocked 短路保持 B1 语义）；新增 5 个编排测试。全量 `80 passed`、ruff、check.mjs valid。
+- [x] 2026-09-09 I2 主线 E2E 与 S1 Promotion Gate 完成：离线主线 E2E（`tests/test_mainline_e2e.py`）跑通 Paper Search（bounded 幂等边界）→ Evidence 准入 → 材料就绪 → BenchmarkPlan → SectionDraft → RuleValidation 全链路，verdict VERIFIED，claim_evidence_map/readiness.evidence_ids/checked_evidence_ids 全部回溯到已准入证据，审计流含 papers.search_completed 与 writing.* 全阶段事件。Promotion Gate 四项核验通过（blocking findings 已关闭、E2E 通过、证据可重跑、下游合同已由 I0 稳定），**S1 promotion 完成**：P1 四任务转 accepted，S2-A/S2-B 转 ready（base `main@6b706df`）。全量 `81 passed`、ruff、check.mjs valid、fault matrix exit 0。
 
 ## Invariants
 

@@ -11,19 +11,19 @@
 
 | Task ID | Phase | Owner lane | Branch | Status | Base | Depends on | Merge after | Next package |
 |---|---|---|---|---|---|---|---|---|
-| P1-A-RUNTIME-RECOVERY | P1/S1 | runtime | merged via PR #2 | integrated | — | — | — | P1-A2 |
-| P1-B-EVIDENCE-PIPELINE | P1/S1 | evidence/domain | merged via PR #1 | integrated | — | — | P1-A | P1-B2 |
-| P1-A2-RUNTIME-HARDENING | P1/S1 | runtime | `codex/p1-a2-runtime-hardening` merged via PR #5 + owner follow-up PR #7 | integrated | P1-A | P1-A | — | S2-A |
-| P1-B2-EVIDENCE-ADVERSARIAL | P1/S1 | evidence/domain | `codex/p1-evidence-adversarial` merged via PR #4 + owner follow-up | integrated | P1-B | P1-B | — | S2-B |
-| S2-A-AUDIT-RUNTIME | S2 | runtime | reserved | waiting-for-gate | P1 promotion | S1 promotion | — | S3-A |
-| S2-B-AUDIT-EVIDENCE | S2 | evidence/domain | reserved | waiting-for-gate | P1 promotion | S1 promotion | — | S3-B |
+| P1-A-RUNTIME-RECOVERY | P1/S1 | runtime | merged via PR #2 | accepted | — | — | — | P1-A2 |
+| P1-B-EVIDENCE-PIPELINE | P1/S1 | evidence/domain | merged via PR #1 | accepted | — | — | P1-A | P1-B2 |
+| P1-A2-RUNTIME-HARDENING | P1/S1 | runtime | `codex/p1-a2-runtime-hardening` merged via PR #5 + owner follow-up PR #7 | accepted | P1-A | P1-A | — | S2-A |
+| P1-B2-EVIDENCE-ADVERSARIAL | P1/S1 | evidence/domain | `codex/p1-evidence-adversarial` merged via PR #4 + owner follow-up | accepted | P1-B | P1-B | — | S2-B |
+| S2-A-AUDIT-RUNTIME | S2 | runtime | reserved | ready | `main@6b706df` | S1 promotion | — | S3-A |
+| S2-B-AUDIT-EVIDENCE | S2 | evidence/domain | reserved | ready | `main@6b706df` | S1 promotion | — | S3-B |
 | S3-A-CAPABILITY-ADAPTERS | S3 | runtime | reserved | planned | S2 promotion | S2 promotion | — | S4-A |
 | S3-B-READER-WRITER-PORTS | S3 | evidence/domain | reserved | planned | S2 promotion | S2 promotion | — | S4-B |
 | S4-A-BENCHMARK-HARNESS | S4 | runtime | reserved | planned | S3 promotion | S3 promotion | — | — |
 | S4-B-REAL-PILOT | S4 | evidence/domain | reserved | planned | S3 promotion | S3 promotion | — | — |
 | I0-SHARED-CONTRACT-INTEGRATION | MVP | integration/lead | `main` | integrated | P1-A + P1-B | P1-A, P1-B | I1 | — |
 | I1-PIPELINE-ORCHESTRATION | MVP | integration/lead | `main` | integrated | I0 | I0 | I2 | — |
-| I2-MAINLINE-E2E-AND-PROMOTION | MVP | integration/lead | `main` | planned | I1 | I1 | I3 | — |
+| I2-MAINLINE-E2E-AND-PROMOTION | MVP | integration/lead | `main` | integrated | I1 | I1 | I3 | — |
 | I3-PROJECT-LEDGER-CLOSURE | MVP | integration/lead | `main` | planned | I2 | I2 | I4 | — |
 | I4-MANUSCRIPT-DELIVERY-CHECK | MVP | integration/lead | `main` | planned | I3 + S4-B | I3, S4-B | MVP-CLOSED | — |
 | MVP-CLOSED-MINIMAL-E2E | MVP | integration/lead | `main` | waiting-for-gate | A/B + I0-I4 | all MVP rows | — | — |
