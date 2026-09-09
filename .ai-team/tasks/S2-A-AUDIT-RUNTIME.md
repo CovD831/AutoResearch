@@ -2,7 +2,8 @@
 
 - ID: `S2-A-AUDIT-RUNTIME`
 - Title: `Audit CLI/stdio runtime and resolver persistence`
-- Status: `active`
+- Status: `integrated`
+- Status note: 2026-09-09 PR #8 合入主线（merge commit `dae10f3`）；S2 promotion/O6 验收前 NOT accepted。
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -55,16 +56,23 @@
 
 ## Verification
 
-- [x] `python -m pytest tests/test_audit_module.py -q`（使用项目运行时与 `PYTHONPATH=src`，6 passed）。
-- [x] `python -m pytest tests -q`（使用项目运行时与 `PYTHONPATH=src`，全量通过）。
+- [x] `python -m pytest tests/test_audit_module.py -q`（使用项目运行时与 `PYTHONPATH=src`；最终分支为 7 passed，下方 6 passed 为首次快照计数）。
+- [x] `python -m pytest tests -q`（使用项目运行时与 `PYTHONPATH=src`；最终分支 88 passed，owner 已在 daf2b65 与合并结果 `dae10f3` 上复现）。
 - [x] `python -m ruff check src tests`（通过）。
 - [x] `python -m autoresearch.audit_stdio --selftest`（通过；报告 `receipt_status=completed`）。
 - [x] 用户执行 CLI、JSON-lines stdio selftest、重启加载和冲突拒绝场景并确认输出；同时完成 Persistence Port、bounded view、fixture 矩阵和两轮重跑验收。
 - [x] `node .ai-team/check.mjs --task .ai-team/tasks/S2-A-AUDIT-RUNTIME.md --base main` 在本账本更新后复跑并确认 `valid`。
 
+## Owner integration record（2026-09-09）
+
+- PR #8 审查：merge（owner 深审 + 对抗性复审，daf2b65）。本地独立复现：88 passed（focused 7）、ruff clean、selftest `receipt_status=completed`、check.mjs valid、CI 三项绿；合并结果 `dae10f3` 上复跑 88 passed + ruff 通过。
+- Scope 核对：17 文件均在 task-package 允许路径内；`application.py`/共享 `contracts.py`/B 线路径零改动；R004 文档两处（×2 拷贝）为对齐 2026-09-09 S2 MCP scope 裁决的一致性修订，已接受（超出 task-package.json allowed_paths 一项，记入 registry 备注）。
+- Fail-closed 抽查：resolver 异常/快照版本不匹配/网络不可用一律 `unknown`；快照不可变 `ON CONFLICT(kind, record_id)` 与 records 表 PK 匹配；candidates 仅 in-runtime 且 `grade=None`（D-I0-01）。
+- 非阻塞 follow-up（owner 记入 `.ai-team/TASK.md`）：①audit 幂等 pending 无 phase-driven 恢复（reserve/finalize 间崩溃将毒死该指纹，重试 RuntimeError；A2 `recover_pending` 模式未覆盖 audit scope）；②本账本初稿测试计数 6/87 与最终分支 7/88 漂移（第二笔 commit 增补 selftest 测试后未回填，已在本记录更正）；③CLI/envelope 允许调用方自带 evidence_view（按 envelope 合同属预期，但报告未记录 view 来源，留 I 线增强）。
+
 ## Handoff note
 
 - From: `member A`
 - To: `user/team`
-- 当前代码和 task-local ledger 均在 `codex/s2-a-audit-runtime`；尚未 commit、push 或创建 PR。
+- ~~当前代码和 task-local ledger 均在 `codex/s2-a-audit-runtime`；尚未 commit、push 或创建 PR。~~（已被 PR #8 取代：`codex/s2-a-audit-runtime` 已推送并合并，见上方 owner integration record）
 - 本次实现范围仅为 A3 三个已批准缺口，未修改 A1/A2 既有路径；用户验收和 promotion 判定仍未完成。
