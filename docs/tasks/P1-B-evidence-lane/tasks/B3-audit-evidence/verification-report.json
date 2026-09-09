@@ -1,0 +1,77 @@
+{
+  "evidence_id": "E-B3-VERIFY-20260909",
+  "task_id": "S2-B-AUDIT-EVIDENCE",
+  "recorded_at": "2026-09-09 Asia/Shanghai",
+  "revision": "main@dad4658; B3 working tree before commit",
+  "environment": {
+    "python": "3.12.14",
+    "pytest": "9.1.1",
+    "ruff": "0.16.6",
+    "network": "not used",
+    "pytest_note": "-p no:cacheprovider was used for the clean full run because the local .pytest_cache path raises a permission warning under -W error"
+  },
+  "commands": [
+    {
+      "command": "pytest tests/test_audit_module.py -q",
+      "exit_code": 0,
+      "result": "16 passed"
+    },
+    {
+      "command": "pytest -W error -q",
+      "exit_code": 1,
+      "result": "business tests reached 100%; pytest cache provider emitted a local permission warning treated as an error"
+    },
+    {
+      "command": "pytest -W error -p no:cacheprovider -q",
+      "exit_code": 0,
+      "result": "97 passed"
+    },
+    {
+      "command": "ruff check src tests",
+      "exit_code": 0,
+      "result": "All checks passed"
+    },
+    {
+      "command": "node .ai-team/check.mjs --json",
+      "exit_code": 0,
+      "result": "valid: true"
+    },
+    {
+      "command": "project-to-act --validate",
+      "exit_code": 0,
+      "result": "valid: true; issues: []"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "passed"
+    }
+  ],
+  "scope": {
+    "changed_paths": [
+      "src/autoresearch/audit.py",
+      "tests/test_audit_module.py",
+      "tests/fixtures/audit/citations.jsonl",
+      "docs/tasks/P1-B-evidence-lane/tasks/B3-audit-evidence/"
+    ],
+    "forbidden_paths_changed": [],
+    "direct_evidence_item_write": false,
+    "standalone_admission": false,
+    "network_or_real_materials": false,
+    "new_agents_stores_buses_or_schedulers": false,
+    "gate_or_manuscript_rewrite": false
+  },
+  "acceptance": {
+    "citation_existence": "covered",
+    "retraction_correction_version_traceability": "covered",
+    "locator_unknown_and_mismatch": "covered",
+    "unbound_claim_unverified": "covered",
+    "evidence_reconciliation": "covered",
+    "candidate_admission_boundary": "covered",
+    "standalone_mode": "covered",
+    "idempotency_and_snapshot_versions": "covered",
+    "method_separation": "covered"
+  },
+  "status": "tested",
+  "next_step": "owner review, commit, push, and create the B3 PR; do not mark integrated before merge"
+}

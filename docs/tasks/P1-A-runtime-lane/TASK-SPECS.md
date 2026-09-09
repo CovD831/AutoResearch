@@ -41,6 +41,7 @@
 - 必须满足：Audit 只读 bounded evidence view；核验结论以 verdict/candidate 返回；网络不可用返回 `unknown`；不得由 Audit 产生 GateDecision。
 - 验收：S2 fixture 的存在性、撤稿、更正、locator 和网络受限场景可重跑。
 - **Owner scope 裁决（2026-09-09，成员问询后登记）**：S2 **不包含 MCP 协议实现**。A3 交付的调用边界是 invocation contract + CLI/stdio + selftest，必须与传输协议无关；MCP 适配归 S3（A4 的 native/MCP/skill/plugin adapter 层）包装。理由：①MCP 是外部工具连接协议，提前绑定会让 Audit Runtime 与传输耦合；②MCP SDK 属外部依赖，引入时机由 S3 统一选型。允许预留 MCP 兼容钩子，但不得引入 MCP SDK 依赖、不得改变 invocation contract 形状。验收标准始终是 S2 fixture 矩阵可重跑，不是"MCP 可调用"。
+- **D-S2-01（2026-09-09，owner 集成裁决）**：A3 保留 canonical `src/autoresearch/audit.py`、record kind `audit_report` 与 `audit.*` 事件；B3 实现改名 `audit_evidence.py`、kind `audit_evidence_report`、事件 `audit_evidence.*`。语义统一以 B3 严格语义为准（binding 需有效证据、corrected 关系可追溯即 PASS）；A3 运行时的对应类别在 S2 promotion 集成窗口对齐（owner follow-up）。
 
 ## A4 — S3 Capability Adapters
 
