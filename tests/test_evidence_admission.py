@@ -44,3 +44,36 @@ def test_evidence_candidate_admission_handles_duplicate_and_conflict(
     assert conflict.status == EvidenceAdmissionStatus.CONFLICT
     assert conflict.existing_evidence_id == first.evidence_id
     assert len(runtime.evidence.list("demo")) == 1
+
+
+def test_admission_rejects_unclassified_candidate_gracefully(runtime, project):
+    """F-10 / D-I0-01: runtime-lane candidates arrive without classification.
+
+    Admission must return a deterministic BLOCKED result instead of crashing
+    on the required EvidenceItem fields.
+    """
+
+    unclassified = _candidate("demo").model_copy(
+        update={"grade": None, "evidence_type": None, "candidate_id": "evcand-nograde"}
+    )
+    result = runtime.evidence.admit_candidate(unclassified, actor="tester")
+    assert result.status == EvidenceAdmissionStatus.BLOCKED
+    assert result.evidence_id is None
+    assert any("evidence classification" in reason for reason in result.reasons)
+    assert runtime.evidence.list("demo") == []
+    blocked_events = [
+        event
+        for event in runtime.store.events("demo")
+        if event["event_type"] == "evidence.candidate_blocked"
+    ]
+    assert blocked_events, "blocked admission must be auditable"
+
+
+def test_admission_rejects_missing_grade_only(runtime, project):
+    partial = _candidate("demo").model_copy(
+        update={"grade": None, "candidate_id": "evcand-nograde-only"}
+    )
+    result = runtime.evidence.admit_candidate(partial, actor="tester")
+    assert result.status == EvidenceAdmissionStatus.BLOCKED
+    assert any("grade" in reason for reason in result.reasons)
+    assert runtime.evidence.list("demo") == []

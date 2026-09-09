@@ -108,6 +108,33 @@ class EvidenceService:
                 actor=actor,
             )
             return result
+        if candidate.evidence_type is None or candidate.grade is None:
+            # D-I0-01: runtime-lane candidates may arrive without
+            # classification; admission rejects them gracefully instead of
+            # crashing on the required EvidenceItem fields (F-10).
+            missing = [
+                name
+                for name, value in (
+                    ("evidence_type", candidate.evidence_type),
+                    ("grade", candidate.grade),
+                )
+                if value is None
+            ]
+            result = EvidenceAdmissionResult(
+                project_id=candidate.project_id,
+                candidate_id=candidate.candidate_id,
+                status=EvidenceAdmissionStatus.BLOCKED,
+                reasons=[
+                    f"candidate lacks evidence classification: {', '.join(missing)}"
+                ],
+            )
+            self.store.append_event(
+                "evidence.candidate_blocked",
+                result,
+                project_id=candidate.project_id,
+                actor=actor,
+            )
+            return result
         existing_items = self.list(candidate.project_id)
         candidate_duplicate_key = self._duplicate_key(candidate)
         candidate_source_key = self._source_key(candidate)
