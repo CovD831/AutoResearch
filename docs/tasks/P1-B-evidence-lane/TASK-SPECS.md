@@ -31,6 +31,7 @@
 - 主要交付：Audit evidence contract、存在性/撤稿/更正/locator 规则、AuditReport artifact、Evidence candidate reconcile。
 - 必须满足：Audit 不直接写 EvidenceItem；确定性 verdict 与 unknown 分开；冲突和替代关系可追溯；网络不可用 fail-closed。
 - 验收：S2 标注 fixture 的 verdict、回流和审计报告可重跑。
+- **Owner scope 裁决（2026-09-09，成员问询后登记）**：S2 **不包含 MCP 协议实现**。B3 交付 Audit evidence contract、存在性/撤稿/更正/locator 规则、AuditReport artifact、candidate 回流；MCP 适配归 S3（B4 的 LLM/MCP adapter contract）。B3 的 contract 必须与传输协议无关，验收标准是标注 fixture 可重跑，不是"MCP 可调用"。
 
 ## B4 — S3 Reader / Writer Ports
 

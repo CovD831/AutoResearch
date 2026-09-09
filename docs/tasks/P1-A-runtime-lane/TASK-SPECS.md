@@ -40,6 +40,7 @@
 - 主要交付：Audit invocation contract、resolver adapter、CLI/selftest、AuditReport artifact receipt、unknown/fail-closed 诊断。
 - 必须满足：Audit 只读 bounded evidence view；核验结论以 verdict/candidate 返回；网络不可用返回 `unknown`；不得由 Audit 产生 GateDecision。
 - 验收：S2 fixture 的存在性、撤稿、更正、locator 和网络受限场景可重跑。
+- **Owner scope 裁决（2026-09-09，成员问询后登记）**：S2 **不包含 MCP 协议实现**。A3 交付的调用边界是 invocation contract + CLI/stdio + selftest，必须与传输协议无关；MCP 适配归 S3（A4 的 native/MCP/skill/plugin adapter 层）包装。理由：①MCP 是外部工具连接协议，提前绑定会让 Audit Runtime 与传输耦合；②MCP SDK 属外部依赖，引入时机由 S3 统一选型。允许预留 MCP 兼容钩子，但不得引入 MCP SDK 依赖、不得改变 invocation contract 形状。验收标准始终是 S2 fixture 矩阵可重跑，不是"MCP 可调用"。
 
 ## A4 — S3 Capability Adapters
 
