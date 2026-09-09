@@ -8,6 +8,9 @@ import typer
 import uvicorn
 
 from autoresearch.application import AutoResearchApplication
+from autoresearch.audit import AuditRuntime, BoundedEvidenceView, read_bounded_evidence_view
+from autoresearch.audit_contracts import AuditInvocationRequest, AuditMode
+from autoresearch.config import get_settings
 from autoresearch.contracts import (
     EvidenceGrade,
     EvidenceItem,
@@ -20,6 +23,13 @@ from autoresearch.contracts import (
     ResumeRequest,
     RunRequest,
 )
+from autoresearch.resolver import (
+    ResolverRecord,
+    ResolverSnapshot,
+    ResolverSnapshotRepository,
+    SnapshotResolverAdapter,
+)
+from autoresearch.storage import RecordStore
 
 app = typer.Typer(
     name="autoresearch",
@@ -139,6 +149,90 @@ def status(
         _echo(record)
     finally:
         runtime.close()
+
+
+@app.command()
+def audit(
+    input_file: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            dir_okay=False,
+            help="JSON AuditInvocationRequest or {request, evidence_view} envelope",
+        ),
+    ],
+    snapshot_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--snapshot",
+            exists=True,
+            dir_okay=False,
+            help="Versioned local resolver snapshot JSON",
+        ),
+    ] = None,
+    mode: Annotated[AuditMode, typer.Option("--mode")] = AuditMode.STANDALONE,
+) -> None:
+    """Run the local Audit runtime against bounded evidence and a resolver snapshot."""
+    payload = json.loads(input_file.read_text(encoding="utf-8"))
+    request_payload = payload.get("request", payload)
+    request = AuditInvocationRequest.model_validate({**request_payload, "mode": mode})
+    settings = get_settings()
+    settings.ensure_runtime_dirs()
+    store = RecordStore(settings.db_path)
+    snapshots = ResolverSnapshotRepository(store)
+    if snapshot_file:
+        snapshot_payload = json.loads(snapshot_file.read_text(encoding="utf-8"))
+        if isinstance(snapshot_payload, dict) and "records" in snapshot_payload:
+            raw_records = [
+                ResolverRecord.model_validate(item) for item in snapshot_payload["records"]
+            ]
+            snapshot_version = snapshot_payload.get(
+                "snapshot_version", request.resolver_snapshot_version
+            )
+            if "checksum" in snapshot_payload:
+                snapshot = ResolverSnapshot.model_validate(snapshot_payload).verify()
+            else:
+                snapshot = ResolverSnapshot.from_records(
+                    raw_records,
+                    snapshot_version=snapshot_version,
+                )
+        else:
+            raw_records = (
+                snapshot_payload.get("records", snapshot_payload)
+                if isinstance(snapshot_payload, dict)
+                else snapshot_payload
+            )
+            snapshot = ResolverSnapshot.from_records(
+                [ResolverRecord.model_validate(item) for item in raw_records],
+                snapshot_version=request.resolver_snapshot_version,
+            )
+        if snapshot.snapshot_version != request.resolver_snapshot_version:
+            raise typer.BadParameter(
+                "snapshot version does not match AuditInvocationRequest.resolver_snapshot_version"
+            )
+        snapshots.save(snapshot)
+    snapshot_present = snapshots.load(request.resolver_snapshot_version) is not None
+    resolver = SnapshotResolverAdapter.from_store(
+        store,
+        snapshot_version=request.resolver_snapshot_version,
+        available=snapshot_present,
+    )
+    evidence_view_payload = payload.get("evidence_view")
+    if evidence_view_payload is not None:
+        evidence_view = BoundedEvidenceView.model_validate(evidence_view_payload)
+    else:
+        evidence_ids = [
+            evidence_id
+            for claim in request.claims
+            for evidence_id in claim.evidence_ids
+        ] + [
+            evidence_id
+            for citation in request.citations
+            for evidence_id in citation.evidence_ids
+        ]
+        evidence_view = read_bounded_evidence_view(store, request.project_id, evidence_ids)
+    report = AuditRuntime(store, resolver).invoke(request, evidence_view=evidence_view)
+    _echo(report)
 
 
 @app.command("add-evidence")
