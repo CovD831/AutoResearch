@@ -93,7 +93,7 @@ def test_service_returned_result_can_be_recovered_without_second_call(
     request = fixture_request()
     original_finalize = store.finalize_idempotent
 
-    def crash_before_finalize(scope, key, result):
+    def crash_before_finalize(scope, key, result, *args, **kwargs):
         raise RuntimeError("simulated crash before finalization")
 
     monkeypatch.setattr(store, "finalize_idempotent", crash_before_finalize)

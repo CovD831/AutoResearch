@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any, Protocol
 
 from autoresearch.contracts import PaperRecord
@@ -74,15 +75,8 @@ class PaperSearchCapabilityAdapter:
         if papers:
             return InvocationStatus.COMPLETED
         lowered = " ".join(diagnostics).lower()
-        uncertain_markers = (
-            "disabled",
-            "failed",
-            "unavailable",
-            "timeout",
-            "unknown",
-            "error",
-        )
-        if any(marker in lowered for marker in uncertain_markers):
+        uncertain_markers = ("disabled", "failed", "unavailable", "timeout", "unknown", "error")
+        if any(re.search(rf"\b{marker}\b", lowered) for marker in uncertain_markers):
             return InvocationStatus.UNKNOWN_OUTCOME
         return InvocationStatus.COMPLETED_EMPTY
 
@@ -193,6 +187,14 @@ class PaperSearchCapabilityAdapter:
             self.scope,
             key,
             self._record_request(request, fingerprint),
+            events=[
+                (
+                    "capability.invocation_reserved",
+                    {"invocation_id": request.invocation_id, "request_fingerprint": fingerprint},
+                    request.project_id,
+                    "capability_adapter",
+                )
+            ],
         )
         if not reserved:
             existing = self.store.get_idempotent(self.scope, key)
@@ -206,22 +208,18 @@ class PaperSearchCapabilityAdapter:
                 raise PendingInvocationError("invocation outcome is unknown; recover explicitly")
             return self._replay(existing)
 
-        self.store.append_event(
-            "capability.invocation_reserved",
-            {"invocation_id": request.invocation_id, "request_fingerprint": fingerprint},
-            project_id=request.project_id,
-            actor="capability_adapter",
-        )
         self.store.mark_idempotent_phase(
             self.scope,
             key,
             InvocationPhase.SERVICE_STARTED.value,
-        )
-        self.store.append_event(
-            "capability.service_started",
-            {"invocation_id": request.invocation_id},
-            project_id=request.project_id,
-            actor="capability_adapter",
+            events=[
+                (
+                    "capability.service_started",
+                    {"invocation_id": request.invocation_id},
+                    request.project_id,
+                    "capability_adapter",
+                )
+            ],
         )
         try:
             outcome = self.service.search(
@@ -243,33 +241,37 @@ class PaperSearchCapabilityAdapter:
             key,
             InvocationPhase.SERVICE_RETURNED.value,
             staged_result=invocation.model_dump(mode="json"),
-        )
-        self.store.append_event(
-            "capability.service_returned",
-            {
-                "invocation_id": request.invocation_id,
-                "status": status.value,
-                "paper_ids": [paper.paper_id for paper in papers],
-                "diagnostics": diagnostics,
-            },
-            project_id=request.project_id,
-            actor="capability_adapter",
+            events=[
+                (
+                    "capability.service_returned",
+                    {
+                        "invocation_id": request.invocation_id,
+                        "status": status.value,
+                        "paper_ids": [paper.paper_id for paper in papers],
+                        "diagnostics": diagnostics,
+                    },
+                    request.project_id,
+                    "capability_adapter",
+                )
+            ],
         )
         self.store.finalize_idempotent(
             self.scope,
             key,
             invocation.model_dump(mode="json"),
-        )
-        self.store.append_event(
-            "capability.invocation_finalized",
-            {
-                "invocation_id": request.invocation_id,
-                "status": status.value,
-                "paper_ids": [paper.paper_id for paper in papers],
-                "diagnostics": diagnostics,
-            },
-            project_id=request.project_id,
-            actor="capability_adapter",
+            events=[
+                (
+                    "capability.invocation_finalized",
+                    {
+                        "invocation_id": request.invocation_id,
+                        "status": status.value,
+                        "paper_ids": [paper.paper_id for paper in papers],
+                        "diagnostics": diagnostics,
+                    },
+                    request.project_id,
+                    "capability_adapter",
+                )
+            ],
         )
         return invocation
 
@@ -279,13 +281,14 @@ class PaperSearchCapabilityAdapter:
         invocation_id: str,
         *,
         reason: str,
-        outcome_status: InvocationStatus | None = None,
     ) -> PaperSearchInvocation:
-        if outcome_status is not None and outcome_status not in (
-            InvocationStatus.FAILED,
-            InvocationStatus.UNKNOWN_OUTCOME,
-        ):
-            raise ValueError("pending recovery must close as failed or unknown_outcome")
+        """Close a pending invocation using its durable phase (F-2).
+
+        The recovery action is derived from the recorded phase, never from the
+        caller: ``reserved`` closes as failed, ``service_started`` closes as
+        unknown_outcome, ``service_returned`` finalizes the staged result.
+        """
+
         key = f"{run_id}:{invocation_id}"
         existing = self.store.get_idempotent(self.scope, key)
         if existing is None:
@@ -300,18 +303,20 @@ class PaperSearchCapabilityAdapter:
                 self.scope,
                 key,
                 invocation.model_dump(mode="json"),
-            )
-            self.store.append_event(
-                "capability.invocation_recovered",
-                {
-                    "invocation_id": invocation_id,
-                    "status": invocation.receipt.outcome_status.value,
-                    "reason": "finalized staged service result",
-                    "phase": phase,
-                    "recovery_action": "finalize_staged_result",
-                },
-                project_id=invocation.request.project_id,
-                actor="capability_adapter",
+                events=[
+                    (
+                        "capability.invocation_recovered",
+                        {
+                            "invocation_id": invocation_id,
+                            "status": invocation.receipt.outcome_status.value,
+                            "reason": "finalized staged service result",
+                            "phase": phase,
+                            "recovery_action": "finalize_staged_result",
+                        },
+                        invocation.request.project_id,
+                        "capability_adapter",
+                    )
+                ],
             )
             return invocation
         request = PaperSearchRequest.model_validate(existing.get("request", {}))
@@ -332,27 +337,44 @@ class PaperSearchCapabilityAdapter:
             self.scope,
             key,
             invocation.model_dump(mode="json"),
-        )
-        self.store.append_event(
-            "capability.invocation_recovered",
-            {
-                "invocation_id": invocation_id,
-                "status": status.value,
-                "reason": recovery_reason,
-                "phase": phase,
-                "recovery_action": "close_pending",
-            },
-            project_id=request.project_id,
-            actor="capability_adapter",
+            events=[
+                (
+                    "capability.invocation_recovered",
+                    {
+                        "invocation_id": invocation_id,
+                        "status": status.value,
+                        "reason": recovery_reason,
+                        "phase": phase,
+                        "recovery_action": "close_pending",
+                    },
+                    request.project_id,
+                    "capability_adapter",
+                )
+            ],
         )
         return invocation
 
     def fail_pending(
         self, run_id: str, invocation_id: str, *, reason: str
     ) -> PaperSearchInvocation:
-        return self.recover_pending(
-            run_id,
-            invocation_id,
-            reason=reason,
-            outcome_status=InvocationStatus.FAILED,
-        )
+        """Deterministically close an invocation that provably never reached the connector.
+
+        Only valid while the record is ``reserved``: any later phase may have
+        produced an external side effect and must go through
+        :meth:`recover_pending`, which labels the outcome from the durable
+        phase instead of trusting the caller.
+        """
+
+        key = f"{run_id}:{invocation_id}"
+        existing = self.store.get_idempotent(self.scope, key)
+        phase = (existing or {}).get("phase", InvocationPhase.RESERVED.value)
+        if (
+            existing is not None
+            and existing.get("state") == "pending"
+            and phase != InvocationPhase.RESERVED.value
+        ):
+            raise RuntimeError(
+                f"fail_pending cannot prove a missing side effect at phase {phase!r}; "
+                "use recover_pending"
+            )
+        return self.recover_pending(run_id, invocation_id, reason=reason)

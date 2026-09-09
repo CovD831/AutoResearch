@@ -13,6 +13,10 @@ from pydantic import BaseModel
 from autoresearch.contracts import new_id, utc_now
 
 
+class StaleIdempotencyWriteError(RuntimeError):
+    """Another writer changed the idempotency record after our read snapshot."""
+
+
 class RecordStore:
     """SQLite repository with append-only audit events and generic typed records."""
 
@@ -153,6 +157,32 @@ class RecordStore:
             rows = connection.execute(sql, params).fetchall()
         return [json.loads(row["payload_json"]) for row in rows]
 
+    def _insert_audit_event(
+        self,
+        connection: sqlite3.Connection,
+        event_type: str,
+        payload: BaseModel | dict[str, Any],
+        project_id: str | None,
+        actor: str,
+    ) -> str:
+        event_id = new_id("event")
+        connection.execute(
+            """
+            INSERT INTO audit_events
+                (event_id, project_id, event_type, actor, payload_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                event_id,
+                project_id,
+                event_type,
+                actor,
+                self._json(payload),
+                utc_now().isoformat(),
+            ),
+        )
+        return event_id
+
     def append_event(
         self,
         event_type: str,
@@ -161,24 +191,8 @@ class RecordStore:
         project_id: str | None = None,
         actor: str = "system",
     ) -> str:
-        event_id = new_id("event")
         with self._lock, self.connection() as connection:
-            connection.execute(
-                """
-                INSERT INTO audit_events
-                    (event_id, project_id, event_type, actor, payload_json, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    event_id,
-                    project_id,
-                    event_type,
-                    actor,
-                    self._json(payload),
-                    utc_now().isoformat(),
-                ),
-            )
-        return event_id
+            return self._insert_audit_event(connection, event_type, payload, project_id, actor)
 
     def events(self, project_id: str) -> list[dict[str, Any]]:
         with self.connection() as connection:
@@ -222,8 +236,18 @@ class RecordStore:
             ).fetchone()
         return json.loads(row["result_json"]) if row else None
 
-    def reserve_idempotent(self, scope: str, key: str, request: dict[str, Any]) -> bool:
-        """Atomically reserve an invocation before any connector side effect."""
+    def reserve_idempotent(
+        self,
+        scope: str,
+        key: str,
+        request: dict[str, Any],
+        events: list[tuple[str, dict[str, Any], str | None, str]] | None = None,
+    ) -> bool:
+        """Atomically reserve an invocation before any connector side effect.
+
+        ``events`` are audit entries written in the same transaction as the
+        reservation; they are skipped when the reservation loses a race.
+        """
 
         now = utc_now().isoformat()
         record = {
@@ -243,7 +267,11 @@ class RecordStore:
                 """,
                 (scope, key, self._json(record), now),
             )
-        return cursor.rowcount == 1
+            reserved = cursor.rowcount == 1
+            if reserved:
+                for event_type, payload, project_id, actor in events or []:
+                    self._insert_audit_event(connection, event_type, payload, project_id, actor)
+        return reserved
 
     def _update_idempotent_if_current(
         self,
@@ -251,8 +279,13 @@ class RecordStore:
         key: str,
         previous_json: str,
         record: dict[str, Any],
+        events: list[tuple[str, dict[str, Any], str | None, str]] | None = None,
     ) -> None:
-        """Persist a record only when the database still contains the read snapshot."""
+        """Persist a record only when the database still contains the read snapshot.
+
+        Audit ``events`` are written in the same transaction, after the record
+        transition succeeds; a rejected stale write produces no audit rows.
+        """
 
         with self._lock, self.connection() as connection:
             cursor = connection.execute(
@@ -263,7 +296,11 @@ class RecordStore:
                 (self._json(record), scope, key, previous_json),
             )
             if cursor.rowcount != 1:
-                raise RuntimeError("stale idempotency update rejected")
+                raise StaleIdempotencyWriteError(
+                    f"stale idempotency update rejected for {scope}:{key}"
+                )
+            for event_type, payload, project_id, actor in events or []:
+                self._insert_audit_event(connection, event_type, payload, project_id, actor)
 
     def mark_idempotent_phase(
         self,
@@ -272,8 +309,12 @@ class RecordStore:
         phase: str,
         *,
         staged_result: dict[str, Any] | None = None,
+        events: list[tuple[str, dict[str, Any], str | None, str]] | None = None,
     ) -> None:
-        """Record progress within a pending invocation before finalization."""
+        """Record progress within a pending invocation before finalization.
+
+        Audit ``events`` commit atomically with the phase transition (F-4).
+        """
 
         transitions = {
             "reserved": {"service_started"},
@@ -298,10 +339,19 @@ class RecordStore:
         if staged_result is not None:
             record["staged_result"] = staged_result
         record["updated_at"] = utc_now().isoformat()
-        self._update_idempotent_if_current(scope, key, previous_json, record)
+        self._update_idempotent_if_current(scope, key, previous_json, record, events)
 
-    def finalize_idempotent(self, scope: str, key: str, result: dict[str, Any]) -> None:
-        """Finalize a pending invocation without changing its identity."""
+    def finalize_idempotent(
+        self,
+        scope: str,
+        key: str,
+        result: dict[str, Any],
+        events: list[tuple[str, dict[str, Any], str | None, str]] | None = None,
+    ) -> None:
+        """Finalize a pending invocation without changing its identity.
+
+        Audit ``events`` commit atomically with the finalization (F-4).
+        """
 
         with self._lock, self.connection() as connection:
             row = connection.execute(
@@ -322,7 +372,7 @@ class RecordStore:
             "result": result,
             "updated_at": now,
         }
-        self._update_idempotent_if_current(scope, key, previous_json, record)
+        self._update_idempotent_if_current(scope, key, previous_json, record, events)
 
     def list_idempotent(self, scope: str | None = None) -> list[dict[str, Any]]:
         """List invocation records for parity and diagnostics."""
