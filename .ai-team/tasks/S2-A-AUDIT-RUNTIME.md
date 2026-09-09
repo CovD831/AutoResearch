@@ -68,7 +68,7 @@
 - PR #8 审查：merge（owner 深审 + 对抗性复审，daf2b65）。本地独立复现：88 passed（focused 7）、ruff clean、selftest `receipt_status=completed`、check.mjs valid、CI 三项绿；合并结果 `dae10f3` 上复跑 88 passed + ruff 通过。
 - Scope 核对：17 文件均在 task-package 允许路径内；`application.py`/共享 `contracts.py`/B 线路径零改动；R004 文档两处（×2 拷贝）为对齐 2026-09-09 S2 MCP scope 裁决的一致性修订，已接受（超出 task-package.json allowed_paths 一项，记入 registry 备注）。
 - Fail-closed 抽查：resolver 异常/快照版本不匹配/网络不可用一律 `unknown`；快照不可变 `ON CONFLICT(kind, record_id)` 与 records 表 PK 匹配；candidates 仅 in-runtime 且 `grade=None`（D-I0-01）。
-- 非阻塞 follow-up（owner 记入 `.ai-team/TASK.md`）：①audit 幂等 pending 无 phase-driven 恢复（reserve/finalize 间崩溃将毒死该指纹，重试 RuntimeError；A2 `recover_pending` 模式未覆盖 audit scope）；②本账本初稿测试计数 6/87 与最终分支 7/88 漂移（第二笔 commit 增补 selftest 测试后未回填，已在本记录更正）；③CLI/envelope 允许调用方自带 evidence_view（按 envelope 合同属预期，但报告未记录 view 来源，留 I 线增强）。
+- 非阻塞 follow-up（owner 记入 `.ai-team/TASK.md`）：①audit 幂等 pending 无 phase-driven 恢复（reserve/finalize 间崩溃将毒死该指纹，重试 RuntimeError；A2 `recover_pending` 模式未覆盖 audit scope）→ **已由 owner PR #11 关闭（F-9：回收重算 + `audit.invocation_reclaimed` 事件）**；②本账本初稿测试计数 6/87 与最终分支 7/88 漂移（第二笔 commit 增补 selftest 测试后未回填，已在本记录更正）；③CLI/envelope 允许调用方自带 evidence_view（按 envelope 合同属预期，但报告未记录 view 来源，留 I 线增强）。另：**F-10**（共享 `admit_candidate` 对 grade=None candidate 崩溃）已由 PR #11 以确定性 `BLOCKED` + 审计事件关闭；A3 运行时与 B3 的 binding/corrected/locator 语义对齐按 D-S2-01 留待 S2 promotion 集成窗口。
 
 ## Handoff note
 

@@ -15,7 +15,7 @@
 | P1-B-EVIDENCE-PIPELINE | P1/S1 | evidence/domain | merged via PR #1 | accepted | — | — | P1-A | P1-B2 |
 | P1-A2-RUNTIME-HARDENING | P1/S1 | runtime | `codex/p1-a2-runtime-hardening` merged via PR #5 + owner follow-up PR #7 | accepted | P1-A | P1-A | — | S2-A |
 | P1-B2-EVIDENCE-ADVERSARIAL | P1/S1 | evidence/domain | `codex/p1-evidence-adversarial` merged via PR #4 + owner follow-up | accepted | P1-B | P1-B | — | S2-B |
-| S2-A-AUDIT-RUNTIME | S2 | runtime | `codex/s2-a-audit-runtime` merged via PR #8 (`dae10f3`) | integrated（NOT accepted；acceptance 待 S2 promotion/O6） | `main@6b706df`（实际 base `main@15a5490`） | S1 promotion | — | S3-A |
+| S2-A-AUDIT-RUNTIME | S2 | runtime | `codex/s2-a-audit-runtime` merged via PR #8 (`dae10f3`) + owner follow-up PR #11（F-9/F-10） | integrated（NOT accepted；acceptance 待 S2 promotion/O6） | `main@6b706df`（实际 base `main@15a5490`） | S1 promotion | — | S3-A |
 | S2-B-AUDIT-EVIDENCE | S2 | evidence/domain | `codex/s2-audit-evidence`（PR #9）经 owner D-S2-01 集成调整后以 PR #10 合入（`2d4029a`） | integrated（NOT accepted；acceptance 待 S2 promotion/O6） | `main@6b706df`（实际 base `main@dad4658`） | S1 promotion | — | S3-B |
 | S3-A-CAPABILITY-ADAPTERS | S3 | runtime | reserved | planned | S2 promotion | S2 promotion | — | S4-A |
 | S3-B-READER-WRITER-PORTS | S3 | evidence/domain | reserved | planned | S2 promotion | S2 promotion | — | S4-B |
