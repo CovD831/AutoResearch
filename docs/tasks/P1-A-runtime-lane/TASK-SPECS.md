@@ -31,7 +31,7 @@
   - **[已关闭] recovery API 语义债**：`recover_pending` 删除 `outcome_status` 死参数（phase 唯一决策源）；`fail_pending` 限定仅 `reserved` 阶段可用（provably no side effect），其余阶段抛错指向 `recover_pending`。
   - **[已关闭] `_status` 诊断嗅探收窄**：关键词匹配改为词边界匹配，"0 errors" 等计数表述不再误判为 unknown_outcome。
   - **[挂账 S4-B 真实试点前] F-3 真实 connector 验收**：异常→状态分类目前是类型启发，其正确性依赖隐含假设"legacy connector 的非 OSError 异常只发生在外部调用前"（响应解析期异常会被误标 failed）。该假设已在此文档化；真实 connector 接入时必须按真实异常面复验分类边界，作为 S4-B/真实论文试点的验收前置，结果回写本节。
-  - **[挂账 owner] F-8 R003 空结果语义回写**：仍待 owner 裁决，非 A lane 范围。
+  - **[已关闭 2026-09-10] F-8 R003 空结果语义回写**：owner 裁决 D-F8-01（`docs/coord/empty-result-ruling.md`）——确定零结果 = `completed_empty`（确定性终态），`unknown_outcome` 仅限中断恢复路径；「never successful invention」意图由 INV-10 + readiness fail-closed 承载；R003 L3 文档已加裁决注记。
 
 ## A3 — S2 Audit Runtime
 
