@@ -18,7 +18,7 @@ Owner 职责定位（2026-09-09 确定）：成员 PR 审核与合并、小修�
 
 | Task | 状态 | 依赖 / 触发时机 | 交付重点 | 预估 |
 |---|---|---|---|---|
-| O1 成员 PR 审核与 follow-up 集成 | active（常驻） | 成员每次提交；当前无悬挂 PR | 成员 PR 人工审查（bot 审查后）；小修改不打回、直接 follow-up PR 补齐（先例：PR #6、PR #7）；撞车裁决 owner 集成（先例：D-S2-01 / PR #10）；合并窗口与分支保护恢复；后续 S3/S4 PR 的深度审查并入本项 | 每次 ≤0.5 天 |
+| O1 成员 PR 审核与 follow-up 集成 | active（常驻） | 成员每次提交；当前无悬挂 PR | 成员 PR 人工审查（bot 审查后）；小修改不打回、直接 follow-up PR 补齐（先例：PR #6、PR #7）；撞车裁决 owner 集成（先例：D-S2-01 / PR #10）；合并窗口与分支保护恢复；后续 S3/S4 PR 的深度审查并入本项。**PR 纯净性（PR #6 教训）：follow-up PR 只装代码小修；文档/归档批量入库单独开 docs PR，不得混装** | 每次 ≤0.5 天 |
 | O2 F-8 R003 空结果语义裁决 | done（2026-09-10，D-F8-01） | — | 裁决文档 `docs/coord/empty-result-ruling.md`：`completed_empty` 为确定性成功终态、`unknown_outcome` 仅限中断恢复；R003 L3 已注记、TASK-SPECS A2 F-8 关闭 | 0.5 天 |
 | O6 S2 promotion gate | done（2026-09-10） | S2-A/S2-B integrated | 四项核验通过（blocking 清零含 F-8 关闭 / E2E 绿 108 passed / 证据可重跑 / 下游合同稳定）→ S2-A/S2-B 转 accepted、S3-A/S3-B 转 ready（base main@535f208） | 0.5 天 |
 | O7 S3 promotion gate | 未开始 | A4 + B4 均 accepted **当天** | 四项核验同上 → S4-A/S4-B 转 ready。gate 不过夜 | 0.5 天 |
