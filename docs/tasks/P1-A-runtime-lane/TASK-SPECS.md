@@ -55,20 +55,31 @@
 
 - 状态：`planned`，依赖 S3 promotion。
 - 目标：提供可审计 benchmark harness 的运行时支持。
-- 主要交付：benchmark invocation、资源预算、停止条件、结果 receipt、报告 artifact 和重跑命令。
-- 必须满足：计划、观测结果和未知结果分开；资源超限触发 interrupt/deny；运行环境和命令可追溯。
+- 主要交付：benchmark invocation、资源预算、停止条件、结果 receipt、报告 artifact 和重跑命令；**Semantic Scholar 真实检索 adapter（2026-09-10 增补，经 A4 registry 注册，为 benchmark 与 B 线试点提供真实文献数据源）**。
+- 必须满足：计划、观测结果和未知结果分开；资源超限触发 interrupt/deny；运行环境和命令可追溯；检索 adapter 的空结果遵循 D-F8-01、限流/离线矩阵化。
 - 验收：S4 benchmark 三组对比可重跑，失败、超时和未执行结果不会被写成通过。
-- **评估纪律条款（2026-09-10 追加，karpathy 三约束吸收，见 workspace 生态调研报告第七节）**：主指标唯一（以 hallucination ratio 为首，其余为辅指标不参与裁决）；固定语料集与固定调用预算（per-run 预算写进 receipt，来自 A6 的计价链）；换写作头/检索源不得改变评估口径——指标定义与评估预算在本任务包内冻结，变更须走 owner 裁决。依据：无验证器/无固定口径的自进化已被 AI Scientist（57% 虚假数据）证伪。
+- **评估纪律条款（2026-09-10 追加，karpathy 三约束吸收，见 workspace 生态调研报告第七节）**：主指标唯一（以 hallucination ratio 为首，其余为辅指标不参与裁决）；固定语料集与固定调用预算（per-run 预算写进 receipt，计价链由 Owner 线 O12 ProviderLane 供给）；换写作头/检索源不得改变评估口径——指标定义与评估预算在本任务包内冻结，变更须走 owner 裁决。依据：无验证器/无固定口径的自进化已被 AI Scientist（57% 虚假数据）证伪。
+- **分工注记（2026-09-10）**：LLM 调用底座（ProviderLane）由 Owner 实现（O12，需参考本地 openpilot 代码），A5 通过 invocation receipt 消费其计价与调用边界，不在本任务包范围内实现。
+- **计价衔接注记（2026-09-10 对抗审查）**：O12 交付（09-12）晚于本包交付（09-11）——receipt 的成本字段 schema 由本包**预留**（字段位固定），端到端计价验收在 O12 交付后补验；计价缺失不阻塞本包 accepted。
 
-## A6 — S3-A Provider Lane 与真实检索接入（追加包，2026-09-10）
+## A6 — S4 经验沉淀接线（追加包，2026-09-10；原 Owner O9 接线点①前移成员 A）
 
-- 状态：`planned`，依赖 A4 accepted + S3 promotion（O7）。
-- 背景：外部模块选型已定稿（workspace `docs/autoresearch-生态调研-2026-09.md` 第九节，正式落库待 O8 ADR-01）。LLM 调用底座从 76 行裸 `llm.py` 升级为 ProviderLane；paper search bounded port（R003）接入第一个真实数据源。
-- 目标：ProviderLane 统一 LLM 调用边界 + Semantic Scholar 真实检索 adapter，为 A5 benchmark 与 B5 真实试点提供真实生成与检索能力。
-- 主要交付：`provider_lane.py`（lane 不可变身份 `provider:model:reasoning:vN`；模型目录含 cost/contextWindow 元数据；usage→invocation receipt 计价字段；reasoning 档位统一；跨 provider handoff 消息转换）、lane 约束（预算档/max_rounds/凭据 env 白名单/settings 漂移 fail-closed 校验）、`llm.py` 迁移改造、Semantic Scholar adapter（经 A4 registry 注册，trust tier 与 candidate-only 限制生效）、成本汇总命令。
-- 必须满足：凭据只读白名单 env，坏配置显式报错、不静默回退；每次调用 receipt 含 token/成本/模型来源（资金化数字链的源头）；provider 调用全部经 A4 adapter 边界，不得旁路；检索空结果遵循 D-F8-01（`completed_empty`）；离线默认禁用网络，直连仅在显式启用时发生；结构化输出走 constrained-sampling 式降级（prefer/require）。
-- 禁止：引入 MCP SDK（MCP 是 S3-B 契约与 L3 扩展位的事）；绕过 idempotency/receipt 语义；在 lane 内写业务逻辑；改 B 线独占路径。
-- 验收：双 provider（真实一路 + mock 一路）三路 parity（真实/回放/mock）；计价与官方计费口径误差可解释并记录；settings 漂移注入测试 fail-closed；检索 adapter 的空结果/限流/离线/部分响应矩阵可重跑。
+- 状态：`planned`，依赖 A3/B3 accepted（已满足）。
+- 目标：把 B3/A3 的 fail-closed 拦截事件流接到孤儿模块 `evolution_service.py`，让失败经验从第一次真实拦截开始自动沉淀——数据飞轮经验层上线。
+- 主要交付：事件消费钩子（订阅 `audit_evidence.*` / fail-closed 拦截事件，经 A lane receipt/replay 底座，只读消费不改审计链）、事件→经验映射器（**拦截事件→失败经验的映射表由成员自行拟定**，作为交付物随 PR 提交，Owner 审查时把关：把拦截类型模板化为 ExperienceRecord，打 `failure` 标签，复用 record 自带的 WikiPage 镜像）、重复拦截去重（同因经验合并计数，供 promote 的「复现 ≥2」门槛使用）、fixture 与离线测试。
+- 必须满足：只读消费审计事件，不改变事件本身与审计链语义；record 走 EvolutionService 原有四门槛（复现 ≥2 + E2 + 审核者 + 人工批准），接线不得给自动晋级留路径；拦截事件不可用时静默降级为无经验产生（fail-closed 方向的降级），不阻塞主管线。
+- 禁止：修改 EvolutionService 的 promote 语义；写入 knowledge 其他分区；触碰 B 线 evidence 路径。
+- 验收：注入拦截事件 → 对应失败经验出现在 experiences 分区并镜像 WikiPage；同因重复拦截 → 记录计数 +1；主管线在钩子故障时不受影响；全部离线可重跑。
+
+## A7 — S4 knowledge 向量检索升级（追加包，2026-09-10；原 Owner O10 实现部分前移成员 A）
+
+- 状态：`planned`，依赖 A6（串行，同属孤儿模块域）。
+- 目标：`knowledge.py` 检索从纯词法升级为词法 + 向量双路 RRF 融合——知识库从「目录」变「引擎」，B6 试点灌入的真实数据即插即用。
+- 主要交付：embedding 管线（bge-small 本地推理）、sqlite-vec 向量索引（构建/增量更新与 WikiPage 写入联动）、RRF 融合排序（词法 × 向量双路）、跨分区与 `require_evidence` 过滤语义保持不变、模型文件预置方案（vendor 目录一次性预下载，或首轮 TF-IDF 降级，规避离线默认禁网冲突——<b>两方案的取舍由成员自行评估决定，决策理由随 PR 记录</b>）、fixture 与离线测试。
+- 必须满足：检索接口签名与返回结构不变（`evidence_ids` + `retrieval_level` 可追溯保留）；向量仅做索引、Wiki 页保持 Markdown 可读（karpathy「文件即数据库」原则）；embedding 模型与版本号记录进 registry（可追溯）；模型不可用时自动回退纯词法（fail-closed 方向降级）。
+- 禁止：引入付费/网络 embedding API；改变跨分区禁止语义；在检索层做内容判断。
+- 验收：双路 RRF 对纯词法的召回对比报告（fixture 语料）；增量更新正确性（新增页即时可检索）；模型缺失时回退路径可用；全部离线可重跑。
+- **与 MVP-CLOSED 的关系注记（2026-09-10 对抗审查）**：本包为平行增量，交付（09-14）晚于 MVP-CLOSED 判定（09-13）——**不阻塞判定**；向量检索能力 09-14 起用于收官演示与后续试点，演示叙事按「收官次日增强」表述。
 
 ## 每个 A 任务的交付门槛
 

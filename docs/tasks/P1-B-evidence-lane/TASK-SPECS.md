@@ -42,32 +42,34 @@
 - 必须满足：不同实现不要求文字相同，但 schema、claim 绑定、Gate 合规和审计结果必须可比较；外部输出先进入 candidate 通道。
 - 验收：native、LLM、外部能力三路 fixture 的契约级 parity 通过。
 
-## B5 — S4 Real Pilot
+## B5 — S3-B 真实数据源与解析层（2026-09-10 重排编号，原追加包 B7）
 
-- 状态：`planned`，依赖 S3 promotion **+ B7（真实数据源与解析层，2026-09-10 追加前置）**。B7 未交付前 B5 只能做 mock 试点，不计入真实试点验收。
-- 目标：完成一个真实论文 idea 的检索、阅读、证据化写作和 claim audit 试点。
-- 主要交付：许可明确的 corpus、gold query/reading set、真实材料清单、论文章节草稿、claim audit 报告和限制说明。
-- 必须满足：关键 claim 可追溯；无证据内容标记未验证；未执行实验不能写成结果；真实来源和许可边界明确。
-- 验收：从 idea 到本地章节草稿的端到端试点可重跑。
-
-## B6 — MVP Manuscript Delivery
-
-- 状态：`planned`，依赖 I3 和 B5。
-- 目标：完成最小论文稿件组装、审核、修订和本地交付检查。
-- 主要交付：manuscript assembly、引用/证据索引、review feedback、revision artifact、local delivery manifest。
-- 必须满足：稿件数字、图表、引用和结果均可追到 artifact/evidence；未知和缺口不被隐藏；原稿不可覆盖；审核不能自批。
-- 验收：最小 Evaluation/Related Work/Method 组合稿件通过规则和证据审查。
-- **组装工具条款（2026-09-10 追加，选型总表 #9/#10）**：导出用 pandoc（md → docx/pdf/LaTeX 本地工具链）；图表用 matplotlib，图数据一律出自 evidence store（数字可溯源），不得手填。
-
-## B7 — S3-B 真实数据源与解析层（追加包，2026-09-10）
-
-- 状态：`planned`，依赖 B4 accepted + S3 promotion（O7）。B5 的前置。
-- 背景：外部模块选型已定稿（workspace `docs/autoresearch-生态调研-2026-09.md` 第九节，正式落库待 O8 ADR-01）。B3 的核验与 B5 的试点目前建立在 fixture 数据上，真实化后 fail-closed 语义不变。
+- 状态：`planned`，依赖 B4 accepted + S3 promotion（O7）。B6（真实试点）的前置。
+- 背景：外部模块选型已定稿（workspace `docs/autoresearch-生态调研-2026-09.md` 第九节，正式落库待 O8 ADR-01）。B3 的核验与 B6 的试点目前建立在 fixture 数据上，真实化后 fail-closed 语义不变。
 - 目标：核验数据源与论文解析从 fixture 升级为真实外部源。
 - 主要交付：Crossref API adapter（DOI 存在性/元数据/更正关系）；Retraction Watch 数据接入（撤稿状态，经 B3 `audit_evidence` 的 verdict 流，不新增独立核验路径）；PDF 解析层（pymupdf4llm 首选、GROBID docker 备选，解析产物进 B 线 candidate 通道）；pymupdf AGPL 许可复核记录（SaaS/分发场景的约束结论回写本节）。
 - 必须满足：真实数据源不可用时 verdict 返回 `unknown`，不静默降级；解析产物全部走 candidate 通道（grade 由现有规则评定），不直写 EvidenceItem；限流/超时/部分响应矩阵化；不引入付费 API。
 - 禁止：绕过 B3 的 verdict/reconciliation 结构；在解析层做内容判断（内容判断属 admission 与 Gate）；改 A 线 runtime 路径。
 - 验收：真实 DOI 抽样（含已知撤稿案例）verdict 矩阵可重跑；解析→candidate→admission 链路 E2E；离线全链路 fail-closed。
+
+## B6 — S4 Real Pilot（2026-09-10 重排编号，原 B5）
+
+- 状态：`planned`，依赖 S3 promotion **+ B5（真实数据源与解析层）**。B5 未交付前只能做 mock 试点，不计入真实试点验收。
+- 目标：完成一个真实论文 idea 的检索、阅读、证据化写作和 claim audit 试点。
+- 主要交付：许可明确的 corpus、gold query/reading set、真实材料清单、论文章节草稿、claim audit 报告和限制说明。
+- 必须满足：关键 claim 可追溯；无证据内容标记未验证；未执行实验不能写成结果；真实来源和许可边界明确。
+- **交叉评审条款（2026-09-10 追加，EvoMap 吸收：≥3 模型独立生成 + 交叉审查 + 独立盲审）**：试点中对同一章节至少用两个不同模型各生成一版，交叉比对 claim 覆盖与冲突，盲审差异记入审计事件；交叉评审结论**仅作 candidate 参考，不进 Gate、不覆盖规则校验**（INV-26 红线）。karpathy 的 FAILED.md 同构要求：试点中被否决/被盲审打回的版本显式归档为失败经验，不得丢弃。
+- 验收：从 idea 到本地章节草稿的端到端试点可重跑；交叉评审与盲审记录可追溯。
+- **交叉评审实现路径注记（2026-09-10 对抗审查）**：O12 ProviderLane 交付（09-12）与 B6 同日——就绪前双模型调用经现有 `llm.py` 直连（临时路径，receipt 无计价字段）；O12 就绪后切换 lane 并补计价。临时路径**不得绕过 candidate 通道与审计事件**，盲审记录照常入审计。
+
+## B7 — MVP Manuscript Delivery（2026-09-10 重排编号，原 B6）
+
+- 状态：`planned`，依赖 I3 和 B6。
+- 目标：完成最小论文稿件组装、审核、修订和本地交付检查。
+- 主要交付：manuscript assembly、引用/证据索引、review feedback、revision artifact、local delivery manifest。
+- 必须满足：稿件数字、图表、引用和结果均可追到 artifact/evidence；未知和缺口不被隐藏；原稿不可覆盖；审核不能自批。
+- 验收：最小 Evaluation/Related Work/Method 组合稿件通过规则和证据审查。
+- **组装工具条款（2026-09-10 追加，选型总表 #9/#10）**：导出用 pandoc（md → docx/pdf/LaTeX 本地工具链）；图表用 matplotlib，图数据一律出自 evidence store（数字可溯源），不得手填。
 
 ## 每个 B 任务的交付门槛
 
