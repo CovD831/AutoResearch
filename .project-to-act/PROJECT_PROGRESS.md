@@ -43,6 +43,8 @@
 
 按时间倒序追加：日期、完成事项、证据 ID、遗留问题、下一步和确认来源。不要覆盖旧记录。
 
+- 2026-09-09｜PR #5 深审（owner 贴合度复审）产出 4 项修补经 owner 跟进 PR #7 合入：F-4 审计事件与幂等记录转换原子化（stale 拒绝零审计行）、`StaleIdempotencyWriteError` 专用异常、`_status` 词边界嗅探收窄（"0 errors" 不再误判 unknown）、recovery API 清理（删 `outcome_status` 死参数、`fail_pending` 限 reserved 阶段）｜全量 `pytest -W error` 73 passed、ruff、check.mjs valid、fault matrix exit 0｜遗留：F-3 真实 connector 验收挂账 S4-B（类型启发假设已文档化）；F-8 R003 空结果语义待 owner 裁决｜下一步：owner 启动 I0 共享合同集成与 P1 集成验收｜确认来源：用户指令（深审发现由 owner 侧 PR 修补，不开新成员任务包）。
+
 - 2026-09-09｜P1 双泳道成员任务全部合入主线：B2 Evidence Adversarial（PR #4 + owner 跟进 PR #6，B2 Gate 条款 invalidated-evidence fail-open 关闭）与 A2 Runtime Hardening（PR #5，A2 Gate 条款 F-1 跨进程 TOCTOU、F-2 phase-aware recovery、F-3 失败分类关闭）｜owner 在合并结果上独立复现：全量 `pytest -W error` 69 passed、ruff 通过、check.mjs 账本校验 valid、fault matrix 6 场景 `overall_passed=true`（schema `p1-a2-fault-matrix/v1`）｜遗留：P1 端到端集成验收（I0–I4）未执行；`recover_pending` 的 `outcome_status` 参数已成死参数待清理；注册表 P1-A/P1-B/P1-A2/P1-B2 行已同步为 integrated｜下一步：负责人执行 I0 共享合同集成与 P1 集成验收｜确认来源：用户指令（不打回成员，由 owner 直接补账本、修复问题并合并）。
 
 - 2026-09-04｜冻结 P1 双 worktree 实施基线｜P1-A/P1-B 任务包、UD-006、UD-007、P1-WORKTREE-TASK-PLAN 已准备；遗留：成员尚未实施，`.ai-team/TASK.md` 与本节点已同步｜下一步：成员填写 L3 并开始编码｜确认来源：用户本轮分发指令。

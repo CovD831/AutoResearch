@@ -13,7 +13,7 @@
 |---|---|---|---|---|---|---|---|---|
 | P1-A-RUNTIME-RECOVERY | P1/S1 | runtime | merged via PR #2 | integrated | — | — | — | P1-A2 |
 | P1-B-EVIDENCE-PIPELINE | P1/S1 | evidence/domain | merged via PR #1 | integrated | — | — | P1-A | P1-B2 |
-| P1-A2-RUNTIME-HARDENING | P1/S1 | runtime | `codex/p1-a2-runtime-hardening` merged via PR #5 | integrated | P1-A | P1-A | — | S2-A |
+| P1-A2-RUNTIME-HARDENING | P1/S1 | runtime | `codex/p1-a2-runtime-hardening` merged via PR #5 + owner follow-up PR #7 | integrated | P1-A | P1-A | — | S2-A |
 | P1-B2-EVIDENCE-ADVERSARIAL | P1/S1 | evidence/domain | `codex/p1-evidence-adversarial` merged via PR #4 + owner follow-up | integrated | P1-B | P1-B | — | S2-B |
 | S2-A-AUDIT-RUNTIME | S2 | runtime | reserved | waiting-for-gate | P1 promotion | S1 promotion | — | S3-A |
 | S2-B-AUDIT-EVIDENCE | S2 | evidence/domain | reserved | waiting-for-gate | P1 promotion | S1 promotion | — | S3-B |
