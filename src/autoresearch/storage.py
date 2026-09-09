@@ -374,6 +374,21 @@ class RecordStore:
         }
         self._update_idempotent_if_current(scope, key, previous_json, record, events)
 
+    def delete_idempotent(self, scope: str, key: str) -> bool:
+        """Delete a durable invocation record (pending-recovery escape hatch, F-9).
+
+        Only callers that can prove the abandoned invocation had no external
+        side effects may reclaim a record this way (e.g. the offline Audit
+        runtime). Returns True when a record was removed.
+        """
+
+        with self._lock, self.connection() as connection:
+            cursor = connection.execute(
+                "DELETE FROM idempotency WHERE scope=? AND idempotency_key=?",
+                (scope, key),
+            )
+        return cursor.rowcount == 1
+
     def list_idempotent(self, scope: str | None = None) -> list[dict[str, Any]]:
         """List invocation records for parity and diagnostics."""
 

@@ -154,3 +154,43 @@ def test_selftest_runs_offline_scenario():
     assert payload["receipt_status"] == "completed"
     assert payload["verdict_count"] >= 1
     assert payload["report"]["receipt"]["status"] == "completed"
+
+
+def test_audit_reclaims_crashed_pending_invocation(tmp_path: Path):
+    """F-9: a crashed pending audit invocation is reclaimed, not poisoned.
+
+    Audit has no external side effects before finalization, so a retry after
+    a crash between reserve and finalize must recompute deterministically
+    (fail-closed preserved), and the following retry replays.
+    """
+
+    scenario = next(item for item in _fixtures() if item["scenario_id"] == "locator_match")
+    store = RecordStore(tmp_path / "reclaim.sqlite3")
+    from autoresearch.audit_contracts import AuditInvocationRequest, audit_request_fingerprint
+
+    invocation = AuditInvocationRequest.model_validate(scenario["request"])
+    fingerprint = audit_request_fingerprint(invocation)
+    store.reserve_idempotent(
+        "audit",
+        fingerprint,
+        {
+            "request": invocation.model_dump(mode="json"),
+            "request_fingerprint": fingerprint,
+        },
+    )
+    view = BoundedEvidenceView.model_validate(scenario["evidence_view"])
+    resolver = SnapshotResolverAdapter(
+        [ResolverRecord.model_validate(item) for item in scenario["resolver_records"]],
+        snapshot_version=invocation.resolver_snapshot_version,
+    )
+
+    report = AuditRuntime(store, resolver).invoke(invocation, evidence_view=view)
+    assert report.receipt.status == AuditReceiptStatus.COMPLETED
+
+    finalized = store.get_idempotent("audit", fingerprint)
+    assert finalized is not None and finalized.get("state") == "finalized"
+
+    replay = AuditRuntime(store, resolver).invoke(invocation, evidence_view=view)
+    assert replay.receipt.status == AuditReceiptStatus.REPLAYED
+    assert replay.artifact.artifact_id == report.artifact.artifact_id
+    assert len(store.list("audit_report")) == 1

@@ -34,6 +34,16 @@ class AuditPersistencePort(Protocol):
 
     def reserve_invocation(self, scope: str, key: str, request: dict) -> bool: ...
 
+    def reclaim_invocation(
+        self, scope: str, key: str, *, project_id: str | None, reason: str
+    ) -> None:
+        """Drop a pending invocation record left behind by a crashed run (F-9).
+
+        Audit performs no external side effects before finalization, so the
+        caller may reclaim a pending record and recompute deterministically.
+        """
+        ...
+
     def save_report(self, report: AuditReport, project_id: str | None) -> None: ...
 
     def append_event(
@@ -81,6 +91,17 @@ class RecordStoreAuditPersistence:
 
     def finalize_invocation(self, scope: str, key: str, result: dict) -> None:
         self.store.finalize_idempotent(scope, key, result)
+
+    def reclaim_invocation(
+        self, scope: str, key: str, *, project_id: str | None, reason: str
+    ) -> None:
+        if self.store.delete_idempotent(scope, key):
+            self.store.append_event(
+                "audit.invocation_reclaimed",
+                {"scope": scope, "request_fingerprint": key, "reason": reason},
+                project_id=project_id,
+                actor="audit_runtime",
+            )
 
 
 class BoundedEvidenceItem(BaseModel):
@@ -493,14 +514,37 @@ class AuditRuntime:
             if existing is None:
                 raise RuntimeError("audit idempotency reservation disappeared")
             if existing.get("state") == "pending":
-                raise RuntimeError("audit invocation is already in progress")
-            if not isinstance(existing.get("result"), dict):
-                raise RuntimeError("finalized audit invocation has no replayable result")
-            report = AuditReport.model_validate(existing["result"])
-            receipt = report.receipt.model_copy(
-                update={"status": AuditReceiptStatus.REPLAYED, "updated_at": utc_now()}
-            )
-            return report.model_copy(update={"receipt": receipt})
+                # A pending record can only come from a crashed invocation:
+                # Audit performs no external side effects before finalization,
+                # so reclaim and recompute (F-9); fail-closed is preserved.
+                self.persistence.reclaim_invocation(
+                    self.scope,
+                    fingerprint,
+                    project_id=request.project_id,
+                    reason="crashed pending audit invocation reclaimed on retry",
+                )
+                reserved = self.persistence.reserve_invocation(
+                    self.scope,
+                    fingerprint,
+                    {
+                        "request": request.model_dump(mode="json"),
+                        "request_fingerprint": fingerprint,
+                    },
+                )
+                if not reserved:
+                    raise RuntimeError(
+                        "audit idempotency reservation raced after reclaim"
+                    )
+            else:
+                if not isinstance(existing.get("result"), dict):
+                    raise RuntimeError(
+                        "finalized audit invocation has no replayable result"
+                    )
+                report = AuditReport.model_validate(existing["result"])
+                receipt = report.receipt.model_copy(
+                    update={"status": AuditReceiptStatus.REPLAYED, "updated_at": utc_now()}
+                )
+                return report.model_copy(update={"receipt": receipt})
 
         view = evidence_view or BoundedEvidenceView()
         verdicts: list[AuditVerdict] = []
