@@ -12,7 +12,7 @@
 | `evidence.py` + `gates.py` | split | `evidence/`（接纳、账本、失效）与 `policy/`（gate、风险级） | facade API | evidence writer exclusivity 测试（S1） |
 | `reader_service.py` / `writing_service.py` / `execution_service.py` | adapt | `domain/` reader/writer/execution 服务（能力可替换，S3 LLM 化） | 确定性实现保留为 fallback 与 oracle | 契约级 parity（S3） |
 | `llm.py` OpenAI 兼容边界 | retain | provider capability（manifest 注册） | 不变 | — |
-| `cli.py` / `api.py` | adapt | 保留 + 新增 `audit` 子命令与 MCP stdio 入口 | 旧命令 | bounded result parity（S2） |
+| `cli.py` / `api.py` | adapt | 保留 + 新增 `audit` 子命令与 transport-agnostic JSON-lines stdio 入口 | 旧命令 | bounded result parity（S2） |
 | `contracts.py` | split | 领域记录入 `domain/`，Capability/Evidence/Receipt 契约入对应模块 | 兼容 re-export | S3 末统一清理 |
 | `state_machine.py` / `handoffs.py` | retain | Runtime/Policy 边界内 | 不变 | — |
 | `storage.py` RecordStore | retain | Persistence Port 实现（SQLite） | 不变 | — |

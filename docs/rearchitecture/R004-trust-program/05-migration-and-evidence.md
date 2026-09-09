@@ -21,10 +21,10 @@
 
 ## S2 Evidence/Audit 外化
 
-- 交付：`evidence/`、`policy/` 模块化拆分；`audit/` Audit Module；`autoresearch audit` CLI 子命令；stdio MCP server 入口。
+- 交付：`evidence/`、`policy/` 模块化拆分；`audit/` Audit Module；`autoresearch audit` CLI 子命令；transport-agnostic 的 JSON-lines stdio 入口。
 - fixture：`fixtures/audit/citations.jsonl` —— 标注集：真实引用、编造引用（占位作者/残缺 ID/Frankenstein 拼接）、已撤稿条目、有更正条目；标签为 ground truth。外部来源优先（公开撤稿清单、GPTZero 失败类型分类），自造样本须标注 provenance。
 - oracle：存在性/撤稿类 verdict 与标签 100% 一致（确定性类别）；locator 一致性 `model_assisted` 类别报告一致率与阈值（conditional，实现时冻结阈值）。
-- 命令：`python -m pytest tests/test_audit_module.py`；MCP stdio 冒烟：`python -m autoresearch.mcp --selftest`。
+- 命令：`python -m pytest tests/test_audit_module.py`；Audit stdio 冒烟：`python -m autoresearch.audit_stdio --selftest`。
 - 晋级证据：fixture 检出报告 + 离线场景全部 verdict=unknown（fail-closed 证明）。
 - 中止：确定性类别出现 fail-open（网络不可达却判 pass/fail）→ 阻断发布。
 
