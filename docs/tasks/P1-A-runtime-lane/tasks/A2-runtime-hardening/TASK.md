@@ -1,7 +1,7 @@
 # A2 Runtime Hardening
 
 - ID：`P1-A2-RUNTIME-HARDENING`
-- 状态：`active`
+- 状态：`integrated`
 - Owner：`member A`
 - Next owner：`user/team`
 - Branch：`codex/p1-a2-runtime-hardening`
@@ -38,6 +38,7 @@
 - [x] 完成故障注入和回归实现。
 - [x] 完成用户可运行验收。
 - [x] 准备第二个 PR 材料。
-- [ ] 完成 commit、push 和第二个 PR。
+- [x] 完成 commit、push 和第二个 PR。
+- [x] Owner 审查合并（2026-09-09，PR #5 → merge commit `4b7c7fa`）；owner 在合并结果上复现 69 passed 与 fault matrix。
 
-> 实现、自动化验证和用户 fault matrix 验收已完成；commit、push 和 PR 仍待本次流程完成。
+> 实现、自动化验证、用户 fault matrix 验收与主线集成已完成。

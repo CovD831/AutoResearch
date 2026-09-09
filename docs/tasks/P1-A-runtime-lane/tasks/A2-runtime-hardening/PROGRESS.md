@@ -9,6 +9,7 @@
 | 2026-09-08 | active | 完成 A2 生产修复、故障矩阵、诊断命令和常规回归；F-1/F-2/F-3 均有对应实现与 pytest | `src/autoresearch/storage.py`、`src/autoresearch/capability.py`、`tests/a2_runtime_fixtures.py`、`tests/test_runtime_hardening.py`、`docs/rearchitecture/worktrees/A-runtime-hardening/a2_fault_matrix.py`；全量 pytest：`48 passed in 73.32s`；fault matrix：6 场景 `overall_passed=true`，退出码 `0` | 用户最终验收和报告复核尚未完成；A1 mutation acceptance 因本地生产改动被脚本拒绝运行 | 用户运行 fault matrix 和专项测试，确认结果后准备 A2 PR 材料 |
 | 2026-09-08 | active | 完成实现收尾和交接材料；九项功能验收条款已勾选，保留用户验收门禁 | `TASK.md`、`L3.md`、`HANDOFF.md`、`PROGRESS.md`；自动化证据沿用上行记录 | `.a2-pytest-temp/` 是测试临时目录，未能由受限清理命令删除，明确不纳入提交；用户完整 fault matrix 尚未运行 | 执行 `node .ai-team/check.mjs --base origin/main`，再交给用户运行最终命令 |
 | 2026-09-08 | handoff-prep | 用户已运行完整 fault matrix，六个场景全部通过并确认开始 PR；A2 独立任务记录和 PR 草稿已准备 | 用户实际报告：`overall_passed=true`、退出码 `0`；PR 草稿和暂存清单保存在 F 盘项目笔记目录 | 全局 `.ai-team/TASK.md` 按用户确认排除在 A2 PR 外；`.a2-pytest-temp/` 与 fault matrix 生成 SQLite/日志不纳入提交 | 按暂存清单 stage，运行 task-local check，提交并推送 A2 分支，然后创建 PR |
+| 2026-09-09 | integrated | Owner 审查合并 PR #5：F-1 CAS-on-snapshot、F-2 phase 决策表、F-3 分类与 diagnostics 均与冻结 L3 一致；分支基于 `c1dbefc`，与 PR #4/#6 后的 main 干净合并 | Owner approve 记录在 PR #5；合并结果上独立复现：全量 `69 passed`、ruff 通过、check.mjs `--task` valid（8/8）、fault matrix 6 场景 `overall_passed=true` | `recover_pending` 的 `outcome_status` 参数在 phase 决策下已成死参数（API 清理归 owner 后续）；P1-A 注册表行同步修正 | Project-to-Act 进度历史、注册表与共享 TASK.md 由 owner 同步 |
 
 ## 记录规则
 

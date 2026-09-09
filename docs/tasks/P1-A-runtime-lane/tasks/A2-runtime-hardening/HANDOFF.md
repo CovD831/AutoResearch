@@ -6,6 +6,7 @@
 - Branch：`codex/p1-a2-runtime-hardening`
 - Base revision：`c1dbefc`
 - Handoff revision：提交前暂存快照（commit 后以 Git revision 为准）
+- 实际 revision：PR head `0730570`（A2）；合并 commit `4b7c7fa`（2026-09-09，PR #5，owner 在合并结果上复核通过）
 
 ## 必填内容
 

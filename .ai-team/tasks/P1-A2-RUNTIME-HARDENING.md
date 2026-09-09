@@ -2,7 +2,7 @@
 
 - ID: `P1-A2-RUNTIME-HARDENING`
 - Title: `Runtime Hardening`
-- Status: `active`
+- Status: `integrated`
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -64,8 +64,10 @@
 - [x] 全量 `pytest -W error -q`
 - [x] A2 fault matrix / diagnostic report 可重跑
 - [x] `node .ai-team/check.mjs --task .ai-team/tasks/P1-A2-RUNTIME-HARDENING.md --base origin/main`
+- [x] Owner 复核（2026-09-09，PR #5 审查）：在 PR 与最新 main 的合并结果上独立复现——全量 `pytest -W error` `69 passed`（main 55 + A2 14，无测试丢失）、ruff 通过、check.mjs `--task` `valid`（8/8 验收项）、fault matrix 重跑 exit 0 / `overall_passed=true` / 6 场景 `side_effect_count=1`。
 
 ## Handoff note
 
 - 当前仍在 `active`，尚未标记 `done`，等待 PR 审查和主线集成。
 - 用户验收已通过；当前只提交 A2 独立任务记录和代码，不修改全局 `.ai-team/TASK.md`，不扩大到 P1-B。
+- Owner 集成（2026-09-09）：PR #5 已审查合并（merge commit `4b7c7fa`，含与 PR #4/#6 后 main 的干净合并）；本账本状态更新为 `integrated`。`done`/`accepted` 留待 P1 集成验收（I0–I4）按 Promotion Gate 判定。

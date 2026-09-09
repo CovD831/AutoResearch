@@ -35,6 +35,7 @@
 - [ ] 负责人完成 I0–I4 集成任务，并将 `MVP-CLOSED-MINIMAL-E2E` 标记为 accepted。
 - [x] 2026-09-07 owner 深度审查（PR #1/#2）发现项已落入 B2/A2 泳道 TASK-SPECS 作为 Gate 条款：B2 Gate 阻断项为 invalidated-evidence fail-open；A2 吸纳跨进程 TOCTOU、phase-aware recovery 与失败标签收窄。
 - [x] 2026-09-08 P1-B2 Evidence Adversarial 已实现并合入主线（PR #4 + owner 跟进修复），B2 Gate 阻断项 invalidated-evidence fail-open 已关闭；成员账本由 owner 按 D-SYNC-01 补齐至 `.ai-team/tasks/`。
+- [x] 2026-09-09 P1-A2 Runtime Hardening 已实现并合入主线（PR #5）：F-1 跨进程 TOCTOU（SQLite 条件更新拒绝 stale writer）、F-2 phase-aware recovery（按 durable phase 决策收口）、F-3 确定性失败与 unknown_outcome 分离均已关闭；owner 在合并结果上复现 69 passed 与 fault matrix（6 场景 `overall_passed=true`）。
 
 ## Invariants
 
