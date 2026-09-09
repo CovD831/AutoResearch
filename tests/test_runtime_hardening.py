@@ -26,7 +26,7 @@ from a2_runtime_fixtures import (
 
 from autoresearch.capability import PaperSearchCapabilityAdapter, UnknownProviderError
 from autoresearch.invocation_contracts import InvocationPhase, InvocationStatus, request_fingerprint
-from autoresearch.storage import RecordStore
+from autoresearch.storage import RecordStore, StaleIdempotencyWriteError
 
 
 def test_crash_after_service_started_is_reproducible(tmp_path: Path):
@@ -160,7 +160,6 @@ def test_recovery_uses_reserved_phase_for_deterministic_failure(tmp_path: Path):
         request.run_id,
         request.invocation_id,
         reason="restart before connector start",
-        outcome_status=InvocationStatus.UNKNOWN_OUTCOME,
     )
 
     assert recovered.receipt.outcome_status == InvocationStatus.FAILED
@@ -187,7 +186,6 @@ def test_recovery_uses_service_started_phase_for_unknown(tmp_path: Path):
         request.run_id,
         request.invocation_id,
         reason="restart after connector start",
-        outcome_status=InvocationStatus.FAILED,
     )
 
     assert recovered.receipt.outcome_status == InvocationStatus.UNKNOWN_OUTCOME
@@ -241,10 +239,106 @@ def test_cross_process_stale_writer_cannot_overwrite_finalized_record(tmp_path: 
     process.join(timeout=30)
 
     assert process.exitcode == 0
-    assert result_queue.get(timeout=5)["exception"] == "RuntimeError"
+    assert result_queue.get(timeout=5)["exception"] == "StaleIdempotencyWriteError"
     final_record = store.get_idempotent("paper_search", key)
     assert compact_record(final_record)["state"] == "finalized"
     assert compact_record(final_record)["phase"] == InvocationPhase.FINALIZED.value
+
+
+def test_stale_write_rejection_leaves_no_audit_rows(tmp_path: Path):
+    store = RecordStore(tmp_path / "atomic.sqlite3")
+    request = request_for("atomic")
+    key = f"{request.run_id}:{request.invocation_id}"
+    store.reserve_idempotent(
+        "paper_search",
+        key,
+        {**request.model_dump(mode="json"), "request_fingerprint": request_fingerprint(request)},
+    )
+    stale_json = store._json(store.get_idempotent("paper_search", key))
+
+    store.mark_idempotent_phase(
+        "paper_search",
+        key,
+        InvocationPhase.SERVICE_STARTED.value,
+        events=[
+            (
+                "capability.service_started",
+                {"invocation_id": request.invocation_id},
+                request.project_id,
+                "capability_adapter",
+            )
+        ],
+    )
+    events_after_winner = store.events(request.project_id)
+
+    stale_record = json.loads(stale_json)
+    stale_record["phase"] = InvocationPhase.SERVICE_RETURNED.value
+    stale_record["updated_at"] = "stale-writer"
+
+    with pytest.raises(StaleIdempotencyWriteError):
+        store._update_idempotent_if_current(
+            "paper_search",
+            key,
+            stale_json,
+            stale_record,
+            events=[
+                (
+                    "capability.stale_writer_event",
+                    {"invocation_id": request.invocation_id},
+                    request.project_id,
+                    "stale-writer",
+                )
+            ],
+        )
+
+    assert store.events(request.project_id) == events_after_winner
+
+
+def test_fail_pending_is_rejected_once_service_started(tmp_path: Path):
+    store = RecordStore(tmp_path / "fail-pending.sqlite3")
+    service = FixtureService(papers=[paper()])
+    adapter = PaperSearchCapabilityAdapter(service, store)
+    request = request_for("fail-pending-guard")
+    key = f"{request.run_id}:{request.invocation_id}"
+    store.reserve_idempotent(
+        adapter.scope,
+        key,
+        {**request.model_dump(mode="json"), "request_fingerprint": request_fingerprint(request)},
+    )
+    store.mark_idempotent_phase(adapter.scope, key, InvocationPhase.SERVICE_STARTED.value)
+
+    with pytest.raises(RuntimeError, match="cannot prove a missing side effect"):
+        adapter.fail_pending(
+            request.run_id,
+            request.invocation_id,
+            reason="caller wants failed",
+        )
+
+    assert service.calls == 0
+
+
+def test_status_sniffing_ignores_error_inside_counts(tmp_path: Path):
+    store = RecordStore(tmp_path / "sniff.sqlite3")
+    adapter = PaperSearchCapabilityAdapter(
+        FixtureService(papers=[], diagnostics=["0 errors recorded across connectors"]),
+        store,
+    )
+
+    result = adapter.invoke(request_for("sniff-healthy"))
+
+    assert result.receipt.outcome_status == InvocationStatus.COMPLETED_EMPTY
+
+
+def test_status_sniffing_flags_real_uncertain_diagnostics(tmp_path: Path):
+    store = RecordStore(tmp_path / "sniff-uncertain.sqlite3")
+    adapter = PaperSearchCapabilityAdapter(
+        FixtureService(papers=[], diagnostics=["openalex: disabled by configuration"]),
+        store,
+    )
+
+    result = adapter.invoke(request_for("sniff-uncertain"))
+
+    assert result.receipt.outcome_status == InvocationStatus.UNKNOWN_OUTCOME
 
 
 def test_fault_matrix_command_writes_diagnostic_report(tmp_path: Path):

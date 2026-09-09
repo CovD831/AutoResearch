@@ -112,7 +112,7 @@ def _partial_write_child_script() -> str:
         )
         original_finalize = store.finalize_idempotent
 
-        def crash_before_finalize(scope, key, result):
+        def crash_before_finalize(scope, key, result, *args, **kwargs):
             os._exit(int(sys.argv[2]))
 
         store.finalize_idempotent = crash_before_finalize
@@ -298,16 +298,18 @@ class FixtureService:
         *,
         papers: list[PaperRecord] | None = None,
         error: Exception | None = None,
+        diagnostics: list[str] | None = None,
     ):
         self.papers = list(papers or [])
         self.error = error
+        self.diagnostics = list(diagnostics or [])
         self.calls = 0
 
     def search(self, project_id, queries, *, seed_papers=None, per_connector_limit=5):
         self.calls += 1
         if self.error is not None:
             raise self.error
-        return SearchOutcome(papers=list(self.papers), diagnostics=[])
+        return SearchOutcome(papers=list(self.papers), diagnostics=list(self.diagnostics))
 
 
 def request_for(invocation_id: str) -> PaperSearchRequest:

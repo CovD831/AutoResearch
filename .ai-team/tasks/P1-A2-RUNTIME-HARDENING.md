@@ -46,6 +46,7 @@
 - 已完成 F-3 不确定异常分类和 diagnostics 原因保留。
 - 已完成可重跑 fault matrix 命令和 JSON 报告。
 - 已完成全量 Ruff 和 pytest 验证：`48 passed`。
+- Owner 深审跟进（2026-09-09，贴合度复审后）：F-4 审计原子化（事件并入记录转换事务）、`StaleIdempotencyWriteError`、`_status` 词边界嗅探、recovery API 清理（删 `outcome_status` 死参数、`fail_pending` 限 reserved）；F-3 真实 connector 验收挂账 S4-B。
 
 ## Pending
 
@@ -65,6 +66,7 @@
 - [x] A2 fault matrix / diagnostic report 可重跑
 - [x] `node .ai-team/check.mjs --task .ai-team/tasks/P1-A2-RUNTIME-HARDENING.md --base origin/main`
 - [x] Owner 复核（2026-09-09，PR #5 审查）：在 PR 与最新 main 的合并结果上独立复现——全量 `pytest -W error` `69 passed`（main 55 + A2 14，无测试丢失）、ruff 通过、check.mjs `--task` `valid`（8/8 验收项）、fault matrix 重跑 exit 0 / `overall_passed=true` / 6 场景 `side_effect_count=1`。
+- [x] Owner 跟进后（2026-09-09）：全量 `73 passed`（新增 F-4 原子性、嗅探收窄、fail_pending 守卫等 4 测试）、ruff 通过、check.mjs `valid`、fault matrix exit 0。
 
 ## Handoff note
 

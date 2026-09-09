@@ -24,6 +24,14 @@
   - **[必须关闭] F-2/`recover_pending` 语义**：`recover_pending` 不区分 phase 一律按 FAILED 处理，"service-started 中断 → unknown_outcome" 仅靠调用方约定。A2 需把 phase 感知恢复下沉到 recovery 本体，并以 fault-injection 测试固定。
   - **[必须关闭] F-3 失败标签过宽**：非 timeout 异常一律收口为 `failed`，把"不确定"标成"确定失败"。A2 需区分确定性失败与未知结果（对齐 A1 文档的 unknown_outcome 语义）。
   - **[测试] 非法 phase 转换测试不在常规 pytest 套件**：仅存在于验收脚本。A2 需把 phase guard、TOCTOU 等关键回归纳入 `pytest` 常规路径。
+- **Owner 深审跟进（2026-09-09，PR #5 合并后贴合度复审）**：
+  - **[已关闭] F-4 审计事件与记录转换非原子**：owner 跟进 PR 把 audit 事件写入并入 `reserve_idempotent`/`mark_idempotent_phase`/`finalize_idempotent` 的同一事务（事件列表参数），stale 拒绝时不产生审计行，并有 pytest 原子性回归。
+  - **[已关闭] F-5**：A2 已顺带把非法 phase 转换测试纳入常规 pytest。
+  - **[已关闭] stale 拒绝专用异常**：新增 `StaleIdempotencyWriteError`（RuntimeError 子类），跨进程 stale writer 测试改断言该类型。
+  - **[已关闭] recovery API 语义债**：`recover_pending` 删除 `outcome_status` 死参数（phase 唯一决策源）；`fail_pending` 限定仅 `reserved` 阶段可用（provably no side effect），其余阶段抛错指向 `recover_pending`。
+  - **[已关闭] `_status` 诊断嗅探收窄**：关键词匹配改为词边界匹配，"0 errors" 等计数表述不再误判为 unknown_outcome。
+  - **[挂账 S4-B 真实试点前] F-3 真实 connector 验收**：异常→状态分类目前是类型启发，其正确性依赖隐含假设"legacy connector 的非 OSError 异常只发生在外部调用前"（响应解析期异常会被误标 failed）。该假设已在此文档化；真实 connector 接入时必须按真实异常面复验分类边界，作为 S4-B/真实论文试点的验收前置，结果回写本节。
+  - **[挂账 owner] F-8 R003 空结果语义回写**：仍待 owner 裁决，非 A lane 范围。
 
 ## A3 — S2 Audit Runtime
 
