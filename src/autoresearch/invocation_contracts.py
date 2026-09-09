@@ -8,7 +8,22 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from autoresearch.contracts import PaperRecord, new_id, utc_now
+from autoresearch.contracts import (
+    EvidenceCandidate,
+    PaperRecord,
+    utc_now,
+)
+
+__all__ = [
+    "EvidenceCandidate",
+    "InvocationPhase",
+    "InvocationReceipt",
+    "InvocationStatus",
+    "PaperSearchInvocation",
+    "PaperSearchRequest",
+    "CapabilityManifest",
+    "request_fingerprint",
+]
 
 
 class InvocationStatus(StrEnum):
@@ -45,22 +60,6 @@ class PaperSearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
     limit: int = Field(default=5, ge=1, le=100)
     seed_papers: list[PaperRecord] = Field(default_factory=list, max_length=100)
-
-
-class EvidenceCandidate(BaseModel):
-    candidate_id: str = Field(default_factory=lambda: new_id("candidate"))
-    evidence_id: str | None = None
-    project_id: str
-    run_id: str
-    invocation_id: str
-    claim: str = Field(min_length=1, max_length=2000)
-    source_id: str | None = None
-    source_uri: str | None = None
-    locator: str = Field(default="bibliographic record/abstract", max_length=300)
-    independent_source: str = Field(min_length=1, max_length=300)
-    checksum: str | None = None
-    adapter: str = Field(min_length=1, max_length=100)
-    adapter_version: str = Field(min_length=1, max_length=50)
 
 
 class InvocationReceipt(BaseModel):

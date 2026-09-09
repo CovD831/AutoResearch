@@ -105,6 +105,36 @@ class ArtifactRef(BaseModel):
     summary: str = Field(default="", max_length=500)
 
 
+class EvidenceCandidate(BaseModel):
+    """Cross-lane evidence candidate (I0 shared contract, D-I0-01).
+
+    Produced by capability invocation boundaries (runtime lane: provenance
+    fields) and consumed by the evidence admission pipeline (evidence lane:
+    classification fields). ``evidence_type``/``grade`` stay optional because
+    R005 forbids the runtime lane from assigning evidence grades; admission
+    rejects candidates that lack the classification it needs.
+    """
+
+    candidate_id: str = Field(default_factory=lambda: new_id("evcand"))
+    evidence_id: str | None = None
+    project_id: str
+    run_id: str | None = None
+    invocation_id: str | None = None
+    evidence_type: EvidenceType | None = None
+    grade: EvidenceGrade | None = None
+    title: str | None = Field(default=None, max_length=300)
+    claim: str = Field(min_length=1, max_length=2000)
+    source_uri: str | None = None
+    source_id: str | None = None
+    locator: str | None = Field(default=None, max_length=300)
+    checksum: str | None = None
+    independent_source: str = Field(min_length=1, max_length=300)
+    adapter: str | None = Field(default=None, max_length=100)
+    adapter_version: str | None = Field(default=None, max_length=50)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class EvidenceItem(BaseModel):
     evidence_id: str = Field(default_factory=lambda: new_id("ev"))
     project_id: str

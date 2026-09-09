@@ -2,16 +2,22 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
 
 from pydantic import BaseModel, Field
 
 from autoresearch.contracts import (
     ArtifactRef,
-    EvidenceGrade,
-    EvidenceType,
     new_id,
     utc_now,
+)
+from autoresearch.contracts import (
+    EvidenceCandidate as EvidenceCandidate,
+)
+from autoresearch.contracts import (
+    EvidenceGrade as EvidenceGrade,
+)
+from autoresearch.contracts import (
+    EvidenceType as EvidenceType,
 )
 
 
@@ -36,22 +42,6 @@ class ValidationVerdict(StrEnum):
     VERIFIED = "verified"
     REVISE = "revise"
     BLOCKED = "blocked"
-
-
-class EvidenceCandidate(BaseModel):
-    candidate_id: str = Field(default_factory=lambda: new_id("evcand"))
-    project_id: str
-    evidence_type: EvidenceType
-    grade: EvidenceGrade
-    title: str = Field(min_length=1, max_length=300)
-    claim: str = Field(min_length=1, max_length=2000)
-    source_uri: str | None = None
-    source_id: str | None = None
-    locator: str | None = None
-    checksum: str | None = None
-    independent_source: str = Field(min_length=1, max_length=300)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=utc_now)
 
 
 class EvidenceAdmissionResult(BaseModel):

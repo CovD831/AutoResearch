@@ -21,7 +21,7 @@
 | S3-B-READER-WRITER-PORTS | S3 | evidence/domain | reserved | planned | S2 promotion | S2 promotion | — | S4-B |
 | S4-A-BENCHMARK-HARNESS | S4 | runtime | reserved | planned | S3 promotion | S3 promotion | — | — |
 | S4-B-REAL-PILOT | S4 | evidence/domain | reserved | planned | S3 promotion | S3 promotion | — | — |
-| I0-SHARED-CONTRACT-INTEGRATION | MVP | integration/lead | `main` | planned | P1-A + P1-B | P1-A, P1-B | I1 | — |
+| I0-SHARED-CONTRACT-INTEGRATION | MVP | integration/lead | `main` | integrated | P1-A + P1-B | P1-A, P1-B | I1 | — |
 | I1-PIPELINE-ORCHESTRATION | MVP | integration/lead | `main` | planned | I0 | I0 | I2 | — |
 | I2-MAINLINE-E2E-AND-PROMOTION | MVP | integration/lead | `main` | planned | I1 | I1 | I3 | — |
 | I3-PROJECT-LEDGER-CLOSURE | MVP | integration/lead | `main` | planned | I2 | I2 | I4 | — |

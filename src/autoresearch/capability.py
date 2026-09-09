@@ -100,6 +100,7 @@ class PaperSearchCapabilityAdapter:
                     claim=f"Bibliographic record exists for: {paper.title}",
                     source_id=paper.paper_id,
                     source_uri=paper.url,
+                    locator="bibliographic record/abstract",
                     independent_source=independent_source,
                     adapter=self.manifest.name,
                     adapter_version=self.manifest.version,

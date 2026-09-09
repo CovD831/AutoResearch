@@ -37,6 +37,7 @@
 - [x] 2026-09-08 P1-B2 Evidence Adversarial 已实现并合入主线（PR #4 + owner 跟进修复），B2 Gate 阻断项 invalidated-evidence fail-open 已关闭；成员账本由 owner 按 D-SYNC-01 补齐至 `.ai-team/tasks/`。
 - [x] 2026-09-09 P1-A2 Runtime Hardening 已实现并合入主线（PR #5）：F-1 跨进程 TOCTOU（SQLite 条件更新拒绝 stale writer）、F-2 phase-aware recovery（按 durable phase 决策收口）、F-3 确定性失败与 unknown_outcome 分离均已关闭；owner 在合并结果上复现 69 passed 与 fault matrix（6 场景 `overall_passed=true`）。
 - [x] 2026-09-09 A2 owner 跟进（PR #7）关闭 PR #5 深审发现项：F-4 审计事件并入记录转换事务（原子）、`StaleIdempotencyWriteError`、`_status` 词边界嗅探收窄、recovery API 清理（删死参数、`fail_pending` 限 reserved）；F-3 真实 connector 验收挂账 S4-B，F-8 挂账 owner。
+- [x] 2026-09-09 I0 共享合同集成完成：审计确认 `EvidenceCandidate` 是唯一跨 lane 同名漂移（A/B 字段集几乎不相交），统一为 `contracts.py` 超集类型（D-I0-01），两 lane re-export 兼容，新增 I0 组合测试（A 线 invocation 候选 → B 线准入贯通 + 单类断言）；全量 `75 passed`、ruff、check.mjs valid。
 
 ## Invariants
 
@@ -55,6 +56,7 @@
 - UD-006：首个产品切片为证据约束的 Evaluation Section Pipeline；首版只支持一种论文类型。
 - UD-007：成员可在各自 worktree 自行编写 task-local L3 并直接实施，无需先提交 L3 等待批准。
 - D-SYNC-01：成员 PR 以 `.ai-team/tasks/<TASK-ID>.md` 账本满足 repo-task-sync 同步检查；`check.mjs` 接受任意变更的成员账本作为有效 ledger，共享 `.ai-team/TASK.md` 集成队列仍由负责人维护（2026-09-08，PR #4 审查后落地，修复成员账本在 `docs/tasks/` 下被机器人无视的死锁）。
+- D-I0-01：`EvidenceCandidate` 统一为共享 `contracts.py` 中的超集类型，`invocation_contracts.py` 与 `pipeline_contracts.py` 以 re-export 保持兼容（I0 共享合同集成）。统一前 A/B 两 lane 各有同名不同字段的定义（A 带调用溯源、B 带证据分类）。`grade`/`evidence_type` 为 Optional：R005 禁止 runtime lane 定证据评级，分类由 evidence lane 准入时提供；`locator` 统一 Optional，A 侧检索候选显式传占位 locator，B 侧准入维持 fail-closed 拒空。
 
 ## Completed
 
