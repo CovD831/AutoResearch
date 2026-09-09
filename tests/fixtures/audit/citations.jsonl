@@ -1,0 +1,4 @@
+{"citation_id":"cite-current","source_id":"paper-current","source_uri":"https://example.invalid/paper-current","label":"pass","status":"current","provenance":"synthetic offline fixture"}
+{"citation_id":"cite-fabricated","source_id":"paper-fabricated","source_uri":"https://example.invalid/paper-fabricated","label":"fail","status":"missing","provenance":"synthetic offline fixture"}
+{"citation_id":"cite-retracted","source_id":"paper-retracted","source_uri":"https://example.invalid/paper-retracted","label":"fail","status":"retracted","provenance":"synthetic offline fixture"}
+{"citation_id":"cite-corrected","source_id":"paper-corrected","source_uri":"https://example.invalid/paper-corrected","label":"pass-with-relation","status":"corrected","related_source_ids":["paper-v2"],"provenance":"synthetic offline fixture"}

@@ -1,0 +1,41 @@
+{
+  "task_id": "S2-B-AUDIT-EVIDENCE",
+  "phase": "S2",
+  "owner_lane": "evidence/domain",
+  "status": "tested",
+  "base_ref": "main@dad4658",
+  "branch": "codex/s2-audit-evidence",
+  "depends_on": [
+    "P1-B2-EVIDENCE-ADVERSARIAL",
+    "S1-promotion"
+  ],
+  "allowed_paths": [
+    "src/autoresearch/audit.py",
+    "tests/test_audit_module.py",
+    "tests/fixtures/audit/citations.jsonl",
+    "docs/tasks/P1-B-evidence-lane/tasks/B3-audit-evidence/"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/application.py",
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/capability.py",
+    "src/autoresearch/gates.py",
+    "src/autoresearch/cli.py",
+    "src/autoresearch/api.py",
+    "src/autoresearch/reader_service.py",
+    "src/autoresearch/writing_service.py",
+    ".project-to-act/",
+    ".ai-team/TASK.md"
+  ],
+  "deliverables": [
+    "AuditVerdict and AuditReport",
+    "versioned offline resolver/corpus snapshots",
+    "citation/status/locator/evidence reconciliation rules",
+    "unverified claim reporting",
+    "in-runtime candidate reconciliation and standalone mode",
+    "offline audit fixture and tests",
+    "L3, progress, handoff, and verification records"
+  ],
+  "next_step": "owner review, commit, push, and pull request"
+}
