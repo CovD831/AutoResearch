@@ -43,6 +43,8 @@
 
 按时间倒序追加：日期、完成事项、证据 ID、遗留问题、下一步和确认来源。不要覆盖旧记录。
 
+- 2026-09-09｜I1 Pipeline Orchestration 完成（owner 主线任务）：`PaperSearchAgent` 搜索路径接入 A2 可靠调用边界（`InvocationBoundedSearchPort`——确定性幂等键、重复调用 replay、pending 自动 phase-driven 恢复、failed/unknown receipt 持久化，重试策略归 audit lane）；application 新增 `run_evaluation_section` 编排入口（五步编排，blocked 短路保持 B1 语义）｜全量 `pytest -W error` 80 passed、ruff、check.mjs valid（+5 编排测试）｜遗留：I2 主线最小 E2E 场景与 S1 promotion 未执行；failed receipt 重试策略归 audit lane｜下一步：I2 Mainline E2E and Promotion Gate｜确认来源：用户指令（成员 P1 已全部完成，S2 系列卡 S1 promotion，集成线是关键路径）。
+
 - 2026-09-09｜I0 共享合同集成完成（owner 主线任务）：审计确认 `EvidenceCandidate` 为唯一跨 lane 同名漂移并统一至 `contracts.py` 超集类型（D-I0-01，grade/locator 语义按 R005 与 B2 fail-closed 保留），`invocation_contracts`/`pipeline_contracts` re-export 兼容；新增 I0 组合测试（A 线 invocation 候选 → B 线准入贯通 + 单类断言）｜全量 `pytest -W error` 75 passed、ruff 通过、check.mjs valid｜遗留：I1 需把 `PaperSearchCapabilityAdapter` 接入 application 搜索路径并暴露 evaluation pipeline 编排入口；I2 主线最小 E2E 与 S1 promotion 未做｜下一步：I1 Pipeline Orchestration｜确认来源：用户指令（启动 I0–I4 集成）。
 
 - 2026-09-09｜PR #5 深审（owner 贴合度复审）产出 4 项修补经 owner 跟进 PR #7 合入：F-4 审计事件与幂等记录转换原子化（stale 拒绝零审计行）、`StaleIdempotencyWriteError` 专用异常、`_status` 词边界嗅探收窄（"0 errors" 不再误判 unknown）、recovery API 清理（删 `outcome_status` 死参数、`fail_pending` 限 reserved 阶段）｜全量 `pytest -W error` 73 passed、ruff、check.mjs valid、fault matrix exit 0｜遗留：F-3 真实 connector 验收挂账 S4-B（类型启发假设已文档化）；F-8 R003 空结果语义待 owner 裁决｜下一步：owner 启动 I0 共享合同集成与 P1 集成验收｜确认来源：用户指令（深审发现由 owner 侧 PR 修补，不开新成员任务包）。

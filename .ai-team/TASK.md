@@ -38,6 +38,7 @@
 - [x] 2026-09-09 P1-A2 Runtime Hardening 已实现并合入主线（PR #5）：F-1 跨进程 TOCTOU（SQLite 条件更新拒绝 stale writer）、F-2 phase-aware recovery（按 durable phase 决策收口）、F-3 确定性失败与 unknown_outcome 分离均已关闭；owner 在合并结果上复现 69 passed 与 fault matrix（6 场景 `overall_passed=true`）。
 - [x] 2026-09-09 A2 owner 跟进（PR #7）关闭 PR #5 深审发现项：F-4 审计事件并入记录转换事务（原子）、`StaleIdempotencyWriteError`、`_status` 词边界嗅探收窄、recovery API 清理（删死参数、`fail_pending` 限 reserved）；F-3 真实 connector 验收挂账 S4-B，F-8 挂账 owner。
 - [x] 2026-09-09 I0 共享合同集成完成：审计确认 `EvidenceCandidate` 是唯一跨 lane 同名漂移（A/B 字段集几乎不相交），统一为 `contracts.py` 超集类型（D-I0-01），两 lane re-export 兼容，新增 I0 组合测试（A 线 invocation 候选 → B 线准入贯通 + 单类断言）；全量 `75 passed`、ruff、check.mjs valid。
+- [x] 2026-09-09 I1 Pipeline Orchestration 完成：`PaperSearchAgent` 搜索路径改经 `InvocationBoundedSearchPort`（A2 幂等边界——同 (project, query, limit, seeds) 确定性幂等键，重复调用 replay、pending 崩溃记录自动 phase-driven 恢复、failed/unknown receipt 持久化，重试策略归 audit lane）；application 新增 `run_evaluation_section` 编排入口（plan→benchmark→readiness→draft→validate 五步，blocked 短路保持 B1 语义）；新增 5 个编排测试。全量 `80 passed`、ruff、check.mjs valid。
 
 ## Invariants
 

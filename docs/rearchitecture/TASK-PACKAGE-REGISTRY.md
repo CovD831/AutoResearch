@@ -22,7 +22,7 @@
 | S4-A-BENCHMARK-HARNESS | S4 | runtime | reserved | planned | S3 promotion | S3 promotion | — | — |
 | S4-B-REAL-PILOT | S4 | evidence/domain | reserved | planned | S3 promotion | S3 promotion | — | — |
 | I0-SHARED-CONTRACT-INTEGRATION | MVP | integration/lead | `main` | integrated | P1-A + P1-B | P1-A, P1-B | I1 | — |
-| I1-PIPELINE-ORCHESTRATION | MVP | integration/lead | `main` | planned | I0 | I0 | I2 | — |
+| I1-PIPELINE-ORCHESTRATION | MVP | integration/lead | `main` | integrated | I0 | I0 | I2 | — |
 | I2-MAINLINE-E2E-AND-PROMOTION | MVP | integration/lead | `main` | planned | I1 | I1 | I3 | — |
 | I3-PROJECT-LEDGER-CLOSURE | MVP | integration/lead | `main` | planned | I2 | I2 | I4 | — |
 | I4-MANUSCRIPT-DELIVERY-CHECK | MVP | integration/lead | `main` | planned | I3 + S4-B | I3, S4-B | MVP-CLOSED | — |

@@ -15,6 +15,10 @@ from autoresearch.agents import (
     ReviewerAgent,
     WriterAgent,
 )
+from autoresearch.capability import (
+    PaperSearchCapabilityAdapter,
+    PendingInvocationError,
+)
 from autoresearch.config import Settings, get_settings
 from autoresearch.contracts import (
     EvidenceItem,
@@ -24,6 +28,7 @@ from autoresearch.contracts import (
     ManuscriptRevisionRequest,
     ProjectCreate,
     ReadingAnswer,
+    ReadingCard,
     ResearchState,
     ResumeRequest,
     RunRequest,
@@ -39,15 +44,90 @@ from autoresearch.execution_service import ExecutionService
 from autoresearch.gates import GateService
 from autoresearch.graph import build_research_graph
 from autoresearch.handoffs import HandoffService
+from autoresearch.invocation_contracts import (
+    PaperSearchRequest,
+    request_fingerprint,
+)
 from autoresearch.knowledge import KnowledgeService
 from autoresearch.llm import LLMService
+from autoresearch.pipeline_contracts import (
+    EvaluationSectionPipelineResult,
+    ReadinessStatus,
+)
 from autoresearch.profile_service import UserProfileService
 from autoresearch.project_service import ProjectService
 from autoresearch.reader_service import PaperReaderService
-from autoresearch.search_service import PaperSearchService
+from autoresearch.search_service import PaperSearchService, SearchOutcome
 from autoresearch.state_machine import StateMachine
 from autoresearch.storage import RecordStore
 from autoresearch.writing_service import WritingService
+
+
+class InvocationBoundedSearchPort:
+    """Route paper-search calls through the reliable invocation boundary (I1).
+
+    Each (project, query, limit, seeds) tuple maps to one deterministic
+    idempotent invocation: identical re-invocations replay the durable
+    receipt instead of re-calling connectors, and a pending record left by
+    a crashed run is auto-recovered through the phase-driven recovery API.
+    Failed or unknown receipts stay durable until explicitly recovered
+    (A2 semantics); retry policy belongs to the audit lane.
+    """
+
+    def __init__(self, adapter: PaperSearchCapabilityAdapter):
+        self.adapter = adapter
+
+    def build_request(
+        self,
+        project_id: str,
+        query: str,
+        *,
+        limit: int,
+        seed_papers: list | None = None,
+    ) -> PaperSearchRequest:
+        request = PaperSearchRequest(
+            project_id=project_id,
+            run_id=f"app-search:{project_id}",
+            invocation_id="derive",
+            query=query,
+            limit=limit,
+            seed_papers=list(seed_papers or []),
+        )
+        derived = "q-" + request_fingerprint(request)[:16]
+        return request.model_copy(update={"invocation_id": derived})
+
+    def search(
+        self,
+        project_id: str,
+        queries: list[str],
+        *,
+        seed_papers: list | None = None,
+        per_connector_limit: int = 5,
+    ) -> SearchOutcome:
+        papers = []
+        seen: set[str] = set()
+        diagnostics: list[str] = []
+        for query in queries:
+            request = self.build_request(
+                project_id,
+                query,
+                limit=per_connector_limit,
+                seed_papers=seed_papers,
+            )
+            try:
+                invocation = self.adapter.invoke(request)
+            except PendingInvocationError:
+                invocation = self.adapter.recover_pending(
+                    request.run_id,
+                    request.invocation_id,
+                    reason="application auto-recovery on pending re-invocation",
+                )
+            for paper_record in invocation.papers:
+                if paper_record.paper_id not in seen:
+                    seen.add(paper_record.paper_id)
+                    papers.append(paper_record)
+            diagnostics.extend(invocation.diagnostics)
+        return SearchOutcome(papers=papers, diagnostics=diagnostics)
 
 
 class AutoResearchApplication:
@@ -72,6 +152,8 @@ class AutoResearchApplication:
             self.knowledge,
             network_enabled=self.settings.network_enabled,
         )
+        self.search_capability = PaperSearchCapabilityAdapter(self.search, self.store)
+        self.search_port = InvocationBoundedSearchPort(self.search_capability)
         self.reader = PaperReaderService(self.store, self.evidence, self.knowledge)
         self.writing = WritingService(
             self.store,
@@ -92,7 +174,7 @@ class AutoResearchApplication:
             self.llm,
         )
         self.paper_search_agent = PaperSearchAgent(
-            self.search,
+            self.search_port,
             self.evidence,
             self.handoffs,
             self.state_machine,
@@ -247,6 +329,65 @@ class AutoResearchApplication:
                 for interrupt_item in task.interrupts
             ],
         }
+
+    def run_evaluation_section(
+        self,
+        project_id: str,
+        question: str,
+        cards: list[ReadingCard],
+        *,
+        evidence_ids: list[str] | None = None,
+        profile: Any = None,
+    ) -> EvaluationSectionPipelineResult:
+        """Orchestrate the evaluation section pipeline end to end (I1).
+
+        Blocked readiness short-circuits before draft and validation, keeping
+        the accepted B1 semantics: a blocked compose produces no draft and no
+        validation report.
+        """
+
+        if self.projects.get(project_id) is None:
+            raise KeyError(f"unknown project: {project_id}")
+        writing = self.writing
+        resolved_profile = profile or writing.build_writing_profile(project_id)
+        plan = writing.plan_evaluation_section(
+            project_id,
+            question,
+            cards,
+            evidence_ids=list(evidence_ids or []),
+            profile=resolved_profile,
+        )
+        benchmark_plan = writing.advise_benchmark_plan(plan, cards)
+        readiness = writing.assess_evaluation_readiness(
+            plan,
+            benchmark_plan,
+            cards,
+            profile=resolved_profile,
+        )
+        draft = None
+        validation = None
+        if readiness.status != ReadinessStatus.BLOCKED:
+            draft = writing.draft_evaluation_section(
+                plan,
+                benchmark_plan,
+                readiness,
+                profile=resolved_profile,
+            )
+            validation = writing.validate_evaluation_section(
+                plan,
+                benchmark_plan,
+                readiness,
+                draft,
+                profile=resolved_profile,
+            )
+        return EvaluationSectionPipelineResult(
+            profile=resolved_profile,
+            plan=plan,
+            benchmark_plan=benchmark_plan,
+            readiness=readiness,
+            draft=draft,
+            validation=validation,
+        )
 
     def add_evidence(self, item: EvidenceItem, *, actor: str = "user") -> EvidenceItem:
         return self.evidence.add(item, actor=actor)
