@@ -35,6 +35,10 @@ class PendingInvocationError(RuntimeError):
     """A previous process reserved the invocation but did not finalize it."""
 
 
+class UnknownProviderError(RuntimeError):
+    """The provider outcome cannot be proven from the connector response."""
+
+
 class PaperSearchCapabilityAdapter:
     """Reliable S1 boundary around the legacy PaperSearchService."""
 
@@ -141,6 +145,25 @@ class PaperSearchCapabilityAdapter:
             evidence_candidates=self._candidates(request, papers),
         )
 
+    @staticmethod
+    def _exception_status(exc: Exception) -> InvocationStatus:
+        """Classify only explicitly uncertain transport/provider failures as unknown."""
+
+        if isinstance(exc, (TimeoutError, ConnectionError, OSError, UnknownProviderError)):
+            return InvocationStatus.UNKNOWN_OUTCOME
+        return InvocationStatus.FAILED
+
+    @staticmethod
+    def _exception_diagnostic(exc: Exception) -> str:
+        if isinstance(exc, TimeoutError):
+            return "provider timeout; outcome is unknown"
+        if isinstance(exc, (ConnectionError, OSError, UnknownProviderError)):
+            detail = f": {exc}" if str(exc) else ""
+            return f"provider outcome is unknown after {type(exc).__name__}{detail}"
+        return f"provider failure: {type(exc).__name__}: {exc}" if str(exc) else (
+            f"provider failure: {type(exc).__name__}"
+        )
+
     def _replay(self, record: dict[str, Any]) -> PaperSearchInvocation:
         result = record.get("result")
         if not isinstance(result, dict):
@@ -209,14 +232,10 @@ class PaperSearchCapabilityAdapter:
             )
             papers, diagnostics = self._outcome_parts(outcome)
             status = self._status(papers, diagnostics)
-        except TimeoutError:
-            papers = []
-            diagnostics = ["provider timeout; outcome is unknown"]
-            status = InvocationStatus.UNKNOWN_OUTCOME
         except Exception as exc:
             papers = []
-            diagnostics = [f"provider failure: {type(exc).__name__}"]
-            status = InvocationStatus.FAILED
+            diagnostics = [self._exception_diagnostic(exc)]
+            status = self._exception_status(exc)
 
         invocation = self._build_result(request, fingerprint, status, papers, diagnostics)
         self.store.mark_idempotent_phase(
@@ -231,6 +250,7 @@ class PaperSearchCapabilityAdapter:
                 "invocation_id": request.invocation_id,
                 "status": status.value,
                 "paper_ids": [paper.paper_id for paper in papers],
+                "diagnostics": diagnostics,
             },
             project_id=request.project_id,
             actor="capability_adapter",
@@ -246,6 +266,7 @@ class PaperSearchCapabilityAdapter:
                 "invocation_id": request.invocation_id,
                 "status": status.value,
                 "paper_ids": [paper.paper_id for paper in papers],
+                "diagnostics": diagnostics,
             },
             project_id=request.project_id,
             actor="capability_adapter",
@@ -258,9 +279,12 @@ class PaperSearchCapabilityAdapter:
         invocation_id: str,
         *,
         reason: str,
-        outcome_status: InvocationStatus = InvocationStatus.FAILED,
+        outcome_status: InvocationStatus | None = None,
     ) -> PaperSearchInvocation:
-        if outcome_status not in (InvocationStatus.FAILED, InvocationStatus.UNKNOWN_OUTCOME):
+        if outcome_status is not None and outcome_status not in (
+            InvocationStatus.FAILED,
+            InvocationStatus.UNKNOWN_OUTCOME,
+        ):
             raise ValueError("pending recovery must close as failed or unknown_outcome")
         key = f"{run_id}:{invocation_id}"
         existing = self.store.get_idempotent(self.scope, key)
@@ -268,8 +292,9 @@ class PaperSearchCapabilityAdapter:
             raise KeyError(f"unknown idempotency record: {self.scope}:{key}")
         if existing.get("state") != "pending":
             raise RuntimeError("idempotency record is already finalized")
+        phase = existing.get("phase", InvocationPhase.RESERVED.value)
         staged_result = existing.get("staged_result")
-        if isinstance(staged_result, dict):
+        if phase == InvocationPhase.SERVICE_RETURNED.value and isinstance(staged_result, dict):
             invocation = PaperSearchInvocation.model_validate(staged_result)
             self.store.finalize_idempotent(
                 self.scope,
@@ -282,6 +307,8 @@ class PaperSearchCapabilityAdapter:
                     "invocation_id": invocation_id,
                     "status": invocation.receipt.outcome_status.value,
                     "reason": "finalized staged service result",
+                    "phase": phase,
+                    "recovery_action": "finalize_staged_result",
                 },
                 project_id=invocation.request.project_id,
                 actor="capability_adapter",
@@ -289,7 +316,18 @@ class PaperSearchCapabilityAdapter:
             return invocation
         request = PaperSearchRequest.model_validate(existing.get("request", {}))
         fingerprint = existing.get("request_fingerprint") or request_fingerprint(request)
-        invocation = self._build_result(request, fingerprint, outcome_status, [], [reason])
+        if phase == InvocationPhase.RESERVED.value:
+            status = InvocationStatus.FAILED
+            recovery_reason = f"{reason}; recovery found reserved without service start"
+        elif phase == InvocationPhase.SERVICE_STARTED.value:
+            status = InvocationStatus.UNKNOWN_OUTCOME
+            recovery_reason = f"{reason}; recovery found service_started without staged result"
+        elif phase == InvocationPhase.SERVICE_RETURNED.value:
+            status = InvocationStatus.UNKNOWN_OUTCOME
+            recovery_reason = f"{reason}; service_returned is missing staged result"
+        else:
+            raise RuntimeError(f"cannot recover pending invocation at phase {phase!r}")
+        invocation = self._build_result(request, fingerprint, status, [], [recovery_reason])
         self.store.finalize_idempotent(
             self.scope,
             key,
@@ -299,8 +337,10 @@ class PaperSearchCapabilityAdapter:
             "capability.invocation_recovered",
             {
                 "invocation_id": invocation_id,
-                "status": outcome_status.value,
-                "reason": reason,
+                "status": status.value,
+                "reason": recovery_reason,
+                "phase": phase,
+                "recovery_action": "close_pending",
             },
             project_id=request.project_id,
             actor="capability_adapter",
