@@ -40,15 +40,16 @@
 - 新增 `src/autoresearch/reader_writer_ports.py`：typed reader/writer 请求响应、protocol、adapter identity、native + structured 三路 adapter、`bind_claims`、`gate_compliance`、`compare_writer_parity`。
 - 新增 `tests/test_reader_writer_ports.py`：三路 parity、observed-result 阻断、unbound/missing evidence fail-closed、compose 类型一致性用例；聚焦测试 8 passed。
 - 新增 B4 任务包 `task-package.json`/`TASK.md`/`L3.md`/`PROGRESS.md`/`HANDOFF.md` 与本成员账本。
+- Owner 集成（2026-09-10，D-SYNC-01 先例，老板拍板代修）：①分支 rebase 到 main `b7fc3b7`（原分支落后 3 commit 导致 CI Task contract 判 not an ancestor）；②`gate_compliance` 补孤儿 key 检查（`claim_evidence_map` 中 key ∉ `claims` 的静默绑定现在 fail-closed）+ 对抗测试；③`adap_version` 更名 `adapter_version`；④L3 Known limits 登记三条消费方注记（structured 路径 lineage 检查构造自洽、`review_ready` 语义漂移、parity 无 binding 下限）。原 PR #13 关闭为 superseded，由 owner integration PR 合入。
 
 ## Pending
 
-- Owner 审查、commit、push、开 PR；`integrated`/`accepted` 由 owner 按全局路线判定，本成员不标记。
-- O12 ProviderLane / A4 capability adapter 就绪后，structured adapter 接入真实 payload 供给方的时机由 owner 排期。
+- `integrated`/`accepted` 由 owner 按全局路线判定，本成员不标记。
+- O12 ProviderLane / A4 capability adapter 就绪后，structured adapter 接入真实 payload 供给方的时机由 owner 排期；payload 归一化方须保证 `claims` 与 `claim_evidence_map` key 一致（孤儿 key 现由 gate fail-closed 拦截）。
 
 ## Next step
 
-Owner review scope diff → commit B4 paths → push `codex/s3-reader-writer-ports` → PR against `CovD831/AutoResearch:main`。
+Owner integration PR 合入 main 后本任务转 integrated；S3 promotion 随 S3-A/B4 双 accepted 开启。
 
 ## Verification
 
@@ -57,7 +58,9 @@ Owner review scope diff → commit B4 paths → push `codex/s3-reader-writer-por
 - [x] `ruff check src/autoresearch/reader_writer_ports.py tests/test_reader_writer_ports.py`：`All checks passed!`；`ruff format --check` 通过。
 - [x] `node .ai-team/check.mjs --base 437e15e --json`：`valid: true`（8 个改动文件全部在 B4 allowed_paths，无禁改路径）。
 - [x] Project-to-Act `--check`：`configured: true, mode: managed`，无 missing_templates。
-- 环境注记：全量 `ruff check src tests` 对既有的 `audit_evidence.py`（B3）与 `capability.py`（A 线）报 3 处 UP038，与本任务无关（ruff 0.12 较项目锁定版本更严）；B4 新增文件单独通过。`-W error` 全量收集被临时依赖目录里的 click 版本 DeprecationWarning 干扰，改用 `-p no:cacheprovider` 取得干净 116 passed。
+- [x] Owner 深审独立复现（2026-09-10，审查 worktree @55bda47）：聚焦 8 passed、全量 116 passed、ruff B4 文件绿、check.mjs valid @437e15e；allowed_paths 全合规。
+- [x] Owner 集成复验（2026-09-10，rebase 到 main `b7fc3b7` + 代修后）：聚焦 `9 passed`（含孤儿 key 对抗测试）、全量 `146 passed`（137 main 基线 + 8 B4 + 1 owner 补测）、ruff 全量 `All checks passed!`。
+- 环境注记：全量 `ruff check src tests` 对既有的 `audit_evidence.py`（B3）与 `capability.py`（A 线）报 3 处 UP038，与本任务无关（ruff 0.12 较项目锁定版本更严）；B4 新增文件单独通过。`-W error` 全量收集被临时依赖目录里的 click 版本 DeprecationWarning 干扰，改用 `-p no:cacheprovider` 取得干净 116 passed。Owner 侧使用项目锁定 ruff 版本全量通过。
 
 ## Handoff note
 

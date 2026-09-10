@@ -321,12 +321,12 @@ class StructuredReaderAdapter:
     supplied as extracted material — admission remains the certificate's job.
     """
 
-    def __init__(self, adapter_kind: AdapterKind, *, adapter_name: str, adap_version: str):
+    def __init__(self, adapter_kind: AdapterKind, *, adapter_name: str, adapter_version: str):
         if adapter_kind is AdapterKind.NATIVE:
             raise ValueError("structured adapter requires llm or external kind")
         self.adapter_kind = adapter_kind
         self.adapter_name = adapter_name
-        self.adap_version = adap_version
+        self.adapter_version = adapter_version
 
     def read(
         self,
@@ -345,7 +345,7 @@ class StructuredReaderAdapter:
             checksum=None,
             independent_source=payload.independent_source,
             adapter=self.adapter_name,
-            adapter_version=self.adap_version,
+            adapter_version=self.adapter_version,
             metadata={"kind": self.adapter_kind.value},
         )
         card = ReadingCard(
@@ -371,12 +371,12 @@ class StructuredReaderAdapter:
 class StructuredWriterAdapter:
     """Wraps an off-port structured draft payload into the port contract."""
 
-    def __init__(self, adapter_kind: AdapterKind, *, adapter_name: str, adap_version: str):
+    def __init__(self, adapter_kind: AdapterKind, *, adapter_name: str, adapter_version: str):
         if adapter_kind is AdapterKind.NATIVE:
             raise ValueError("structured adapter requires llm or external kind")
         self.adapter_kind = adapter_kind
         self.adapter_name = adapter_name
-        self.adap_version = adap_version
+        self.adapter_version = adapter_version
 
     def write(
         self,
@@ -403,7 +403,7 @@ class StructuredWriterAdapter:
             limitations=payload.limitations,
             observed_result_summary=payload.observed_result_summary,
             review_ready=True,
-            notes=[f"adapter={self.adapter_name}; version={self.adap_version}"],
+            notes=[f"adapter={self.adapter_name}; version={self.adapter_version}"],
         )
         return WriterResult(
             request_id=request.request_id,
@@ -481,13 +481,22 @@ def gate_compliance(
     Returns compliance plus issues discovered. Violations: a planned-only draft
     reporting an observed result; an unbound/partial claim that is not listed in
     ``unresolved_gaps`` (a claim silently treated as supported); a claim bound
-    to evidence ids that are not in ``draft.evidence_ids`` (invisible lineage).
+    to evidence ids that are not in ``draft.evidence_ids`` (invisible lineage);
+    an orphan ``claim_evidence_map`` key not listed in ``draft.claims`` (a
+    binding silently dropped because its claim never entered the draft).
     """
     issues: list[str] = []
     if draft.observed_result_summary is not None:
         issues.append("planned-only draft reports an observed result")
     unresolved = set(draft.unresolved_gaps)
     bound_ids = set(draft.evidence_ids)
+    known_claims = set(draft.claims)
+    for orphan_key in draft.claim_evidence_map:
+        if orphan_key not in known_claims:
+            issues.append(
+                f"claim_evidence_map contains an orphan key not listed in claims: "
+                f"{orphan_key[:80]}"
+            )
     for binding in bindings:
         if binding.status is not BindingStatus.BOUND and binding.claim not in unresolved:
             issues.append(

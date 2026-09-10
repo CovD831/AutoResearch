@@ -2,13 +2,17 @@
 
 ## Status
 
-`handed-off`; ready for owner scope review and PR preparation. It is not yet
-committed, pushed, or integrated.
+`handed-off` → **owner-integrated** (2026-09-10). Member handoff was reviewed
+by the owner; the integration branch carries the member commit rebased onto
+`main@b7fc3b7` plus owner fixes (orphan map-key gate check + adversarial test,
+`adap_version` → `adapter_version`, consumer notes in L3). Original PR #13 is
+superseded by the owner integration PR.
 
 ## Base and branch
 
-- Branch: `codex/s3-reader-writer-ports`
-- Base: `main@437e15e`
+- Integration branch: `owner/s3-b-integration` (member commit `55bda47`
+  rebased onto `main@b7fc3b7`; member base was `main@437e15e`, 3 commits
+  behind, which was why CI Task contract reported "not an ancestor").
 - S2 promotion is complete (O6, 2026-09-10), so B4 is not speculative or
   waiting for a gate.
 

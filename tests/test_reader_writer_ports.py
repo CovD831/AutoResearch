@@ -120,7 +120,7 @@ def test_structured_reader_parity_with_native_shape(runtime, project):
         independent_source="example.invalid",
     )
     llm_adapter = StructuredReaderAdapter(
-        AdapterKind.LLM, adapter_name="paper_reader.llm", adap_version="0.1"
+        AdapterKind.LLM, adapter_name="paper_reader.llm", adapter_version="0.1"
     )
     structured = llm_adapter.read(_reader_request("l1", paper), payload)
 
@@ -171,7 +171,7 @@ def test_three_way_writer_parity_passes_with_valid_bindings(runtime, project):
 
     native = NativeWriterAdapter().write(_writer_request(runtime, plan, profile.profile_id))
     structured_llm = StructuredWriterAdapter(
-        AdapterKind.LLM, adapter_name="writer.llm", adap_version="0.1"
+        AdapterKind.LLM, adapter_name="writer.llm", adapter_version="0.1"
     ).write(
         _writer_request(runtime, plan, profile.profile_id),
         StructuredDraftPayload(
@@ -185,7 +185,7 @@ def test_three_way_writer_parity_passes_with_valid_bindings(runtime, project):
         ),
     )
     structured_external = StructuredWriterAdapter(
-        AdapterKind.EXTERNAL, adapter_name="writer.external", adap_version="0.1"
+        AdapterKind.EXTERNAL, adapter_name="writer.external", adapter_version="0.1"
     ).write(
         _writer_request(runtime, plan, profile.profile_id),
         StructuredDraftPayload(
@@ -221,7 +221,7 @@ def test_three_way_writer_parity_passes_with_valid_bindings(runtime, project):
 def test_parity_fails_when_non_native_draft_reports_observed_result(runtime, project):
     plan, profile = _plan(runtime, "demo", None)
     structured = StructuredWriterAdapter(
-        AdapterKind.LLM, adapter_name="writer.llm", adap_version="0.1"
+        AdapterKind.LLM, adapter_name="writer.llm", adapter_version="0.1"
     ).write(
         _writer_request(runtime, plan, profile.profile_id),
         StructuredDraftPayload(
@@ -277,6 +277,47 @@ def test_gate_compliance_requires_unbound_claim_to_be_unresolved(runtime, projec
     compliant, issues = gate_compliance(draft, bindings)
     assert compliant is False
     assert any("not marked unresolved" in issue for issue in issues)
+
+
+def test_gate_compliance_flags_orphan_claim_evidence_map_key(runtime, project):
+    """Owner integration fix (PR #13 review): a claim_evidence_map key absent
+    from claims was previously invisible -- never bound, never reported. It
+    must fail closed as a binding the draft silently dropped."""
+    plan, profile = _plan(runtime, "demo", None)
+    draft = NativeWriterAdapter().write(_writer_request(runtime, plan, profile.profile_id)).draft
+    evidence_id = plan.evidence_ids[0]
+    draft = draft.model_copy(
+        update={
+            "claim_evidence_map": {
+                **plan.claim_evidence_map,
+                "Orphan claim absent from claims": [evidence_id],
+            },
+        }
+    )
+    bindings = bind_claims(draft, runtime.evidence)
+    compliant, issues = gate_compliance(draft, bindings)
+    assert compliant is False
+    assert any("orphan key" in issue for issue in issues)
+    # The orphan key must also fail the three-way parity verdict.
+    structured = StructuredWriterAdapter(
+        AdapterKind.LLM, adapter_name="writer.llm", adapter_version="0.1"
+    ).write(
+        _writer_request(runtime, plan, profile.profile_id),
+        StructuredDraftPayload(
+            title="Evaluation",
+            body="Plan-only body with an orphan mapping entry.",
+            claims=plan.claims,
+            claim_evidence_map={
+                **plan.claim_evidence_map,
+                "Orphan claim absent from claims": [evidence_id],
+            },
+            unresolved_gaps=plan.gaps,
+            limitations=plan.gaps,
+            observed_result_summary=None,
+        ),
+    )
+    report = compare_writer_parity([structured], evidence=runtime.evidence)
+    assert report.overall is ParityStatus.FAIL
 
 
 def test_compose_evaluation_section_yields_typed_draft(runtime, project):
