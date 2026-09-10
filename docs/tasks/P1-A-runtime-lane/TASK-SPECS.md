@@ -45,7 +45,7 @@
 
 ## A4 — S3 Capability Adapters
 
-- 状态：`planned`，依赖 S2 promotion。
+- 状态：`integrated`（PR #12 于 2026-09-10 合入主线 `f620915`：owner 深审通过 + 全量 137 passed 独立复现；D-1/D-4/D-7 裁决已落，见 `.ai-team/TASK.md` D-S3-01；acceptance 待 S3 promotion），依赖 S2 promotion。
 - 目标：实现 Capability Registry 和 native/MCP/skill/plugin adapter 的统一调用边界。
 - 主要交付：manifest registry、operator-assigned trust tier、adapter invocation receipt、candidate-only 限制、禁用网络的默认策略。
 - 必须满足：能力自述不能自行提升 trust tier；外部能力只能经 adapter；不增加第六个业务角色。
@@ -61,6 +61,7 @@
 - **评估纪律条款（2026-09-10 追加，karpathy 三约束吸收，见 workspace 生态调研报告第七节）**：主指标唯一（以 hallucination ratio 为首，其余为辅指标不参与裁决）；固定语料集与固定调用预算（per-run 预算写进 receipt，计价链由 Owner 线 O12 ProviderLane 供给）；换写作头/检索源不得改变评估口径——指标定义与评估预算在本任务包内冻结，变更须走 owner 裁决。依据：无验证器/无固定口径的自进化已被 AI Scientist（57% 虚假数据）证伪。
 - **分工注记（2026-09-10）**：LLM 调用底座（ProviderLane）由 Owner 实现（O12，需参考本地 openpilot 代码），A5 通过 invocation receipt 消费其计价与调用边界，不在本任务包范围内实现。
 - **计价衔接注记（2026-09-10 对抗审查）**：O12 交付（09-12）晚于本包交付（09-11）——receipt 的成本字段 schema 由本包**预留**（字段位固定），端到端计价验收在 O12 交付后补验；计价缺失不阻塞本包 accepted。
+- **候选消费纪律（2026-09-10 D-S3-01 硬条款）**：A5 消费 A4 invocation 时，候选准入必须走 `CapabilityInvocation.admissible_candidates` / `receipt.candidates_admissible` 单点判据（computed，keyed on `outcome_status`），**不得直接读 `candidates` 做准入**——失败路径的 `candidates` 是原始事实记录，非准入许可（D-7 裁决落位）。同窗口收紧项：`request_fingerprint` 对 raw dict 的确定性（A5 request 全部 pydantic 化）。
 
 ## A6 — S4 经验沉淀接线（追加包，2026-09-10；原 Owner O9 接线点①前移成员 A）
 

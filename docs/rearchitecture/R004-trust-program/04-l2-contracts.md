@@ -6,8 +6,9 @@
 
 职责：声明能力身份、版本、输入输出、权限与自述 evidence mode。不负责：证明结果正确、拥有项目状态、★决定生效信任层级（trust tier 由 operator 指派，见 02 修订 2）。
 
-必备字段：`name`、`kind`、`version`、`entrypoint`、`inputs`、`outputs`、`permissions`、`evidence_mode`（自述）、★`network`（resolver 域名白名单）。
+必备字段：`name`、`kind`、`version`、`entrypoint`、`inputs`、`outputs`、`permissions`、`evidence_mode`（自述）、★`network_required`（布尔，默认 false = 默认禁网）、★`allowed_network_domains`（resolver 域名白名单）。
 状态：established（S1 字段）；签名、来源许可、依赖锁定 open（plugin lifecycle 增量）。
+★D-S3-01（2026-09-10，owner 审查 PR #12 裁决）：原 `network` 单字段拆分为 `network_required` + `allowed_network_domains`——布尔必填位与域名白名单分离，语义更可执行；A1/A2 构造零影响（两者均为可选默认字段）。`allowed_network_domains` 传输层强制归 ProviderLane/O12 与后续网络沙箱窗口。
 
 ## CapabilityAdapter
 

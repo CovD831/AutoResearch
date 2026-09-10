@@ -2,7 +2,8 @@
 
 - ID: `S3-A-CAPABILITY-ADAPTERS`
 - Title: `Capability Registry and unified native/MCP/skill/plugin adapter boundary`
-- Status: `active`
+- Status: `integrated`
+- Status note: PR #12 merged into main `f620915`（2026-09-10 owner 深审通过后合并）；acceptance 待 S3 promotion
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -52,6 +53,7 @@
 - MCP 在本包只是 kind 标签；协议本体（stdio transport 等）按 ADR-01 slot 14 留 L3。
 - 对 L2 的偏离 D-1..D-6 不在包内单方面改写共享合同，登记待 owner 裁决（见 `L3.md`）。
 - `candidates` 是事实记录（含失败路径），准入判据由边界单点计算（`computed_field`，不可被写错）：`receipt.candidates_admissible`，消费方走 `invocation.admissible_candidates`。相关语义选择登记为 `L3.md` D-7，供 owner 确认或否决。
+- D-S3-01（owner 裁决 2026-09-10，合并窗口落位）：D-1 采纳（L2 已回写拆分措辞）；D-4 选 option (a)（双 receipt 形状保留，bridge 映射为唯一映射点）；D-7 确认本包方案（保留原始记录 + 单点准入判据），A5 消费点硬条款已写入 A 线 TASK-SPECS。完整记录见 `.ai-team/TASK.md` Decisions。
 
 ## Completed
 
@@ -64,13 +66,11 @@
 
 ## Pending
 
-- 用户侧功能场景自测（场景 1–8）。
-- commit/push/PR。
-- Owner review 与 S3 promotion；D-1/D-4 裁决。
+- S3 promotion（需 S3-B/B4 就位后按路线执行）；D-4 后续观察：A5 消费点落地 `admissible_candidates` 判据（硬条款已写入 A 线 TASK-SPECS）。
 
 ## Next step
 
-用户完成场景自测后提交并推送分支、创建 PR；Owner review 与 S3 promotion 按全局路线。
+Owner 在 S3-B（B4 Reader/Writer Ports）合入后执行 S3 promotion，本包随之 integrated → accepted。
 
 ## Verification
 
@@ -80,7 +80,9 @@
 - [x] `python -m ruff check src tests`（通过）。
 - [x] `node .ai-team/check.mjs --task .ai-team/tasks/S3-A-CAPABILITY-ADAPTERS.md --base main`（valid）。
 - [x] 用户侧独立复跑 Step 1（R-A 显式 `--basetemp`）：全量 `[100%]` 无 F/E、focused 24、模块覆盖率 100%（201 stmts / 0 miss）、ruff `All checks passed!`、check.mjs `valid`（17/17，0 commits / 9 files，+8/-2）。精确 passed 计数因 `addopts="-q"` 叠加未观测。
-- [ ] 用户侧功能场景自测（本文件完成后由用户执行并回填 observed 证据）。
+- [x] 用户侧功能场景自测（2026-09-10 完成并回填 HANDOFF「Functional scenario evidence」表：场景 1–9 全部 PASS、0 contradictory，R-6 零回归机械 diff 佐证）。
+- [x] Owner 深审独立复现（2026-09-10，审查 worktree @54b71b3）：focused 29 passed（0.04s）、全量 137 passed（7.07s）、ruff All checks passed、check.mjs valid（18/18）；CI 三项绿；9 文件全在 allowed_paths、forbidden 零触碰；D-1..D-7 与 L2/ADR-01 原文逐条比对无虚报。诚实注记：覆盖率 100% 未独立复现（审查环境无 pytest-cov，CI 佐证）；场景走查采信 HANDOFF user-side 证据。
+- [x] 合并结果验证（2026-09-10，main `f620915`）：全量 137 passed、ruff All checks passed。
 
 ## Handoff note
 
