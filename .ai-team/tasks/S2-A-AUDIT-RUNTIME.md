@@ -2,8 +2,8 @@
 
 - ID: `S2-A-AUDIT-RUNTIME`
 - Title: `Audit CLI/stdio runtime and resolver persistence`
-- Status: `integrated`
-- Status note: 2026-09-09 PR #8 合入主线（merge commit `dae10f3`）；S2 promotion/O6 验收前 NOT accepted。
+- Status: `accepted`
+- Status note: 2026-09-09 PR #8 合入主线（merge commit `dae10f3`）；2026-09-10 O6 S2 promotion 四项核验通过 → accepted（O3/I3 收口回写账本）。
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -48,11 +48,11 @@
 
 - 用户已逐步骤审阅实际实现、设计理由和任务书覆盖情况。
 - 用户已自行执行 CLI、MCP stdio、快照、Persistence Port、bounded view 和 fixture 重跑场景并反馈真实输出。
-- S2 promotion/合并门仍由负责人按全局路线判定；本分支未标记 accepted/done。
+- S2 promotion 已于 2026-09-10 通过（O6，四项核验，全量 108 passed owner 独立复现）→ accepted；本任务无待办。
 
 ## Next step
 
-完成 task-local 验收记录同步后，进行提交前覆盖审查并准备 PR 材料；S2 promotion 和合并仍等待负责人判定。
+已闭环（2026-09-10 O6 accepted）。无待办；成员 A 下一任务为 A4/S3 Capability Adapters。
 
 ## Verification
 
@@ -62,6 +62,7 @@
 - [x] `python -m autoresearch.audit_stdio --selftest`（通过；报告 `receipt_status=completed`）。
 - [x] 用户执行 CLI、JSON-lines stdio selftest、重启加载和冲突拒绝场景并确认输出；同时完成 Persistence Port、bounded view、fixture 矩阵和两轮重跑验收。
 - [x] `node .ai-team/check.mjs --task .ai-team/tasks/S2-A-AUDIT-RUNTIME.md --base main` 在本账本更新后复跑并确认 `valid`。
+- [x] O6 S2 promotion（2026-09-10）：四项核验通过、全量 108 passed owner 独立复现；S2-A → accepted（registry 行与 `.ai-team/TASK.md` 2026-09-10 条目同步）。
 
 ## Owner integration record（2026-09-09）
 

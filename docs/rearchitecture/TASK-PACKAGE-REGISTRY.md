@@ -28,7 +28,7 @@
 | I0-SHARED-CONTRACT-INTEGRATION | MVP | integration/lead | `main` | integrated | P1-A + P1-B | P1-A, P1-B | I1 | — |
 | I1-PIPELINE-ORCHESTRATION | MVP | integration/lead | `main` | integrated | I0 | I0 | I2 | — |
 | I2-MAINLINE-E2E-AND-PROMOTION | MVP | integration/lead | `main` | integrated | I1 | I1 | I3 | — |
-| I3-PROJECT-LEDGER-CLOSURE | MVP | integration/lead | `main` | planned | I2 | I2 | I4 | — |
+| I3-PROJECT-LEDGER-CLOSURE | MVP | integration/lead | `main` | integrated（首轮收口 2026-09-10：S2-A/S2-B 账本 accepted 对齐、演进协议 D-EVOL-01 Decisions 归档、Project-to-Act 阶段回写、check.mjs 全绿；最终 accepted 判定挂 O4/MVP-CLOSED 条件 5） | I2 | I2 | I4 | — |
 | I4-MANUSCRIPT-DELIVERY-CHECK | MVP | integration/lead | `main` | planned | I3 + S4-B | I3, S4-B | MVP-CLOSED | — |
 | MVP-CLOSED-MINIMAL-E2E | MVP | integration/lead | `main` | waiting-for-gate | A/B + I0-I4 | all MVP rows | — | — |
 

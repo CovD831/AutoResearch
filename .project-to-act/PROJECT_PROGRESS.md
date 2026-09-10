@@ -6,7 +6,7 @@
 
 | 任务 | 状态 | 负责人 | 完成条件 | 证据 ID | 最后更新 |
 |---|---|---|---|---|---|
-| P1 双 worktree + MVP 集成 | 进行中 | 用户/项目负责人；成员 A/B | A/B 任务与 I0–I4 集成任务全部 accepted，并通过最小 Evaluation Section 端到端验收 | UD-006、UD-007、P1-WORKTREE-TASK-PLAN、TASK-PACKAGE-REGISTRY | 2026-09-04 |
+| P1 双 worktree + MVP 集成 | 进行中（S1/S2 promoted+accepted，S3 双线 ready，I0–I2 integrated，I3 首轮收口完成） | 用户/项目负责人；成员 A/B | A/B 任务与 I0–I4 集成任务全部 accepted，并通过最小 Evaluation Section 端到端验收 | UD-006、UD-007、P1-WORKTREE-TASK-PLAN、TASK-PACKAGE-REGISTRY | 2026-09-10 |
 
 ## 当前任务
 
@@ -34,14 +34,16 @@
 
 ## 下一步
 
-1. 成员 A/B 从 P1 基线创建独立 worktree，分别填写 task-local L3 并开始实施。
-2. A 完成 Runtime/Recovery 后先交接并合并；B 随后 rebase 到新主线。
-3. 负责人处理共享边界、application 集成，并运行 P1 端到端验收。
-4. P1 收口后，再用真实 idea、语料和实验资源建立 gold set 与真实论文试点。
+1. 成员 A/B 今日领取并交付 A4（Capability Adapters）/ B4（Reader-Writer Ports）；owner 当晚深审 + O7 gate，不过夜。
+2. owner 下午完成 O3 账本收口与 O8 ADR-01；今晚 gate 后领取 O12 ProviderLane，09-11 交付。
+3. 09-11 A5 + B5 交付即审；09-12 B6 试点 + O5 空窗；09-13 B7 稿件 + O4 收官 MVP-CLOSED。
+4. MVP 收口后，再用真实 idea、语料和实验资源建立 gold set 与真实论文试点。
 
 ## 进度历史
 
 按时间倒序追加：日期、完成事项、证据 ID、遗留问题、下一步和确认来源。不要覆盖旧记录。
+
+- 2026-09-10｜S2 双线集成收口 + O2/O6 gate + O3 账本收口（owner 主线任务）：D-S2-01 裁决落地（A3 保 canonical `audit.py`、B3 改名 `audit_evidence.py`，语义以 B3 严格版为准，grade=E1 冻结）；owner 集成 PR #10（105 passed）+ follow-up PR #11 关 F-9/F-10（108 passed）；O2/D-F8-01 空结果语义裁决（`completed_empty` 确定性成功终态，`docs/coord/empty-result-ruling.md`）；O6 S2 promotion 四项核验通过 → S2-A/S2-B accepted、S3-A/S3-B ready（base main@535f208）；O3/I3 账本收口首轮（S2 账本 accepted 对齐、演进协议 D-EVOL-01 Decisions 归档、registry I3 integrated、本文件回写）；任务包扩容重排（B5 数据源/B6 试点/B7 稿件、O12 ProviderLane 归 Owner、A6/A7 前移；09-10 排期提优：O3/O8 提前下午、O12 今晚领取 09-11 交付）｜遗留：A4/B4 今日交付待审、O8 ADR-01 下午、O7 今晚 gate｜下一步：O8 → 今晚深审 A4/B4 + O7 → O12 领取｜确认来源：用户指令（集成裁决 + 排期提优拍板）。
 
 - 2026-09-09｜I2 主线 E2E 与 S1 Promotion Gate 完成（owner 主线任务）：离线主线 E2E（`tests/test_mainline_e2e.py`）跑通最小 Evaluation Section 场景——Paper Search（A2 幂等边界，离线种子）→ Evidence 准入 → 材料就绪 → BenchmarkPlan → SectionDraft → RuleValidation，verdict VERIFIED，claim_evidence_map/readiness.evidence_ids/checked_evidence_ids 全部回溯到已准入证据，审计流含 papers.search_completed 与 writing.* 全阶段事件。Promotion Gate 四项核验通过：blocking findings 全部关闭（F-1/F-2/F-3/F-4/F-5、B2 invalidated-evidence fail-open；F-3 真实 connector 验收挂账 S4-B）、E2E 通过、证据可重跑（全量 81 passed + fault matrix exit 0）、下游合同已由 I0 稳定（D-I0-01）。**S1 promotion 完成**：P1-A/P1-B/P1-A2/P1-B2 转 accepted，S2-A/S2-B 转 ready（base main@6b706df）｜遗留：I3 账本收口、I4 交付检查未做；F-3 真实 connector 验收与 F-8 挂账｜下一步：成员 A/B 可领取 S2-A/S2-B；负责人推进 I3 账本收口｜确认来源：用户指令（跑 E2E 并推进集成）。
 

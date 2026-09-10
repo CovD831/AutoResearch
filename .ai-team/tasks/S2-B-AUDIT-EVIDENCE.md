@@ -2,8 +2,8 @@
 
 - ID: `S2-B-AUDIT-EVIDENCE`
 - Title: `Audit evidence module: verdicts, reconciliation, candidate 回流`
-- Status: `integrated`
-- Status note: 2026-09-09 成员 PR #9 经 owner 按 D-S2-01 集成调整（改名/kind 分家/locator fail-closed 修复）后经 PR #10 合入主线；S2 promotion/O6 验收前 NOT accepted。本文件由负责人按 D-SYNC-01 于 2026-09-09 补建（成员 PR 未带 `.ai-team/tasks/` 账本，导致 Task contract / repo-task-sync CI 失败；参照 PR #4 先例由 owner 补齐）。
+- Status: `accepted`
+- Status note: 2026-09-09 成员 PR #9 经 owner 按 D-S2-01 集成调整（改名/kind 分家/locator fail-closed 修复）后经 PR #10 合入主线；本文件由负责人按 D-SYNC-01 于 2026-09-09 补建。2026-09-10 O6 S2 promotion 四项核验通过 → accepted（O3/I3 收口回写账本）。
 - Owner: `member B`
 - Next owner: `user/team`
 
@@ -42,8 +42,8 @@
 ## Pending
 
 - ~~等 owner 裁决后 rebase~~ → 已裁决（D-S2-01）并由 owner 完成集成（见下）。
-- S2 promotion/O6 验收与 accepted 标记由 owner 按全局路线判定。
-- A3 运行时与 B3 语义对齐（binding/corrected/locator）为 owner follow-up（PR #11 后续窗口）。
+- ~~S2 promotion/O6 验收与 accepted 标记由 owner 按全局路线判定。~~ → 2026-09-10 O6 通过，accepted。
+- ~~A3 运行时与 B3 语义对齐（binding/corrected/locator）为 owner follow-up（PR #11 后续窗口）。~~ → 语义统一以 B3 严格版为准已冻结（D-S2-01），O6 promotion 窗口核验通过（108 passed），闭环。
 
 ## Owner integration record（2026-09-09，D-S2-01，PR #10）
 
@@ -54,7 +54,7 @@
 
 ## Next step
 
-等 owner 对 S2 audit 文件布局/record kind/语义（binding、corrected 极性、locator 模型、grade 政策）出统一裁决 → rebase 到最新 main 并改名重构 → 重新提交 PR（标题 `feat(S2-B): ...`）→ owner 复审。
+已闭环（D-S2-01 → owner 集成 PR #10 → O6 accepted，2026-09-10）。无待办；成员 B 下一任务为 B4/S3 Reader-Writer Ports。
 
 ## Verification
 
@@ -63,6 +63,7 @@
 - [x] `ruff check src tests`：通过（owner 本地复现）。
 - [x] 成员侧记录：`node .ai-team/check.mjs --json` valid、Project-to-Act `--validate` valid、`git diff --check` 通过（见分支内 `verification-report.json`，E-B3-VERIFY-20260909）。
 - [x] `node .ai-team/check.mjs --base main --task .ai-team/tasks/S2-B-AUDIT-EVIDENCE.md`：本账本补建后 owner 复跑。
+- [x] O6 S2 promotion（2026-09-10）：四项核验通过、全量 108 passed owner 独立复现；S2-B → accepted（registry 行与 `.ai-team/TASK.md` 2026-09-10 条目同步）。
 
 ## Handoff note
 
