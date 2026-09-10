@@ -6,7 +6,7 @@
 
 | 任务 | 状态 | 负责人 | 完成条件 | 证据 ID | 最后更新 |
 |---|---|---|---|---|---|
-| P1 双 worktree + MVP 集成 | 进行中（S1/S2 promoted+accepted，S3 双线 ready，I0–I2 integrated，I3 首轮收口完成） | 用户/项目负责人；成员 A/B | A/B 任务与 I0–I4 集成任务全部 accepted，并通过最小 Evaluation Section 端到端验收 | UD-006、UD-007、P1-WORKTREE-TASK-PLAN、TASK-PACKAGE-REGISTRY | 2026-09-10 |
+| P1 双 worktree + MVP 集成 | 进行中（S1/S2/S3 promoted+accepted，S3-A2（O12 实施中）/S4-A/S4-B/S4-A2 ready，I0–I2 integrated，I3 首轮收口完成） | 用户/项目负责人；成员 A/B | A/B 任务与 I0–I4 集成任务全部 accepted，并通过最小 Evaluation Section 端到端验收 | UD-006、UD-007、P1-WORKTREE-TASK-PLAN、TASK-PACKAGE-REGISTRY | 2026-09-10 |
 
 ## 当前任务
 
@@ -34,14 +34,16 @@
 
 ## 下一步
 
-1. 成员 A/B 今日领取并交付 A4（Capability Adapters）/ B4（Reader-Writer Ports）；owner 当晚深审 + O7 gate，不过夜。
-2. owner 下午完成 O3 账本收口与 O8 ADR-01；今晚 gate 后领取 O12 ProviderLane，09-11 交付。
-3. 09-11 A5 + B5 交付即审；09-12 B6 试点 + O5 空窗；09-13 B7 稿件 + O4 收官 MVP-CLOSED。
+1. ~~A4/B4 交付 + owner 深审 + O7 gate~~ 已完成：S3 promotion 通过，S3-A/S3-B accepted（2026-09-10，base main@36ddbab）。
+2. O12 ProviderLane（Owner 亲自实现，speculative 段已开工）09-11 交付；A5 消费其计价（receipt 成本字段已预留）。
+3. 09-11 A5 + B5 交付即审（前置 S3 promotion 已满足）；09-12 B6 试点 + O5 空窗；09-13 B7 稿件 + O4 收官 MVP-CLOSED。
 4. MVP 收口后，再用真实 idea、语料和实验资源建立 gold set 与真实论文试点。
 
 ## 进度历史
 
 按时间倒序追加：日期、完成事项、证据 ID、遗留问题、下一步和确认来源。不要覆盖旧记录。
+
+- 2026-09-10｜S3 双线审查、集成与 O7 promotion（owner 主线任务）：A4 Capability Registry（PR #12，成员 A，R-1~R-6 self-review 后零集成修复）owner 深审通过合入 `f620915`（D-S3-01 三裁决：D-1 采纳回写 L2、D-4 双 receipt 保留+bridge 映射、D-7 确认单点准入判据）；B4 Reader/Writer Ports（PR #13，成员 B）深审后 owner 代修集成 PR #14 合入 `7b88e30`（rebase 3 commit + 孤儿 map-key gate 检查 + 更名，D-SYNC-01 先例，146 passed）；O7 S3 promotion 四项核验通过（fresh：focused 39 / 全量 146 / ruff / check.mjs @main `36ddbab`）→ **S3-A/S3-B accepted、S3-A2（O12 实施中）/S4-A/S4-B/S4-A2 ready（S4-A3 仍 planned，依赖 A6）**｜遗留：O12 今晚领取（speculative 段已开工）、A5/B5 明日交付即审、S3 promotion 后 S3-A2/B5 前置全满足｜下一步：O12 ProviderLane 09-11 交付；A5/B5 交付即审；09-13 O4 收官 MVP-CLOSED｜确认来源：用户指令（「可以，合并吧」「我们代修吧」「现在开」）。
 
 - 2026-09-10｜S2 双线集成收口 + O2/O6 gate + O3 账本收口（owner 主线任务）：D-S2-01 裁决落地（A3 保 canonical `audit.py`、B3 改名 `audit_evidence.py`，语义以 B3 严格版为准，grade=E1 冻结）；owner 集成 PR #10（105 passed）+ follow-up PR #11 关 F-9/F-10（108 passed）；O2/D-F8-01 空结果语义裁决（`completed_empty` 确定性成功终态，`docs/coord/empty-result-ruling.md`）；O6 S2 promotion 四项核验通过 → S2-A/S2-B accepted、S3-A/S3-B ready（base main@535f208）；O3/I3 账本收口首轮（S2 账本 accepted 对齐、演进协议 D-EVOL-01 Decisions 归档、registry I3 integrated、本文件回写）；任务包扩容重排（B5 数据源/B6 试点/B7 稿件、O12 ProviderLane 归 Owner、A6/A7 前移；09-10 排期提优：O3/O8 提前下午、O12 今晚领取 09-11 交付）｜遗留：A4/B4 今日交付待审、O8 ADR-01 下午、O7 今晚 gate｜下一步：O8 → 今晚深审 A4/B4 + O7 → O12 领取｜确认来源：用户指令（集成裁决 + 排期提优拍板）。
 

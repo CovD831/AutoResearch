@@ -45,7 +45,7 @@
 
 ## A4 — S3 Capability Adapters
 
-- 状态：`integrated`（PR #12 于 2026-09-10 合入主线 `f620915`：owner 深审通过 + 全量 137 passed 独立复现；D-1/D-4/D-7 裁决已落，见 `.ai-team/TASK.md` D-S3-01；acceptance 待 S3 promotion），依赖 S2 promotion。
+- 状态：`accepted`（O7 S3 promotion 2026-09-10：四项核验通过；PR #12 合入 `f620915`）。
 - 目标：实现 Capability Registry 和 native/MCP/skill/plugin adapter 的统一调用边界。
 - 主要交付：manifest registry、operator-assigned trust tier、adapter invocation receipt、candidate-only 限制、禁用网络的默认策略。
 - 必须满足：能力自述不能自行提升 trust tier；外部能力只能经 adapter；不增加第六个业务角色。
