@@ -20,7 +20,7 @@
 | S3-A-CAPABILITY-ADAPTERS | S3 | runtime | `codex/s3-a-capability-adapters` merged via PR #12 (`f620915`) | accepted（O7 S3 promotion，2026-09-10：四项核验通过） | S2 promotion | S2 promotion | — | S3-A2 |
 | S3-A2-PROVIDER-LANE | S3 | integration/lead（Owner O12，2026-09-10 重排：需参考本地 openpilot 代码故归 Owner 亲自实现；真实检索 adapter 归 A5） | owner/provider-lane 实施中（speculative 段） | ready（O7 S3 promotion 后依赖全满足：B4 accepted + O7 过；O12 已提前开工） | B4 accepted（LLM adapter contract）+ O7 | S3 promotion | — | S4-A |
 | S3-B-READER-WRITER-PORTS | S3 | evidence/domain | `codex/s3-reader-writer-ports`（PR #13，superseded）经 owner 集成 PR #14 合入（`7b88e30`，D-SYNC-01 先例：rebase + 孤儿 map-key gate 检查 + 更名） | accepted（O7 S3 promotion，2026-09-10：四项核验通过） | S2 promotion | S2 promotion | — | S3-B2 |
-| S3-B2-DATA-SOURCES | S3 | evidence/domain | reserved | planned（2026-09-10 重排编号为 B5：Crossref/Retraction Watch + PDF 解析，见 B 线 TASK-SPECS B5） | B4 accepted + S3 promotion | S3 promotion | — | S4-B |
+| S3-B2-DATA-SOURCES | S3 | evidence/domain | reserved | ready（2026-09-10 重排编号为 B5：Crossref/Retraction Watch + PDF 解析，见 B 线 TASK-SPECS B5；依赖 B4 accepted + O7 S3 promotion 均已满足） | B4 accepted + S3 promotion | S3 promotion | — | S4-B |
 | S4-A-BENCHMARK-HARNESS | S4 | runtime | reserved | ready（O7 S3 promotion，2026-09-10） | S3 promotion | S3 promotion | — | — |
 | S4-B-REAL-PILOT | S4 | evidence/domain | reserved | ready（O7 S3 promotion，2026-09-10；B6 EvoMap 交叉评审条款见 B 线 TASK-SPECS） | S3 promotion | S3 promotion | — | — |
 | S4-A2-EXPERIENCE-WIRING | S4 | runtime | reserved | ready（追加包 2026-09-10：失败经验沉淀接线，原 O9 接线点①前移成员 A，见 A 线 TASK-SPECS A6；依赖 A3/B3 accepted 与 O7 均已满足） | A3/B3 accepted（已满足） | O7（已过） | — | — |

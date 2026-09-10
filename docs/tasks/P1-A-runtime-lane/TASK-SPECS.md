@@ -53,7 +53,7 @@
 
 ## A5 — S4 Benchmark Runtime
 
-- 状态：`planned`，依赖 S3 promotion。
+- 状态：`ready`（O7 S3 promotion 已于 2026-09-10 通过），依赖 S3 promotion。
 - 目标：提供可审计 benchmark harness 的运行时支持。
 - 主要交付：benchmark invocation、资源预算、停止条件、结果 receipt、报告 artifact 和重跑命令；**Semantic Scholar 真实检索 adapter（2026-09-10 增补，经 A4 registry 注册，为 benchmark 与 B 线试点提供真实文献数据源）**。
 - 必须满足：计划、观测结果和未知结果分开；资源超限触发 interrupt/deny；运行环境和命令可追溯；检索 adapter 的空结果遵循 D-F8-01、限流/离线矩阵化。

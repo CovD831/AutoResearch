@@ -44,7 +44,7 @@
 
 ## B5 — S3-B 真实数据源与解析层（2026-09-10 重排编号，原追加包 B7）
 
-- 状态：`planned`，依赖 B4 accepted + S3 promotion（O7）。B6（真实试点）的前置。
+- 状态：`ready`（O7 S3 promotion 已于 2026-09-10 通过，B4 accepted），依赖 B4 accepted + S3 promotion（O7）。B6（真实试点）的前置。
 - 背景：外部模块选型已定稿（**ADR-01** `docs/coord/adr-01-external-integrations.md`，2026-09-10 Accepted，逐槽位复调研版）。B3 的核验与 B6 的试点目前建立在 fixture 数据上，真实化后 fail-closed 语义不变。
 - 目标：核验数据源与论文解析从 fixture 升级为真实外部源。
 - 主要交付：Crossref API adapter（DOI 存在性/元数据/更正关系；撤稿经 Crossref REST `update-to[]` / `filter=update-type:retraction`——Retraction Watch 2025-01 起并入其中）；PDF 解析层（**docling 默认，MIT，ADR-01 槽位 3**：模型权重离线预置后离线运行；pymupdf4llm 仅作 docling 权重不可用时的轻量兜底，AGPL 条款见 ADR-01 签字块 2，启用须在 receipt/PROGRESS 记录原因；解析产物进 B 线 candidate 通道）；评测用自建 gold set 构建（ScholarQABench 指标口径：citation recall / precision / hallucination ratio，供 A5 固定语料与主指标）。
