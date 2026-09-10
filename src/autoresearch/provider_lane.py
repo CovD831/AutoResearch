@@ -329,6 +329,9 @@ class LaneIdentity:
     # degrades to json_object, require raises LaneStrictError (§4.5 矩阵).
     supports_strict_json_schema: bool = False
     max_rounds: int = 8
+    # Where the cost figures came from (None = unpriced lane, no catalog entry).
+    # Carried so a receipt can name the price table it was priced against.
+    price_source: str | None = None
 
     def __post_init__(self) -> None:
         if not self.lane_id.strip() or not self.endpoint.strip() or not self.model.strip():
@@ -358,12 +361,24 @@ class LaneIdentity:
 # --------------------------------------------------------------------------
 
 DEFAULT_CATALOG_PATH = Path(__file__).resolve().parent / "data" / "models_catalog.json"
+DEFAULT_OVERRIDES_PATH = Path(__file__).resolve().parent / "data" / "price_overrides.json"
 
 
 class ModelCatalog:
-    """Read-only view over the vendored catalog snapshot."""
+    """Read-only view over the vendored snapshot plus manual price overrides.
 
-    def __init__(self, data: Mapping[str, Any], *, source_path: str | None = None) -> None:
+    The snapshot is a point-in-time copy of models.dev and *will* lag provider
+    price pages; ``price_overrides.json`` pins the prices of the models this
+    project actually calls. See ``PRICE-POLICY.md``.
+    """
+
+    def __init__(
+        self,
+        data: Mapping[str, Any],
+        *,
+        source_path: str | None = None,
+        overrides: Mapping[str, Any] | None = None,
+    ) -> None:
         meta = data.get("_meta")
         if not isinstance(meta, dict) or "source" not in meta or "license" not in meta:
             raise LaneCatalogError(
@@ -373,11 +388,23 @@ class ModelCatalog:
         if not isinstance(data.get("providers"), dict):
             raise LaneCatalogError("catalog snapshot has no providers table")
         self._meta = dict(meta)
-        self._providers: dict[str, dict] = dict(data["providers"])
+        self._overrides: dict[str, Any] = dict(overrides or {})
+        # Copy two levels down: applying an override must never mutate the data
+        # structure the caller handed us.
+        self._providers: dict[str, dict] = {
+            provider_id: {
+                **provider,
+                "models": {mid: dict(model) for mid, model in provider.get("models", {}).items()},
+            }
+            for provider_id, provider in data["providers"].items()
+        }
         self.source_path = source_path
+        self._apply_price_overrides()
 
     @classmethod
-    def load(cls, path: str | Path | None = None) -> ModelCatalog:
+    def load(
+        cls, path: str | Path | None = None, *, overrides_path: str | Path | None = None
+    ) -> ModelCatalog:
         resolved = Path(path) if path is not None else DEFAULT_CATALOG_PATH
         try:
             data = json.loads(resolved.read_text(encoding="utf-8"))
@@ -388,7 +415,129 @@ class ModelCatalog:
             ) from exc
         except json.JSONDecodeError as exc:
             raise LaneCatalogError(f"catalog snapshot is not valid JSON: {exc}") from exc
-        return cls(data, source_path=str(resolved))
+
+        overrides: dict[str, Any] | None = None
+        resolved_overrides = (
+            Path(overrides_path) if overrides_path is not None else DEFAULT_OVERRIDES_PATH
+        )
+        if resolved_overrides.exists():
+            try:
+                overrides = json.loads(resolved_overrides.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                raise LaneCatalogError(
+                    f"price overrides at {resolved_overrides} are not valid JSON: {exc}",
+                    suggested_recovery="fix or remove src/autoresearch/data/price_overrides.json",
+                ) from exc
+        return cls(data, source_path=str(resolved), overrides=overrides)
+
+    @property
+    def price_source(self) -> str:
+        """Human-readable provenance of the prices in this snapshot.
+
+        These prices are an *estimate* derived from this snapshot, not the
+        provider's invoice. Vendored data can lag the provider's published price
+        table — verified 2026-09-11 against DeepSeek's official rates, where the
+        snapshot differed by up to ~4.5x and did not model peak/off-peak pricing
+        (see ``SELF-REVIEW.md``). Recording the source on each priced receipt is
+        what keeps a cost traceable to the table that produced it.
+        """
+
+        fetched = str(self._meta.get("fetched_at", ""))[:10]
+        return f"models.dev snapshot {fetched}".strip()
+
+    @staticmethod
+    def _coerce_override_rate(key: str, field: str, value: Any) -> float:
+        """Parse one override rate; malformed data is a catalog error, not a guess.
+
+        A negative, non-numeric or NaN rate would otherwise be stored silently and
+        surface only later (if ever) when the model is built into a lane — or never,
+        for a model nothing builds. The catalog is the audit basis for pricing, so
+        bad data fails loudly at load time instead of becoming a quiet wrong number.
+        """
+
+        if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+            raise LaneCatalogError(
+                f"price override {key!r}: {field!r} must be a number",
+                suggested_recovery="fix src/autoresearch/data/price_overrides.json",
+            )
+        try:
+            rate = float(value)
+        except (TypeError, ValueError) as exc:
+            raise LaneCatalogError(
+                f"price override {key!r}: {field!r} is not a number: {value!r}",
+                suggested_recovery="fix src/autoresearch/data/price_overrides.json",
+            ) from exc
+        if rate != rate or rate in (float("inf"), float("-inf")) or rate < 0:
+            raise LaneCatalogError(
+                f"price override {key!r}: {field!r} must be a finite, "
+                f"non-negative number, got {value!r}",
+                suggested_recovery="fix src/autoresearch/data/price_overrides.json",
+            )
+        return rate
+
+    def _apply_price_overrides(self) -> None:
+        """Pin prices for the models actually in use (see ``PRICE-POLICY.md``).
+
+        An override only replaces the four cost tiers of an *existing* catalog
+        entry; it never invents a model, and an override pointing at an unknown
+        entry is ignored rather than crashing the offline catalog. Malformed
+        override data, by contrast, fails loudly: a catalog carrying a silently
+        wrong rate is worse than one that refuses to load.
+
+        A model is tagged with the source of its price only when an override
+        actually patched a rate — an override that patches nothing must not make a
+        receipt claim provenance it did not supply.
+        """
+
+        snapshot_source = self.price_source
+        models_table = self._overrides.get("models") or {}
+        if not isinstance(models_table, dict):
+            raise LaneCatalogError(
+                "price overrides 'models' must be an object keyed by 'provider/model'",
+                suggested_recovery="fix src/autoresearch/data/price_overrides.json",
+            )
+        applied: set[tuple[str, str]] = set()
+        for key, entry in models_table.items():
+            if not isinstance(entry, dict):
+                raise LaneCatalogError(
+                    f"price override {key!r} must be an object",
+                    suggested_recovery="fix src/autoresearch/data/price_overrides.json",
+                )
+            provider_id, _, model_id = str(key).partition("/")
+            provider = self._providers.get(provider_id)
+            if provider is None or model_id not in provider.get("models", {}):
+                continue  # unknown target: ignored, never invents a model
+            cost = dict(provider["models"][model_id].get("cost") or {})
+            patched = False
+            for rate_field in ("input", "output", "cache_read", "cache_write"):
+                if rate_field not in entry:
+                    continue
+                cost[rate_field] = self._coerce_override_rate(
+                    str(key), rate_field, entry[rate_field]
+                )
+                patched = True
+            if not patched:
+                continue  # nothing patched: keep the snapshot price and its source
+            model = provider["models"][model_id]
+            model["cost"] = cost
+            parts = (
+                "override",
+                str(entry.get("checked_at") or ""),
+                str(entry.get("source_host") or ""),
+            )
+            model["_price_source"] = " ".join(part for part in parts if part)
+            applied.add((provider_id, model_id))
+
+        for provider_id, provider in self._providers.items():
+            for model_id, model in provider.get("models", {}).items():
+                if (provider_id, model_id) not in applied:
+                    model.setdefault("_price_source", snapshot_source)
+
+    def model_price_source(self, provider_id: str, model_id: str) -> str:
+        """Provenance of the price attached to one model entry."""
+
+        model = self.get_model(provider_id, model_id)
+        return str(model.get("_price_source") or self.price_source)
 
     def get_provider(self, provider_id: str) -> dict:
         provider = self._providers.get(provider_id)
@@ -504,6 +653,7 @@ def build_preset_lane(
         thinking_format=spec.get("thinking_format"),
         supports_strict_json_schema=bool(spec.get("supports_strict_json_schema", False)),
         max_rounds=int(spec.get("max_rounds", 8)),
+        price_source=catalog.model_price_source(spec["provider"], model_id),
     )
 
 
@@ -880,6 +1030,11 @@ class LaneResult:
     usage: Usage
     usage_cost: UsageCost
     raw: Mapping[str, Any]
+    # How many HTTP attempts it took to obtain this result (1 = first try).
+    # Recorded so a receipt can state the upper bound of what the call cost: a
+    # failed retry is usually not billed, but a 5xx can arrive after the provider
+    # already accepted the request.
+    attempts: int = 1
 
 
 class LaneTransportError(ProviderLaneError):
@@ -1041,11 +1196,14 @@ class LaneTransport:
         check_call_budget(self.lane, calls_used=self.calls_made)
 
         payload = build_openai_completions_payload(self.lane, request)
-        raw = retry_with_backoff(
-            lambda _attempt: self._post(payload),
-            policy=self.retry_policy,
-            sleep=self._sleep,
-        )
+        attempts = 0
+
+        def _dispatch(_attempt: int) -> dict[str, Any]:
+            nonlocal attempts
+            attempts += 1
+            return self._post(payload)
+
+        raw = retry_with_backoff(_dispatch, policy=self.retry_policy, sleep=self._sleep)
         try:
             text = raw["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:
@@ -1091,6 +1249,7 @@ class LaneTransport:
             usage=usage,
             usage_cost=usage_cost,
             raw={"id": raw.get("id"), "usage": raw.get("usage")},
+            attempts=attempts,
         )
 
     def _post(self, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -1134,7 +1293,9 @@ def retry_with_backoff(fn: Any, *, policy: RetryPolicy, sleep: Any) -> Any:
 # --------------------------------------------------------------------------
 
 
-def receipt_usage_fields(result: LaneResult) -> dict[str, Any]:
+def receipt_usage_fields(
+    result: LaneResult, *, price_source: str | None = None
+) -> dict[str, Any]:
     """Build the ``tokens`` / ``cost`` receipt blocks for a lane result.
 
     Returns ``{"tokens": {...}, "cost": {...}}`` using the shared
@@ -1162,6 +1323,8 @@ def receipt_usage_fields(result: LaneResult) -> dict[str, Any]:
             "currency": "USD",
             "model": result.model,
             "lane_id": result.lane_id,
+            "attempts": result.attempts,
+            "price_source": price_source,
         },
     }
 

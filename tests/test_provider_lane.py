@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
 from autoresearch.provider_lane import (
+    DEFAULT_CATALOG_PATH,
     PRESET_LANE_IDS,
     CostTier,
     LaneBudgetExceededError,
@@ -140,12 +142,99 @@ def test_local_endpoint_lane_may_have_empty_scope() -> None:
 
 
 def test_cost_flat_pricing_matches_hand_computation() -> None:
-    # deepseek-v4-flash: input=$0.14/1M, output=$0.28/1M (models.dev snapshot)
+    # Deliberately not hard-coded: the rate comes from the lane (snapshot or a
+    # manual override), and what this asserts is that the calculator agrees with
+    # the hand computation for whatever rate is in force.
     lane = build_preset_lane("deepseek:chat:v1")
-    cost = calculate_cost(Usage(input_tokens=1_000_000, output_tokens=500_000), lane.cost)
-    assert cost.input == pytest.approx(0.14)
-    assert cost.output == pytest.approx(0.14)
-    assert cost.total == pytest.approx(0.28)
+    usage = Usage(input_tokens=1_000_000, output_tokens=500_000)
+    cost = calculate_cost(usage, lane.cost)
+    assert cost.input == pytest.approx(lane.cost.input)
+    assert cost.output == pytest.approx(lane.cost.output * 0.5)
+    assert cost.total == pytest.approx(lane.cost.input + lane.cost.output * 0.5)
+
+
+def test_price_override_pins_the_builtin_model_and_names_its_source() -> None:
+    """内置模型按官方价目钉住（PRICE-POLICY.md，peak 档），且来源可追溯。"""
+
+    catalog = load_default_catalog()
+    lane = build_preset_lane("deepseek:chat:v1")
+
+    # pinned from the provider price page, not the (lagging) snapshot
+    assert lane.cost.input == pytest.approx(0.30)
+    assert lane.cost.output == pytest.approx(1.20)
+    assert lane.cost.cache_read == pytest.approx(0.006)
+    assert lane.price_source.startswith("override")
+    assert "api-docs.deepseek.com" in lane.price_source
+
+    # a model without an override keeps reporting the snapshot as its source
+    assert build_preset_lane("openai:chat:v1").price_source.startswith("models.dev snapshot")
+    assert catalog.model_price_source("deepseek", "deepseek-v4-pro").startswith("models.dev")
+
+
+def test_unknown_override_target_is_ignored() -> None:
+    """畸形的 override 不能让离线目录崩溃，也不能凭空造出模型。"""
+
+    data = json.loads(DEFAULT_CATALOG_PATH.read_text(encoding="utf-8"))
+    catalog = ModelCatalog(data, overrides={"models": {"deepseek/nope": {"input": 9.9}}})
+
+    assert catalog.get_model("deepseek", "deepseek-v4-flash")["cost"]["input"] != 9.9
+
+
+def test_partial_override_patches_only_the_named_tier() -> None:
+    """override 可以只钉一档，其余沿用快照值。"""
+
+    data = json.loads(DEFAULT_CATALOG_PATH.read_text(encoding="utf-8"))
+    before = dict(ModelCatalog(data).get_model("deepseek", "deepseek-v4-flash")["cost"])
+    catalog = ModelCatalog(
+        data, overrides={"models": {"deepseek/deepseek-v4-flash": {"input": 0.42}}}
+    )
+    after = catalog.get_model("deepseek", "deepseek-v4-flash")["cost"]
+
+    assert after["input"] == pytest.approx(0.42)
+    assert after["output"] == pytest.approx(before["output"])
+    assert catalog.model_price_source("deepseek", "deepseek-v4-flash").startswith("override")
+
+
+def test_override_that_patches_no_rate_does_not_claim_provenance() -> None:
+    """没钉任何价目的 override 不能给模型打 override 标签——否则 receipt 会声称
+    一个并未提供该数字的价目来源。"""
+
+    data = json.loads(DEFAULT_CATALOG_PATH.read_text(encoding="utf-8"))
+    catalog = ModelCatalog(
+        data,
+        overrides={"models": {"deepseek/deepseek-v4-flash": {"note": "reviewed, unchanged"}}},
+    )
+
+    source = catalog.model_price_source("deepseek", "deepseek-v4-flash")
+    assert source.startswith("models.dev snapshot")
+    assert not source.startswith("override")
+
+
+@pytest.mark.parametrize("bad_rate", [-1, -0.5, "abc", None, True, float("nan"), float("inf")])
+def test_malformed_override_rate_fails_loudly(bad_rate: object) -> None:
+    """价目是每个成本数字的审计依据：坏数据必须在加载时炸，而不是被静默存下。"""
+
+    data = json.loads(DEFAULT_CATALOG_PATH.read_text(encoding="utf-8"))
+    overrides = {"models": {"deepseek/deepseek-v4-flash": {"input": bad_rate}}}
+
+    with pytest.raises(LaneCatalogError):
+        ModelCatalog(data, overrides=overrides)
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"models": "not-an-object"},
+        {"models": ["deepseek/deepseek-v4-flash"]},
+        {"models": {"deepseek/deepseek-v4-flash": 9.9}},
+        {"models": {"deepseek/deepseek-v4-flash": "9.9"}},
+    ],
+)
+def test_malformed_override_shape_fails_loudly(overrides: dict) -> None:
+    data = json.loads(DEFAULT_CATALOG_PATH.read_text(encoding="utf-8"))
+
+    with pytest.raises(LaneCatalogError):
+        ModelCatalog(data, overrides=overrides)
 
 
 def test_cost_reasoning_tokens_not_double_counted() -> None:

@@ -146,15 +146,44 @@ def test_offline_service_stays_unavailable_and_returns_none() -> None:
     assert service.complete_json(system="s", user="u") is None
 
 
-def test_empty_key_fails_closed_instead_of_sending_a_blank_bearer() -> None:
+def test_empty_key_fails_closed_instead_of_sending_a_blank_bearer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Adversarial finding F3: an all-whitespace key is 'not configured', so the
-    request must fail fast locally rather than ship an empty Authorization header."""
+    request must fail fast locally rather than ship an empty Authorization header.
+
+    The credential whitelist falls back to the process environment, so the env
+    vars must be cleared for this test to be self-contained — otherwise a shell
+    that exports DEEPSEEK_API_KEY makes this locally green (or red) for a reason
+    that has nothing to do with the behaviour under test.
+    """
+
+    monkeypatch.delenv("AUTORESEARCH_DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
 
     service = LLMService(_settings("https://api.deepseek.com", "deepseek-v4-flash"))
     service.settings = service.settings.model_copy(update={"llm_api_key": SecretStr("   ")})
 
     with pytest.raises(LaneNotConfiguredError):
         service._ensure_transport()
+
+
+def test_blank_key_falls_back_to_the_credential_whitelist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The other half of F3: a blank settings key must not be shipped as an empty
+    Bearer, but the whitelisted environment variable still wins if it holds a real
+    key. That fallback is the designed behaviour, not a leak."""
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-from-env")
+    monkeypatch.delenv("AUTORESEARCH_DEEPSEEK_API_KEY", raising=False)
+
+    service = LLMService(_settings("https://api.deepseek.com", "deepseek-v4-flash"))
+    service.settings = service.settings.model_copy(update={"llm_api_key": SecretStr("   ")})
+
+    transport = service._ensure_transport()
+
+    assert transport.credential == "sk-from-env"
 
 
 def test_complete_dispatches_through_the_lane_transport() -> None:

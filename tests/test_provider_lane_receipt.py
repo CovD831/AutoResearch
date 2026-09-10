@@ -149,6 +149,23 @@ def test_capability_receipt_shares_the_same_pricing_schema() -> None:
     assert receipt.candidates_admissible is True
 
 
+def test_cost_block_names_the_price_table_and_attempts() -> None:
+    """Official-price cross-check (self-review 4.5) found the vendored snapshot can
+    diverge from the provider's published rates by ~4.5x, so every cost figure must
+    name the table it came from instead of being a bare number."""
+
+    fields = receipt_usage_fields(_lane_result(), price_source=LANE.price_source)
+    cost = fields["cost"]
+
+    assert cost["price_source"] == LANE.price_source
+    assert LANE.price_source  # non-empty provenance: snapshot or manual override
+    assert cost["attempts"] == 1
+
+
+def test_unpriced_lane_reports_no_price_source() -> None:
+    assert receipt_usage_fields(_lane_result())["cost"]["price_source"] is None
+
+
 def test_a5_reserved_schema_field_names_are_stable() -> None:
     """Frozen contract: A5 implements against exactly these names."""
 
@@ -168,4 +185,8 @@ def test_a5_reserved_schema_field_names_are_stable() -> None:
         "currency",
         "model",
         "lane_id",
+        "attempts",
+        "price_source",
     }
+    # a receipt written before retry accounting existed stays valid
+    assert InvocationCost().attempts == 1

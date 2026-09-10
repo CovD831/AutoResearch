@@ -9,8 +9,8 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, Field, computed_field
 
-from autoresearch.contracts import EvidenceCandidate, utc_now
-from autoresearch.invocation_contracts import CapabilityManifest, InvocationCost, TokenUsage
+from autoresearch.contracts import EvidenceCandidate, InvocationCost, TokenUsage, utc_now
+from autoresearch.invocation_contracts import CapabilityManifest
 
 
 class CapabilityTrustTier(StrEnum):

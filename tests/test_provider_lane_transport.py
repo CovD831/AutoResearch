@@ -21,6 +21,7 @@ from autoresearch.provider_lane import (
     make_strict_json_schema,
     normalize_tool_call_id,
     normalize_usage_openai,
+    receipt_usage_fields,
     resolve_response_format,
     synthesize_orphan_tool_results,
 )
@@ -362,6 +363,40 @@ def test_transport_accumulates_run_budget_counters() -> None:
     assert transport.spent_tokens == 1100  # 1000 prompt + 100 completion
     assert transport.spent_usd > 0
     assert transport.calls_made == 1
+
+
+# --------------------------------------------------------------------------
+# 重试计费口径（自审 4.4：重试次数必须可解释，否则成本被系统性低估）
+# --------------------------------------------------------------------------
+
+
+def test_transport_first_try_records_one_attempt() -> None:
+    client = FakeClient([FakeResponse(200, _completion_payload())])
+    transport = LaneTransport(
+        build_preset_lane("deepseek:chat:v1"), environ={"DEEPSEEK_API_KEY": "k"}, client=client
+    )
+
+    assert transport.complete(LaneRequest(system="s", user="u")).attempts == 1
+
+
+def test_transport_retry_attempts_reach_the_receipt_cost_block() -> None:
+    client = FakeClient(
+        [FakeResponse(500, {"error": "boom"}), FakeResponse(200, _completion_payload())]
+    )
+    transport = LaneTransport(
+        build_preset_lane("deepseek:chat:v1"),
+        environ={"DEEPSEEK_API_KEY": "k"},
+        client=client,
+        sleep=lambda _seconds: None,
+    )
+
+    result = transport.complete(LaneRequest(system="s", user="u"))
+
+    assert result.attempts == 2
+    cost = receipt_usage_fields(result)["cost"]
+    assert cost["attempts"] == 2
+    # total x attempts is the honest upper bound for what this call may have cost
+    assert cost["total"] * cost["attempts"] > cost["total"]
 
 
 # --------------------------------------------------------------------------

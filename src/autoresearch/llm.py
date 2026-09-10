@@ -59,12 +59,14 @@ def _normalize_endpoint(url: str) -> str:
     return normalized.rstrip("/")
 
 
-def _catalog_cost_for_model(model_id: str) -> ModelCost | None:
-    """Price a model id from the vendored catalog, regardless of endpoint.
+def _catalog_price_for_model(model_id: str) -> tuple[ModelCost, str] | None:
+    """Price a model id from the catalog, regardless of endpoint.
 
-    Without this, a ``base_url`` written as ``.../v1`` (or with different host
-    casing) would fall through to an unpriced lane and report cost 0 for a call
-    that really happened — an audit hole, not a conservative default.
+    Returns the four-tier cost together with the provenance of the price table
+    that produced it (snapshot vs manual override). Without this, a ``base_url``
+    written as ``.../v1`` (or with different host casing) would fall through to an
+    unpriced lane and report cost 0 for a call that really happened — an audit
+    hole, not a conservative default.
     """
 
     if not model_id:
@@ -72,9 +74,10 @@ def _catalog_cost_for_model(model_id: str) -> ModelCost | None:
     catalog = load_default_catalog()
     for provider in _PRICING_PROVIDER_ORDER:
         try:
-            return ModelCost.from_dict(catalog.get_model(provider, model_id)["cost"])
+            model = catalog.get_model(provider, model_id)
         except ProviderLaneError:
             continue
+        return ModelCost.from_dict(model["cost"]), catalog.model_price_source(provider, model_id)
     return None
 
 
@@ -104,18 +107,20 @@ def lane_from_settings(settings: Settings) -> LaneIdentity:
             return build_preset_lane(spec["lane_id"], model_override=model)
         except ProviderLaneError:
             break
+    priced = _catalog_price_for_model(model)
     return LaneIdentity(
         lane_id=f"{settings.llm_provider}:settings:v1",
         provider=settings.llm_provider,
         endpoint=base_url,
         model=model,
         api_family="openai-completions",
-        cost=_catalog_cost_for_model(model) or ModelCost(input=0.0, output=0.0),
+        cost=priced[0] if priced else ModelCost(input=0.0, output=0.0),
         context_window=0,
         max_output_tokens=0,
         reasoning_supported=False,
         credential_env_names=("AUTORESEARCH_LLM_API_KEY", "LLM_API_KEY"),
         budget_profile=LaneBudgetProfile(),
+        price_source=(priced[1] if priced else None),
     )
 
 
@@ -170,7 +175,7 @@ class LLMService:
         raw: dict[str, Any] = {
             "id": result.raw.get("id"),
             "usage": result.raw.get("usage", {}),
-            **receipt_usage_fields(result),
+            **receipt_usage_fields(result, price_source=self.lane.price_source),
         }
         return LLMResult(
             text=result.text,
