@@ -36,7 +36,7 @@
 
 ## B4 — S3 Reader / Writer Ports
 
-- 状态：`planned`，依赖 S2 promotion。
+- 状态：`integrated`（PR #13 superseded → owner 集成 PR #14 于 2026-09-10 合入主线 `7b88e30`：全量 146 passed 复现；孤儿 map-key gate 检查与消费方注记见 B4 L3 Known limits；acceptance 待 S3 promotion）。
 - 目标：将 Reader/Writer 能力接入 typed Domain Port，并保留 claim/evidence 约束。
 - 主要交付：ReadingCard、SectionDraft、claim binding、LLM/MCP adapter contract、三路契约级 parity 报告。
 - 必须满足：不同实现不要求文字相同，但 schema、claim 绑定、Gate 合规和审计结果必须可比较；外部输出先进入 candidate 通道。

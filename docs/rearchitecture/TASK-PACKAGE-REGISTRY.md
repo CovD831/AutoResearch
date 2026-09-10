@@ -19,7 +19,7 @@
 | S2-B-AUDIT-EVIDENCE | S2 | evidence/domain | `codex/s2-audit-evidence`（PR #9）经 owner D-S2-01 集成调整后以 PR #10 合入（`2d4029a`） | accepted（O6 S2 promotion，2026-09-10：四项核验通过） | `main@6b706df`（实际 base `main@dad4658`） | S1 promotion | — | S3-B |
 | S3-A-CAPABILITY-ADAPTERS | S3 | runtime | `codex/s3-a-capability-adapters` merged via PR #12 (`f620915`) | integrated（owner 深审 2026-09-10 通过并独立复现 137 passed；D-S3-01 三裁决落位，acceptance 待 S3 promotion） | S2 promotion | S2 promotion | — | S3-A2 |
 | S3-A2-PROVIDER-LANE | S3 | integration/lead（Owner O12，2026-09-10 重排：需参考本地 openpilot 代码故归 Owner 亲自实现；真实检索 adapter 归 A5） | reserved | planned（见 Owner TASK-QUEUE O12 / A 线 TASK-SPECS A5 分工注记） | B4 accepted（LLM adapter contract）+ O7 | S3 promotion | — | S4-A |
-| S3-B-READER-WRITER-PORTS | S3 | evidence/domain | reserved | ready（O6 S2 promotion，2026-09-10） | S2 promotion | S2 promotion | — | S3-B2 |
+| S3-B-READER-WRITER-PORTS | S3 | evidence/domain | `codex/s3-reader-writer-ports`（PR #13，superseded）经 owner 集成 PR #14 合入（`7b88e30`，D-SYNC-01 先例：rebase + 孤儿 map-key gate 检查 + 更名） | integrated（owner 深审 2026-09-10 通过；acceptance 待 S3 promotion） | S2 promotion | S2 promotion | — | S3-B2 |
 | S3-B2-DATA-SOURCES | S3 | evidence/domain | reserved | planned（2026-09-10 重排编号为 B5：Crossref/Retraction Watch + PDF 解析，见 B 线 TASK-SPECS B5） | B4 accepted + S3 promotion | S3 promotion | — | S4-B |
 | S4-A-BENCHMARK-HARNESS | S4 | runtime | reserved | planned | S3 promotion | S3 promotion | — | — |
 | S4-B-REAL-PILOT | S4 | evidence/domain | reserved | planned | S3 promotion | S3 promotion | — | — |
