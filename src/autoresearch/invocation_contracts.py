@@ -23,6 +23,8 @@ __all__ = [
     "PaperSearchRequest",
     "CapabilityManifest",
     "request_fingerprint",
+    "TokenUsage",
+    "InvocationCost",
 ]
 
 
@@ -68,6 +70,36 @@ class PaperSearchRequest(BaseModel):
     seed_papers: list[PaperRecord] = Field(default_factory=list, max_length=100)
 
 
+class TokenUsage(BaseModel):
+    """Provider-reported token usage attached to a receipt (O12, PLAN §4.2 field names)."""
+
+    input: int = Field(default=0, ge=0)
+    output: int = Field(default=0, ge=0)
+    cache_read: int = Field(default=0, ge=0)
+    cache_write: int = Field(default=0, ge=0)
+    reasoning: int = Field(
+        default=0, ge=0, description="Subset of output tokens; never billed twice."
+    )
+
+
+class InvocationCost(BaseModel):
+    """Priced token usage in USD (O12 CostCalculator, pi-ai four-tier semantics).
+
+    Reasoning tokens are a subset of ``output`` and never billed separately; the
+    four parts sum to ``total``. ``lane_id``/``model`` make the price traceable to
+    the catalog entry that produced it (S3.1 parity accounting).
+    """
+
+    input: float = Field(default=0.0, ge=0)
+    output: float = Field(default=0.0, ge=0)
+    cache_read: float = Field(default=0.0, ge=0)
+    cache_write: float = Field(default=0.0, ge=0)
+    total: float = Field(default=0.0, ge=0)
+    currency: str = Field(default="USD", max_length=8)
+    model: str | None = Field(default=None, max_length=200)
+    lane_id: str | None = Field(default=None, max_length=200)
+
+
 class InvocationReceipt(BaseModel):
     invocation_id: str
     status: InvocationStatus
@@ -77,6 +109,14 @@ class InvocationReceipt(BaseModel):
     request_fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
     paper_ids: list[str] = Field(default_factory=list, max_length=100)
     diagnostics: list[str] = Field(default_factory=list, max_length=100)
+    tokens: TokenUsage | None = Field(
+        default=None,
+        description="O12 provider usage. None when the invocation made no LLM call.",
+    )
+    cost: InvocationCost | None = Field(
+        default=None,
+        description="O12 priced usage. None when unpriced (no LLM call, or no catalog entry).",
+    )
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 

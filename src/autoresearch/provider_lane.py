@@ -73,6 +73,7 @@ __all__ = [
     "degrade_images_for_non_vision",
     "synthesize_orphan_tool_results",
     "convert_thinking_for_cross_model",
+    "receipt_usage_fields",
 ]
 
 
@@ -831,6 +832,7 @@ class LaneRequest:
     user: str
     temperature: float = 0.2
     reasoning_level: ReasoningLevel = "off"
+    json_mode: bool = False  # bare {"type": "json_object"} request, no schema
     json_schema: Mapping[str, Any] | None = None
     strict: str = "prefer"  # "prefer" | "require"
     max_output_tokens: int | None = None
@@ -907,6 +909,10 @@ def build_openai_completions_payload(lane: LaneIdentity, request: LaneRequest) -
         ],
     }
     response_format = resolve_response_format(lane, request)
+    if response_format is None and request.json_mode:
+        # No schema supplied: ask for a bare json_object, matching the legacy
+        # llm.py boundary that this lane replaces.
+        response_format = {"type": "json_object"}
     if response_format is not None:
         payload["response_format"] = response_format
     level = request.reasoning_level
@@ -964,6 +970,7 @@ class LaneTransport:
         lane: LaneIdentity,
         *,
         environ: Mapping[str, str] | None = None,
+        credential: str | None = None,
         client: Any = None,
         sleep: Any = time.sleep,
         retry_policy: RetryPolicy | None = None,
@@ -974,7 +981,12 @@ class LaneTransport:
                 f"api_family {lane.api_family!r} transport lands in 段 3 (messages 二期)"
             )
         self.lane = lane
-        self.credential = require_credential(lane, environ)
+        # An explicitly supplied credential wins over the env whitelist: the
+        # settings-backed facade (llm.py) holds the key as a SecretStr rather
+        # than publishing it as an env var, and must not be double-scoped.
+        self.credential = (
+            credential if credential is not None else require_credential(lane, environ)
+        )
         self._client = client
         self._sleep = sleep
         self.retry_policy = retry_policy or RetryPolicy()
@@ -1047,6 +1059,43 @@ def retry_with_backoff(fn: Any, *, policy: RetryPolicy, sleep: Any) -> Any:
                 raise
             sleep(policy.delay_seconds(attempt))
     raise last_error if last_error else ProviderLaneError("retry loop exited without result")
+
+
+# --------------------------------------------------------------------------
+# S2.5 receipt 计价字段（O12 → A 线 invocation receipt，PLAN §4.2 字段名）
+# --------------------------------------------------------------------------
+
+
+def receipt_usage_fields(result: LaneResult) -> dict[str, Any]:
+    """Build the ``tokens`` / ``cost`` receipt blocks for a lane result.
+
+    Returns ``{"tokens": {...}, "cost": {...}}`` using the shared
+    ``TokenUsage`` / ``InvocationCost`` field names, so a receipt can be filled
+    without O12 importing the receipt module (one-way dependency). ``reasoning``
+    is a subset of ``output`` and is recorded for transparency only — it is
+    never priced separately (pi-ai semantics).
+    """
+
+    usage, cost = result.usage, result.usage_cost
+    return {
+        "tokens": {
+            "input": usage.input_tokens,
+            "output": usage.output_tokens,
+            "cache_read": usage.cache_read_tokens,
+            "cache_write": usage.cache_write_tokens,
+            "reasoning": usage.reasoning_tokens,
+        },
+        "cost": {
+            "input": cost.input,
+            "output": cost.output,
+            "cache_read": cost.cache_read,
+            "cache_write": cost.cache_write,
+            "total": cost.total,
+            "currency": "USD",
+            "model": result.model,
+            "lane_id": result.lane_id,
+        },
+    }
 
 
 # --------------------------------------------------------------------------
