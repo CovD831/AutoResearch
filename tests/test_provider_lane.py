@@ -24,6 +24,7 @@ from autoresearch.provider_lane import (
     calculate_cost,
     check_call_budget,
     credential_from_env,
+    lane_drift_event,
     load_default_catalog,
     require_credential,
     selftest_catalog,
@@ -271,6 +272,23 @@ def test_drift_endpoint_trailing_slash_tolerated() -> None:
     observed = _observed(lane)
     observed["endpoint"] = lane.endpoint.rstrip("/") + "///"
     validate_lane_settings(lane, observed)
+
+
+def test_lane_drift_event_only_on_drift() -> None:
+    """PLAN §5 requires a ``provider.lane_drift`` audit event on drift."""
+
+    lane = build_preset_lane("deepseek:chat:v1")
+    assert lane_drift_event(lane, _observed(lane)) is None
+
+    observed = _observed(lane)
+    observed["endpoint"] = "https://evil.example.com/v1"
+    event = lane_drift_event(lane, observed)
+
+    assert event is not None
+    assert event["event"] == "provider.lane_drift"
+    assert event["lane_id"] == lane.lane_id
+    assert event["model"] == lane.model
+    assert "endpoint" in event["detail"]
 
 
 # --------------------------------------------------------------------------

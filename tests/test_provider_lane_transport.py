@@ -6,6 +6,8 @@ import httpx
 import pytest
 
 from autoresearch.provider_lane import (
+    LaneBudgetExceededError,
+    LaneBudgetProfile,
     LaneRequest,
     LaneStrictError,
     LaneTransport,
@@ -315,6 +317,51 @@ def test_transport_network_error_is_retryable() -> None:
     result = transport.complete(LaneRequest(system="s", user="u"))
     assert result.text == "ok"
     assert sleeps == [0.5]
+
+
+# --------------------------------------------------------------------------
+# 预算档接线（A5 评估纪律：预算必须被执行，不只是被声明）
+# --------------------------------------------------------------------------
+
+
+def test_transport_enforces_call_cap_before_dispatch() -> None:
+    """The call cap must fail closed *before* the next request leaves the process."""
+
+    lane = build_preset_lane(
+        "deepseek:chat:v1", budget_profile=LaneBudgetProfile(max_calls_per_run=1)
+    )
+    client = FakeClient([FakeResponse(200, _completion_payload())])
+    transport = LaneTransport(lane, environ={"DEEPSEEK_API_KEY": "k"}, client=client)
+
+    transport.complete(LaneRequest(system="s", user="u"))
+
+    with pytest.raises(LaneBudgetExceededError):
+        transport.complete(LaneRequest(system="s", user="u"))
+    assert len(client.calls) == 1  # the second call never reached the network
+    assert transport.calls_made == 1
+
+
+def test_transport_enforces_per_call_cost_cap() -> None:
+    lane = build_preset_lane(
+        "deepseek:chat:v1", budget_profile=LaneBudgetProfile(max_cost_per_call_usd=0.0)
+    )
+    client = FakeClient([FakeResponse(200, _completion_payload())])
+    transport = LaneTransport(lane, environ={"DEEPSEEK_API_KEY": "k"}, client=client)
+
+    with pytest.raises(LaneBudgetExceededError):
+        transport.complete(LaneRequest(system="s", user="u"))
+
+
+def test_transport_accumulates_run_budget_counters() -> None:
+    lane = build_preset_lane("deepseek:chat:v1")
+    client = FakeClient([FakeResponse(200, _completion_payload())])
+    transport = LaneTransport(lane, environ={"DEEPSEEK_API_KEY": "k"}, client=client)
+
+    transport.complete(LaneRequest(system="s", user="u"))
+
+    assert transport.spent_tokens == 1100  # 1000 prompt + 100 completion
+    assert transport.spent_usd > 0
+    assert transport.calls_made == 1
 
 
 # --------------------------------------------------------------------------

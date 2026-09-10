@@ -53,6 +53,7 @@ __all__ = [
     "credential_from_env",
     "require_credential",
     "validate_lane_settings",
+    "lane_drift_event",
     "check_call_budget",
     "PRESET_LANE_IDS",
     "build_preset_lane",
@@ -596,6 +597,33 @@ def validate_lane_settings(lane: LaneIdentity, observed: Mapping[str, Any]) -> N
         )
 
 
+def lane_drift_event(lane: LaneIdentity, observed: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Build the ``provider.lane_drift`` audit event for an observed drift.
+
+    Returns ``None`` when the observed settings match the lane identity, so a
+    caller can branch on the result. Deliberately a pure factory: this module
+    owns no store and must not acquire one (R005 — no second Store, no bypass
+    around Evidence/Policy), so the writer stays with the caller.
+
+    Note (O12 self-review): no production caller wires this yet — a lane resolved
+    from Settings is derived from the same source it would be checked against, so
+    there is nothing to drift. It exists for the frozen-preset-lane consumers
+    (A5/B6) that will hold a lane while Settings may move.
+    """
+
+    try:
+        validate_lane_settings(lane, observed)
+    except LaneDriftError as exc:
+        return {
+            "event": "provider.lane_drift",
+            "lane_id": lane.lane_id,
+            "provider": lane.provider,
+            "model": lane.model,
+            "detail": str(exc),
+        }
+    return None
+
+
 # --------------------------------------------------------------------------
 # budget guard（A5 评估纪律：固定预算 fail-closed）
 # --------------------------------------------------------------------------
@@ -961,6 +989,7 @@ class LaneTransport:
 
     - 构造即验凭据（白名单 → fail-closed）。
     - retry：429/5xx/网络错误按 RetryPolicy 指数退避；401/403/422 等 fail fast。
+    - 预算：dispatch 前查 per-run 调用上限，事后累计 cost/tokens，超限 fail-closed。
     - post-call 计价：provider usage → 归一化 → 快照价 → LaneResult。
     - anthropic-messages 族 transport 二期（目录/计价/档位已就绪）。
     """
@@ -984,13 +1013,19 @@ class LaneTransport:
         # An explicitly supplied credential wins over the env whitelist: the
         # settings-backed facade (llm.py) holds the key as a SecretStr rather
         # than publishing it as an env var, and must not be double-scoped.
-        self.credential = (
-            credential if credential is not None else require_credential(lane, environ)
-        )
+        # A blank credential counts as "not supplied": it must fail closed (or be
+        # exempted for a local endpoint) instead of shipping an empty Bearer.
+        supplied = credential.strip() if credential is not None else ""
+        self.credential = supplied if supplied else require_credential(lane, environ)
         self._client = client
         self._sleep = sleep
         self.retry_policy = retry_policy or RetryPolicy()
         self.timeout_seconds = timeout_seconds
+        # Per-run budget counters (A5 evaluation discipline: a fixed call budget
+        # must be *enforced*, not merely declared in the profile).
+        self.calls_made = 0
+        self.spent_usd = 0.0
+        self.spent_tokens = 0
 
     def _endpoint(self) -> str:
         return self.lane.endpoint.rstrip("/") + "/chat/completions"
@@ -1002,6 +1037,9 @@ class LaneTransport:
         return headers
 
     def complete(self, request: LaneRequest) -> LaneResult:
+        # Fail closed *before* dispatch when the per-run call cap is exhausted.
+        check_call_budget(self.lane, calls_used=self.calls_made)
+
         payload = build_openai_completions_payload(self.lane, request)
         raw = retry_with_backoff(
             lambda _attempt: self._post(payload),
@@ -1016,6 +1054,36 @@ class LaneTransport:
             ) from exc
         usage = normalize_usage_openai(raw.get("usage") or {})
         usage_cost = calculate_cost(usage, self.lane.cost)
+
+        # Accumulate the run budget. A per-call cost cap can only be judged after
+        # the provider reports usage (there is no token estimator yet), so it — and
+        # the per-run token cap — stop the run rather than pretend to pre-empt it.
+        profile = self.lane.budget_profile
+        self.calls_made += 1
+        self.spent_usd += usage_cost.total
+        self.spent_tokens += (
+            usage.input_tokens
+            + usage.output_tokens
+            + usage.cache_read_tokens
+            + usage.cache_write_tokens
+        )
+        if profile.max_cost_per_call_usd is not None and (
+            usage_cost.total > profile.max_cost_per_call_usd
+        ):
+            raise LaneBudgetExceededError(
+                f"lane {self.lane.lane_id} call cost ${usage_cost.total:.6f} exceeds "
+                f"per-call cap ${profile.max_cost_per_call_usd:.6f}",
+                suggested_recovery="raise max_cost_per_call_usd or shrink the prompt",
+            )
+        if profile.max_tokens_per_run is not None and (
+            self.spent_tokens > profile.max_tokens_per_run
+        ):
+            raise LaneBudgetExceededError(
+                f"lane {self.lane.lane_id} run tokens {self.spent_tokens} exceed "
+                f"cap {profile.max_tokens_per_run}",
+                suggested_recovery="raise max_tokens_per_run or stop the run",
+            )
+
         return LaneResult(
             text=text,
             lane_id=self.lane.lane_id,
