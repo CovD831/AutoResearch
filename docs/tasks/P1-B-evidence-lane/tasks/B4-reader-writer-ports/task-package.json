@@ -1,0 +1,42 @@
+{
+  "task_id": "S3-B-READER-WRITER-PORTS",
+  "phase": "S3",
+  "owner_lane": "evidence/domain",
+  "status": "handoff",
+  "base_ref": "main@437e15e",
+  "branch": "codex/s3-reader-writer-ports",
+  "depends_on": [
+    "S2-B-AUDIT-EVIDENCE",
+    "S2-promotion"
+  ],
+  "allowed_paths": [
+    "src/autoresearch/reader_writer_ports.py",
+    "tests/test_reader_writer_ports.py",
+    "docs/tasks/P1-B-evidence-lane/tasks/B4-reader-writer-ports/",
+    ".ai-team/tasks/S3-B-READER-WRITER-PORTS.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/application.py",
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/capability.py",
+    "src/autoresearch/gates.py",
+    "src/autoresearch/cli.py",
+    "src/autoresearch/api.py",
+    "src/autoresearch/reader_service.py",
+    "src/autoresearch/writing_service.py",
+    "src/autoresearch/audit_evidence.py",
+    "src/autoresearch/audit.py",
+    ".project-to-act/",
+    ".ai-team/TASK.md"
+  ],
+  "deliverables": [
+    "typed Reader/Writer request, response, protocol and adapter identity",
+    "native / llm / external transport-neutral adapters (offline)",
+    "claim binding and gate compliance (fail-closed) rules",
+    "three-way contract-level parity report",
+    "offline parity and adversarial tests",
+    "L3, PROGRESS, HANDOFF, and member ledger"
+  ],
+  "next_step": "owner review, commit, push, and pull request"
+}
