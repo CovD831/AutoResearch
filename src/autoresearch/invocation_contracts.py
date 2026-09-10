@@ -45,12 +45,18 @@ class InvocationPhase(StrEnum):
 
 
 class CapabilityManifest(BaseModel):
-    """Minimal S1 manifest; trust assignment remains outside the adapter."""
+    """Backward-compatible manifest; operator trust assignment stays outside it."""
 
     name: str = Field(min_length=1, max_length=100)
     kind: str = Field(default="native", min_length=1, max_length=50)
     version: str = Field(default="1", min_length=1, max_length=50)
     permissions: list[str] = Field(default_factory=list, max_length=20)
+    entrypoint: str | None = Field(default=None, max_length=300)
+    inputs: list[str] = Field(default_factory=list, max_length=50)
+    outputs: list[str] = Field(default_factory=list, max_length=50)
+    evidence_mode: str | None = Field(default=None, max_length=50)
+    network_required: bool = False
+    allowed_network_domains: list[str] = Field(default_factory=list, max_length=50)
 
 
 class PaperSearchRequest(BaseModel):

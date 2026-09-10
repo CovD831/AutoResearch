@@ -1,0 +1,41 @@
+{
+  "task_id": "S3-A-CAPABILITY-ADAPTERS",
+  "phase": "S3",
+  "owner_lane": "runtime",
+  "status": "ready",
+  "base_ref": "80e2277",
+  "branch": "codex/s3-a-capability-adapters",
+  "depends_on": ["S2 promotion"],
+  "merge_after": ["S2 promotion"],
+  "allowed_paths": [
+    "src/autoresearch/capability_registry.py",
+    "src/autoresearch/invocation_contracts.py",
+    "tests/test_capability_registry.py",
+    "docs/tasks/P1-A-runtime-lane/tasks/A4-capability-adapters/",
+    ".ai-team/tasks/S3-A-CAPABILITY-ADAPTERS.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/application.py",
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/writing_service.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "deliverables": [
+    "Capability Registry (manifest registry)",
+    "operator-assigned trust tier",
+    "adapter invocation receipt",
+    "candidate-only restriction",
+    "network deny-by-default policy",
+    "unified native/MCP/skill/plugin adapter boundary",
+    "task-local ledger and handoff"
+  ],
+  "acceptance_commands": [
+    "python -m pytest tests/test_capability_registry.py",
+    "python -m pytest tests",
+    "python -m ruff check src tests",
+    "node .ai-team/check.mjs --task .ai-team/tasks/S3-A-CAPABILITY-ADAPTERS.md --base main"
+  ],
+  "next_package": "S3-A2-PROVIDER-LANE"
+}
