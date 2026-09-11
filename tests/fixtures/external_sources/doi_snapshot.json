@@ -11,11 +11,23 @@
       "source_uri": "https://doi.org/10.1038/s41586-025-10072-4"
     },
     {
-      "doi": "10.1016/S0140-6736(10)60175-4",
-      "title": "Ileal-lymphoid-nodular hyperplasia, non-specific colitis, and pervasive developmental disorder in children",
+      "doi": "10.1016/S0140-6736(97)11096-0",
+      "title": "RETRACTED: Ileal-lymphoid-nodular hyperplasia, non-specific colitis, and pervasive developmental disorder in children",
       "status": "retracted",
-      "related_dois": ["10.1016/s0140-6736(97)11096-0"],
+      "related_dois": [
+        "10.1016/s0140-6736(10)60175-4"
+      ],
       "year": 1998,
+      "source_uri": "https://doi.org/10.1016/S0140-6736(97)11096-0"
+    },
+    {
+      "doi": "10.1016/S0140-6736(10)60175-4",
+      "title": "Retraction—Ileal-lymphoid-nodular hyperplasia, non-specific colitis, and pervasive developmental disorder in children",
+      "status": "found",
+      "related_dois": [
+        "10.1016/s0140-6736(97)11096-0"
+      ],
+      "year": 2010,
       "source_uri": "https://doi.org/10.1016/S0140-6736(10)60175-4"
     }
   ]

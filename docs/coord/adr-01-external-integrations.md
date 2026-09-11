@@ -40,7 +40,7 @@
 | 4 | 阅读→ReadingCard | 吸收 OpenScholar 管线策略（稠密检索→重排→迭代自检→引用接地） | L2 策略吸收 | Nature 2026（DOI 10.1038/s41586-025-10072-4）；OpenScholar-8B 正确性超 GPT-4o 6.1%、超 PaperQA2 5.5%，引用准确度达人类专家；Apache-2.0 | B4/B6 |
 | 5 | 大纲/计划 | 吸收 STORM 思想（多视角提问→大纲），不引系统 | prompt 策略 | NAACL 2024 / Co-STORM EMNLP 2024；LOGIC（EMNLP 2025）与 Logic-RL（ACL 2026）效果更强但依赖模型训练，吸收成本高于纯 prompt 策略 | B6 |
 | 6 | 章节写作头 | 第一轨：frontier LLM + 我方结构化证据包；**第二轨：OpenScholar 写作头（可补 PaperQA2 RCS 组件）** | L2 | OpenScholar 为当前最强开源学术合成系统；PaperQA2（Apache-2.0）RCS 为差异化写作组件（RAG-QA Arena 科学榜 SOTA）；两者只取组件形态，不部署模型 | B4/B6 |
-| 7 | 引用/撤稿核验 | **Crossref REST + Retraction Watch** | L1 API | RW 2025-01-29 已并入 Crossref REST API（works JSON `update-to[]`，`source=retraction-watch`；`filter=update-type:retraction`）；polite pool 单条 10 req/s、列表 3 req/s | B5（经 B3 verdict 流） |
+| 7 | 引用/撤稿核验 | **Crossref REST + Retraction Watch** | L1 API | RW 2025-01-29 已并入 Crossref REST API；**单篇判定「本文是否被撤稿」读 works JSON `updated-by[]`（本文被谁更新），`update-to[]` 是本文更新了谁（撤稿声明用），`filter=update-type:retraction` 用于列表发现**——方向 2026-09-11 经真实 API 复核，见下方勘误；polite pool 单条 10 req/s、列表 3 req/s | B5（经 B3 verdict 流） |
 | 8 | 评审 | RuleValidation + Gate；LLM-as-judge 仅 candidate 参考 | 内置 | INV-26 红线：自评不得覆盖 Gate | 已有 |
 | 9 | 图表生成 | matplotlib（图数据出 evidence store，不得手填） | L1 本地库 | 事实标准 | B7 |
 | 10 | 稿件组装导出 | pandoc（md→docx/pdf/LaTeX） | L1 本地工具 | 事实标准 | B7 |
@@ -50,6 +50,12 @@
 | 14 | 用户自带数据源/内部工具 | MCP stdio 扩展位 | L3 MCP | 规范 2026-07-28 修订仍推荐 stdio 为本地 transport（"Clients SHOULD support stdio whenever possible"）；stdio 非沙箱 → 白名单 + 显式授权 + fail-closed 必须 | A4/S3-B 契约 |
 
 选题 / charter 环节不选型：判断层归 owner（Gate），是设计论点不是缺口。
+
+> **勘误 1（2026-09-11，Owner，PR #16 深度审查落定）**：槽位 7 原表述以 works JSON `update-to[]` 作为撤稿判定字段，**方向有误**。真实 Crossref API 复核（同日）：
+> - 被撤稿论文（`10.1016/S0140-6736(97)11096-0`）→ `update-to = null`，`updated-by = [{type: correction}, {type: retraction}]`；
+> - 撤稿声明（`10.1016/S0140-6736(10)60175-4`）→ `update-to = [{type: retraction, DOI: "…(97)11096-0"}]`，`updated-by = null`。
+>
+> 故：**判定「本文被撤稿」读 `updated-by[]`**；`update-to[]` 表示本文是更新者（即声明本身，应判为正常存在的记录）；`filter=update-type:retraction` 是列表发现用法。**选型本身（Crossref + Retraction Watch）不变**，仅修正字段语义。B5 实现、fixture、测试与账本证据已同步更正。
 
 ## 3. 与第九节初稿的差异（逐项复调研结论）
 

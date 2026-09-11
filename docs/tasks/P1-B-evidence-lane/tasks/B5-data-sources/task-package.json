@@ -2,7 +2,7 @@
   "task_id": "S3-B2-DATA-SOURCES",
   "phase": "S3",
   "owner_lane": "evidence/domain",
-  "status": "handoff",
+  "status": "reviewing",
   "base_ref": "main@380bd49",
   "branch": "codex/s3-b2-data-sources",
   "depends_on": [
@@ -35,13 +35,13 @@
     ".ai-team/TASK.md"
   ],
   "deliverables": [
-    "Crossref DOI verdict adapter (existence/metadata/correction/retraction)",
-    "Semantic Scholar / arXiv offline search adapter",
+    "Crossref DOI verdict adapter (existence/metadata/correction/retraction; retraction via updated-by[])",
     "docling-default + pymupdf4llm-fallback PDF parsing layer",
     "candidate-only flow via EvidenceService.admit_candidate",
     "resolver snapshot material for B3 verdict flow (no direct evidence write)",
-    "offline verdict matrix, rate-limit/timeout/partial-response matrix, E2E parse->candidate->admission",
+    "ScholarQABench-aligned gold-set metrics (hallucination ratio / citation recall / citation precision)",
+    "offline verdict matrix, rate-limit/timeout/partial-response matrix, parse->candidate->admission E2E",
     "L3, PROGRESS, HANDOFF, and member ledger"
   ],
-  "next_step": "owner review, commit, push, and pull request"
+  "next_step": "owner re-verification and merge (owner integration fix applied on owner/s3-b2-integration)"
 }
