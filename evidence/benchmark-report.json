@@ -1,0 +1,87 @@
+{
+  "benchmark_id": "autoresearch-trust-benchmark",
+  "budget": {
+    "max_calls": 240,
+    "max_wall_clock_seconds": 900.0,
+    "single_call_timeout_seconds": 20.0
+  },
+  "conditions": [
+    {
+      "acceptance_rate": 1.0,
+      "accepted_hallucination_ratio": 1.0,
+      "blocked": 0,
+      "cases": 24,
+      "completed": 24,
+      "condition": "bare_llm",
+      "denied": 0,
+      "evidence_binding_rate": 0.0,
+      "failed": 0,
+      "hallucination_ratio": 1.0,
+      "interrupted": 0,
+      "score": 0.0,
+      "scored": 24
+    },
+    {
+      "acceptance_rate": 1.0,
+      "accepted_hallucination_ratio": 0.145833,
+      "blocked": 0,
+      "cases": 24,
+      "completed": 24,
+      "condition": "gate_off",
+      "denied": 0,
+      "evidence_binding_rate": 0.881944,
+      "failed": 0,
+      "hallucination_ratio": 0.145833,
+      "interrupted": 0,
+      "score": 85.42,
+      "scored": 24
+    },
+    {
+      "acceptance_rate": 0.583333,
+      "accepted_hallucination_ratio": 0.0,
+      "blocked": 10,
+      "cases": 24,
+      "completed": 14,
+      "condition": "gate_on",
+      "denied": 0,
+      "evidence_binding_rate": 0.881944,
+      "failed": 0,
+      "hallucination_ratio": 0.145833,
+      "interrupted": 0,
+      "score": 100.0,
+      "scored": 24
+    }
+  ],
+  "corpus_digest": "1e4aa96686ffcc2242210b7824ab50d74ef84c7fbdb000a3bc65bc16870609b2",
+  "corpus_id": "trust-benchmark-v1",
+  "corpus_version": "1.0",
+  "generated_at": "2026-09-11T03:52:57.138792Z",
+  "mechanism_metrics": {
+    "cases": 24.0,
+    "expected_accepts": 14.0,
+    "expected_blocks": 10.0,
+    "fail_closed_block_rate": 100.0,
+    "false_block_rate": 0.0,
+    "false_blocks": 0.0,
+    "false_pass_rate": 0.0,
+    "false_passes": 0.0,
+    "mechanism_safety_score": 100.0,
+    "true_blocks": 10.0,
+    "unscored_cells": 0.0
+  },
+  "metric_definition_digest": "8f641f275ab8bdf73af42acf705bd43c52efe249d2b59e5ecd81a7581039c3fe",
+  "metric_definition_version": "1.0",
+  "primary_metric": "hallucination_ratio",
+  "primary_metric_direction": "lower_is_better",
+  "report_id": "benchmark-report",
+  "status": "completed",
+  "usage": {
+    "calls_denied": 0,
+    "calls_interrupted": 0,
+    "calls_used": 144,
+    "stop_reason": "none",
+    "wall_clock_seconds": 0.55
+  },
+  "version": "1.0",
+  "warnings": []
+}
