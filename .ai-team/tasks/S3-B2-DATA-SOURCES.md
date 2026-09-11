@@ -5,7 +5,7 @@
 - Status: `integrated`
 - Owner: `member B`
 - Next owner: `user/team`
-- Status note: 成员交付 PR #16 → owner 深审发现阻断级缺陷（撤稿判据方向反转）→ owner 代修 PR #17 合入 main（`7fdfb89`，2026-09-11）→ 独立对抗审查复核通过。docling 解析路径未验证（两 parser 均未安装），不计入验收。
+- Status note: 成员交付 PR #16 → owner 深审发现阻断级缺陷（撤稿判据方向反转）→ owner 代修 PR #17 合入 main（`7fdfb89`，2026-09-11）→ 独立对抗审查复核通过 → **docling 解析层已补做真实验收（2026-09-11）**。pymupdf4llm 兜底路径仍未验证（未安装）。
 
 ## Goal
 
@@ -54,7 +54,8 @@
 
 - 合并与 `integrated` 判定由 owner 执行（缺陷已修，待 re-verify + merge）。
 - docling 权重离线预置（A7）、NLI attributable judge 接线（A5）、Crossref 真实限流策略生产化由 owner 排期。
-- **docling 解析路径未验证**（两个 parser 均未安装，无真实 PDF 流过）——不得计入本包验收通过。
+- ~~docling 解析路径未验证~~ → **已于 2026-09-11 补做真实验收并通过**（见 Verification）。**pymupdf4llm 兜底路径仍未验证**（未安装、未执行）。
+- **部署注记**：运行解析层须设置 `HF_HOME` 到可写目录（沙箱/CI 环境下 `~/.cache/huggingface` 可能不可写）；首次联网预置权重约 506MB，之后可离线运行。
 
 ## Next step
 
@@ -68,10 +69,16 @@ Owner re-verify scope diff → merge `owner/s3-b2-integration` → 回写 regist
 - [x] **真实 Crossref smoke（2026-09-11，代修后复跑）**：`10.1016/S0140-6736(97)11096-0`（1998 被撤稿原文）→ `retracted`（related 含撤稿声明 `...(10)60175-4`）；`10.1016/S0140-6736(10)60175-4`（2010 撤稿声明）→ `found` + reason "this work is a retraction notice for ..."；`10.1038/s41586-025-10072-4` → `found`。resolver_record 对被撤稿原文给出 `status="retracted"`（落在 B3 识别词表内）。
   - 更正记录：原 smoke 声称「Lancet `...(10)60175-4`→`retracted`」并当作通过证据——**该结果本身即缺陷现场**（撤稿声明被误判为被撤稿），已随本次修复更正。
 - [x] `node .ai-team/check.mjs --base 380bd49 --json`：`valid: true`。
-- 环境注记：Python 3.13.x + 仓库内 `var/_b4_deps` 临时依赖（gitignore）；docling/pymupdf4llm 未安装；真实网络 smoke 依赖沙箱外网。
+- 环境注记：Python 3.13.x + 仓库内 `var/_b4_deps` 临时依赖（gitignore）；真实网络 smoke 依赖沙箱外网。**docling 已安装并真实验收通过**（见上）；pymupdf4llm 未安装。
+- [x] **docling 解析层真实验收（2026-09-11，owner 补做——此前从未执行）**：安装 `docling 2.126.0` + `torch 2.14.0`（venv 1.7GB，模型权重 506MB），解析两份真实 arXiv PDF：
+  - `1706.03762`（Attention is all you need，2.22MB）→ `ok`，markdown **49,240 字符**，locators **15**（p.1…）；联网首次 89.4s / 离线复跑 30.7s
+  - `1810.04805`（BERT，0.78MB）→ `ok`，markdown **70,915 字符**，locators **16**；联网 27.7s / 离线 25.8s
+  - **离线可跑**：`HF_HUB_OFFLINE=1` 下 markdown 长度与联网完全一致 → 满足 ADR-01「权重离线预置后离线运行」
+  - **E2E 通过**：真 PDF → `ParseEgress` → `admit_candidate` → 入库并带真实 locator（`2 passed`，81.3s）
+  - **环境约束（重要）**：必须把 `HF_HOME` 指向可写目录；否则 docling 写 `~/.cache/huggingface` 会被 WorkBuddy 沙箱拒绝（`file-write-unlink`），解析退化为 `unknown`。pymupdf4llm 兜底路径仍未安装、仍未执行。
 
 ## Handoff note
 
 - From: `member B`（原始交付）
 - To: `user/team`
-- Summary: **已合入 main（PR #17，`7fdfb89`）**。B5 交付真实 Crossref 核验 + docling-first 解析 + ScholarQABench 三指标 + candidate-only 回流。**owner 深度审查发现阻断级缺陷（撤稿方向反转），已代修**：判据改 `updated-by[]`、fixture 重建、指标口径分离、解析层留因去假 locator，并同步修订任务包与 ADR 原表述。回滚仅移除 B5 allowed paths 内文件；owner 代修的回滚点为 `1eec625`。
+- Summary: **已合入 main（PR #17，`7fdfb89`）**。B5 交付真实 Crossref 核验 + docling-first 解析 + ScholarQABench 三指标 + candidate-only 回流。**docling 解析层已于 2026-09-11 补做真实验收并通过**（真实 arXiv PDF、离线复跑、E2E 入库）；pymupdf4llm 兜底路径仍未验证。**owner 深度审查发现阻断级缺陷（撤稿方向反转），已代修**：判据改 `updated-by[]`、fixture 重建、指标口径分离、解析层留因去假 locator，并同步修订任务包与 ADR 原表述。回滚仅移除 B5 allowed paths 内文件；owner 代修的回滚点为 `1eec625`。

@@ -81,10 +81,14 @@ docs/tasks/P1-B-evidence-lane/tasks/B5-data-sources/
   gold item must also list citations the system emitted that the gold standard
   did *not* expect (`expected=False, cited=True`), otherwise the precision
   denominator is short and precision is overstated.
-- **The docling parse path is unverified**: docling and pymupdf4llm are not
-  installed here, so no real PDF has flowed through `PdfParser`. The layer is
-  code-complete but its parser branch has never executed — do not count it as
-  verified until a real parse runs.
+- **docling parse path — verified 2026-09-11 (owner).** docling 2.126.0 +
+  torch 2.14.0 were installed and two real arXiv PDFs parsed to `ok`
+  (49,240 / 70,915 chars, real page locators), reproduced under
+  `HF_HUB_OFFLINE=1`, and admitted end-to-end through `admit_candidate`.
+  **Environment requirement:** set `HF_HOME` to a writable directory — writing
+  `~/.cache/huggingface` is denied under the sandbox and degrades the parse to
+  `unknown`; pre-provision ~506MB of weights on the first networked run.
+- **The pymupdf4llm fallback path remains unverified** (not installed).
 - Live calls are polite-pool; real rate-limit handling policy recorded in the
   transport matrix, no paid tier used.
 
