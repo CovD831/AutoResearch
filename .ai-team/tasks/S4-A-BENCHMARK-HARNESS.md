@@ -3,7 +3,7 @@
 - ID: `S4-A-BENCHMARK-HARNESS`
 - Title: `S4 benchmark runtime and real retrieval adapter`
 - Status: `handoff`
-- Status note: 两个切片均已本地 commit（检索 adapter `65ada56`+`2cca01a`；benchmark 运行时 `6829391`）。fresh 证据：39+62 focused / 244 full passed、`benchmark.py` 覆盖率 98%、ruff 绿、`check.mjs` 18/18 valid、`evidence/benchmark-report.json` 已生成。按用户要求**未 push、未开 PR**，故按 repo-task-sync 停在 `handoff` 而非 `done`；待 owner 裁决 D-A5-偏离-1 与晋级。
+- Status note: 两个切片均已本地 commit（检索 adapter `65ada56`+`2cca01a`；benchmark 运行时 `6829391`）。fresh 证据：98 focused（39+59）/ 244 full passed、`benchmark.py` 覆盖率 98%、ruff 绿、`check.mjs` 18/18 valid、`evidence/benchmark-report.json` 已生成、固定场景 12/12 + 端到端用户场景全绿。按用户要求**未 push、未开 PR**，故按 repo-task-sync 停在 `handoff` 而非 `done`；待 owner 裁决 D-A5-偏离-1 与晋级。
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -89,6 +89,9 @@ owner 裁决 D-A5-偏离-1（`search_service.py` 第二条裸 S2 路径）与本
 - [x] `python scripts/benchmark_trust.py --report evidence/benchmark-report.json`（status=completed，三条件 24/24/24 格）。
 - [x] `node .ai-team/check.mjs --task .ai-team/tasks/S4-A-BENCHMARK-HARNESS.md --base main`（Result: valid）。
 - [x] live 轨冒烟：`python scripts/benchmark_trust.py --live-retrieval --source openalex`（真实网络 14.9s / 60 calls，硬停止正确触发 budget_exhausted）。不作晋级证据。
+- [x] 固定场景 harness（`F:\AutoResearch\.workbuddy\a5-scenarios\`，未跟踪、不进 PR）：`scenario.py` 12 个编号场景全绿 —— 1-6 打检索 adapter（注册边界 / 无 key fail-closed 零网络 / 空结果确定性成功 / 429-4xx-5xx-传输中断四格终态矩阵 / 凭据只进 header / 幂等重放 + 同 id 异请求冲突）；7-12 打 benchmark 运行时（三组真跑并复现报告数字 / 唯一变量是执法 off==on / 硬停止调用数 / 硬停止 wall clock / 软停止超时且无 FAILED / run receipt 与 A4 receipt 分离 + 冻结资产 fail-closed）。
+- [x] `user-scenario.py` 端到端固定字段场景：24 题 × 3 条件 = 72 格，逐格打印全部字段（含 `unsupported_claims` / `validation_verdict` / `calls`），三组汇总与 `mechanism_metrics` 与 committed `evidence/benchmark-report.json` 逐位一致（bare hall=1.000000 / off 与 on 草稿级 hall=0.145833、bind=0.881944 / on accepted_hall=0.000000 / `mechanism_safety_score=100.0` / 144 calls）。
+- [x] 场景 harness 复跑方式（cwd = 本 worktree，用其 venv）：`.venv/Scripts/python.exe F:/AutoResearch/.workbuddy/a5-scenarios/scenario.py <1-12>` 与 `.venv/Scripts/python.exe F:/AutoResearch/.workbuddy/a5-scenarios/user-scenario.py`。**用户侧独立复跑才构成验收证据**；AI 侧运行仅记为 provenance。
 
 ## Handoff note
 
