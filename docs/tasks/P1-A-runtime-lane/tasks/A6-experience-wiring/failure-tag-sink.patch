@@ -1,0 +1,137 @@
+diff --git a/src/autoresearch/experience_sink.py b/src/autoresearch/experience_sink.py
+index e9bc881..80a65af 100644
+--- a/src/autoresearch/experience_sink.py
++++ b/src/autoresearch/experience_sink.py
+@@ -59,6 +59,12 @@ TECHNIQUE_EVIDENCE_BLOCKED = "evidence_admission_blocked"
+ TECHNIQUE_AUDIT_EVIDENCE_REMEDIATION = "audit_evidence_remediation"
+ TECHNIQUE_AUDIT_UNKNOWN_RESOLUTION = "audit_unknown_resolution"
+ 
++# The interception->experience mapping tags every record it writes (TASK-SPECS
++# A6). It is the shared vocabulary for "this record is an archived failure":
++# B6 archives rejected / blind-reviewed-back drafts as failure experiences too,
++# so the word lives in the shared schema and both producers fill it in.
++FAILURE_TAG = "failure"
++
+ # Frozen event-log contract for `audit_evidence.report_created` payloads
+ # (producer enum `audit_evidence.AuditStatus`: pass / fail / unknown).
+ _AUDIT_EVIDENCE_FAILURE_STATUSES = frozenset({"fail", "unknown"})
+@@ -499,6 +505,7 @@ class ExperienceSink:
+                 grade=EvidenceGrade.E0,
+                 recurrence_count=max(1, recurrence),
+                 evidence_ids=list(match.evidence_ids),
++                tags=[FAILURE_TAG],
+                 promoted=False,
+             )
+         existing = ExperienceRecord.model_validate(raw)
+@@ -511,6 +518,9 @@ class ExperienceSink:
+                 "outcome": match.outcome,
+                 "recurrence_count": max(existing.recurrence_count, recurrence),
+                 "evidence_ids": sorted({*existing.evidence_ids, *match.evidence_ids}),
++                # union, not replace: a merge also heals a record written before
++                # the tag existed, and never drops a tag someone else added.
++                "tags": sorted({*existing.tags, FAILURE_TAG}),
+             }
+         )
+ 
+@@ -529,6 +539,7 @@ def _replace(settlement: SinkSettlement, **changes: Any) -> SinkSettlement:
+ 
+ 
+ __all__ = [
++    "FAILURE_TAG",
+     "MAPPING_RULES",
+     "SINK_SCOPE",
+     "TECHNIQUE_AUDIT_EVIDENCE_REMEDIATION",
+diff --git a/tests/test_experience_sink.py b/tests/test_experience_sink.py
+index 935c68b..e9a758d 100644
+--- a/tests/test_experience_sink.py
++++ b/tests/test_experience_sink.py
+@@ -23,6 +23,7 @@ from autoresearch.application import AutoResearchApplication
+ from autoresearch.cli import app as cli_app
+ from autoresearch.contracts import EvidenceGrade, ExperienceRecord
+ from autoresearch.experience_sink import (
++    FAILURE_TAG,
+     MAPPING_RULES,
+     SINK_SCOPE,
+     TECHNIQUE_AUDIT_EVIDENCE_REMEDIATION,
+@@ -593,3 +594,81 @@ def test_record_failure_degrades_and_leaves_the_event_for_retry(runtime, project
+     retried = runtime.settle_failure_experiences("demo")
+     assert retried.recorded == MAPPED_RECORDINGS
+     assert len(_experiences(runtime)) == UNIQUE_EXPERIENCES
++
++
++# ---------------------------------------------------------------------------
++# acceptance scenario 8 (cont.): the failure label (D-A6-05, option a)
++# ---------------------------------------------------------------------------
++
++
++def test_every_settled_record_and_mirror_page_carry_the_failure_tag(runtime, project):
++    """The label has to survive the round trip to the retrieval surface.
++
++    Asserting on the record alone would not prove anything: `ExperienceRecord`
++    ignores unknown fields, so a sink passing ``tags=`` to a schema without the
++    field still constructs an object and silently writes nothing. The assertion
++    that matters is on the mirrored WikiPage, because that is where a tag
++    changes `KnowledgeService._score`.
++    """
++
++    _seed(runtime)
++    runtime.settle_failure_experiences("demo")
++
++    records = _experiences(runtime)
++    assert len(records) == UNIQUE_EXPERIENCES
++    assert all(FAILURE_TAG in raw["tags"] for raw in records)
++
++    pages = runtime.store.list("wiki_page", project_id="demo", partition="experiences")
++    assert len(pages) == len(records)
++    for page in pages:
++        # the pre-existing tags survive; the failure label is appended
++        assert page["tags"][:2] == ["experience", EvidenceGrade.E0.value]
++        assert FAILURE_TAG in page["tags"]
++
++
++def test_merge_heals_a_record_written_before_the_tag_existed(runtime, project):
++    """A union, not a replace: pre-tag records gain the label on their next merge."""
++
++    _seed(runtime)
++    runtime.settle_failure_experiences("demo")
++    target = next(
++        raw
++        for raw in _experiences(runtime)
++        if raw["problem"] == "candidate lacks evidence classification: evidence_type, grade"
++    )
++    legacy = target | {"tags": [], "recurrence_count": 1}
++    runtime.store.put(
++        "experience",
++        legacy["experience_id"],
++        legacy,
++        project_id="demo",
++        partition="experiences",
++    )
++    runtime.store.append_event(
++        "evidence.candidate_blocked",
++        {
++            "result_id": "evar_blocked_9",
++            "project_id": "demo",
++            "candidate_id": "evcand_alpha_9",
++            "status": "blocked",
++            "reasons": ["candidate lacks evidence classification: evidence_type, grade"],
++            "created_at": "2026-09-11T04:00:00+00:00",
++        },
++        project_id="demo",
++        actor="evidence_service",
++    )
++
++    settlement = runtime.settle_failure_experiences("demo")
++
++    assert settlement.recorded == 1
++    merged = ExperienceRecord.model_validate(
++        runtime.store.get("experience", target["experience_id"])
++    )
++    assert merged.tags == [FAILURE_TAG]
++    assert merged.recurrence_count == CLASSIFICATION_CAUSE_EVENTS + 1
++    # the healed record still stays below the four gates
++    assert merged.grade is EvidenceGrade.E0
++    assert merged.promoted is False
++
++    page = runtime.store.get("wiki_page", target["experience_id"])
++    assert FAILURE_TAG in page["tags"]

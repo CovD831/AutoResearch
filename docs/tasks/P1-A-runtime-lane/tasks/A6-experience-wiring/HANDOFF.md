@@ -19,6 +19,10 @@
 - `tests/fixtures/experience_sink/event_log.json` (new, 9 frozen events)
 - `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/{TASK.md,task-package.json,L3.md,PROGRESS.md,HANDOFF.md}`
 - `.ai-team/tasks/S4-A2-EXPERIENCE-WIRING.md`
+- `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/owner-schema.patch` (verified, for
+  the owner: the 2 lines in the 2 forbidden files that D-A6-05 option (a) needs)
+- `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/failure-tag-sink.patch` (verified,
+  for this package: `FAILURE_TAG` + 2 tests; applies only after the schema patch)
 
 ## Additional implementation facts
 
@@ -133,18 +137,27 @@ line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
   sharing the cause", not "number of times the record was written". Requested: confirm
   this is what the `>= 2` gate base should mean. If a strictly incremented counter is
   required instead, the write order and the crash behaviour both change.
-- **D-A6-05 (the `failure` label — found after handoff, unfixed)**: the spec's A6
-  `主要交付` item 2 requires the mapper to tag the record `failure`. It is not
+- **D-A6-05 (the `failure` label) — DECIDED: option (a), shared schema**: the spec's A6
+  `主要交付` item 2 requires the mapper to tag the record `failure`. It was not
   implemented, and it cannot be implemented inside this package: `ExperienceRecord`
-  (`contracts.py:367-376`) has no tag field, and the only tag channel (`WikiPage.tags`)
+  (`contracts.py:367-376`) had no tag field, and the only tag channel (`WikiPage.tags`)
   is constructed by `ExperienceService.record` (`evolution_service.py:27-38`) with
   `tags=["experience", grade.value]` hardcoded. Both files are in this package's
-  `forbidden_paths`. No substitute encoding was invented. Labels are not selectable on
-  the record or its mirrored page today. The ledger consequently reports `8/9`, not
-  `8/8`. Requested: pick (a) add `tags` to the shared schema and pass it through
-  `record()`, (b) accept "`technique in FAILURE_TECHNIQUES`" as the selector (the three
-  constants are already exported), or (c) declare the label unnecessary and drop that
-  half-sentence from the spec. See `L3.md` D-A6-05.
+  `forbidden_paths`. Decided on 2026-09-11: the vocabulary belongs in the shared schema,
+  because a second producer of failure experiences already exists on the B lane
+  (`P1-B-evidence-lane/TASK-SPECS.md:61`). **Action for the owner — the only step that
+  needs owner hands:**
+
+  ```
+  git apply docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/owner-schema.patch
+  ```
+
+  That is 2 lines in 2 forbidden files (`tags: list[str]` on `ExperienceRecord`, spread
+  into the mirror page's tags). This package then applies `failure-tag-sink.patch`
+  (`FAILURE_TAG` + 2 tests) and flips the ledger to `9/9`. Both patches were verified
+  together: `190 passed` (baseline 188), ruff clean, `experience_sink.py` 200 stmts /
+  100%. Neither is applied yet, so the ledger still reports `8/9`. See `L3.md` for the
+  landing list, the option comparison and why the order cannot be swapped.
 - **Registry row**: `S4-A2-EXPERIENCE-WIRING` is still `ready` in
   `docs/rearchitecture/TASK-PACKAGE-REGISTRY.md`. That is a shared document and this
   package did not modify it.
@@ -153,9 +166,15 @@ line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
 
 ## Next owner action
 
-Adjudicate D-A6-01 (and confirm/deny D-A6-02) plus D-A6-05 (the `failure` label
-landing spot), run the acceptance commands and the scenario harness in your own
-environment, then decide whether to push / open the PR. Next package:
+1. Adjudicate D-A6-01 and confirm/deny D-A6-02.
+2. Apply `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/owner-schema.patch`
+   (D-A6-05, decided as option (a); 2 lines in 2 forbidden files). Nothing else in this
+   package needs owner hands.
+3. Run the acceptance commands and the scenario harness in your own environment, then
+   decide whether to push / open the PR.
+
+This package applies `failure-tag-sink.patch` (its own half of D-A6-05) right after step
+2, re-runs the numbers and flips the ledger to `9/9`. Next package:
 `S4-A3-KNOWLEDGE-VECTOR`.
 
 ## Late finding: how the `failure` label half-sentence escaped (process note)
