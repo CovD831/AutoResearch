@@ -25,12 +25,15 @@ from autoresearch.benchmark import (
     CorpusLabelAdmission,
     EvidenceLedgerAdmission,
     FixtureMaterialsProvider,
+    InvocationCostSlot,
     MaterialsOutcome,
     MetricDefinition,
     RecordedAgent,
     RegistryMaterialsProvider,
     ResourceBudget,
+    TokenUsageSlot,
     TrustBenchmarkRuntime,
+    _ratio,
     hallucination_ratio,
     load_corpus,
     load_metric_definition,
@@ -68,7 +71,7 @@ FROZEN_BINDING_RATE = 0.881944
 FROZEN_CALLS = 144
 FROZEN_CORPUS_DIGEST = "1e4aa96686ffcc2242210b7824ab50d74ef84c7fbdb000a3bc65bc16870609b2"
 FROZEN_METRIC_DEFINITION_DIGEST = (
-    "8f641f275ab8bdf73af42acf705bd43c52efe249d2b59e5ecd81a7581039c3fe"
+    "01960a93ed5d87cc77afbb174043bf316ce590c24ca0a3005523125bde1c1fe7"
 )
 
 _UNSET = object()
@@ -574,7 +577,7 @@ def test_corpus_digest_tracks_content(tmp_path: Path):
 
 def test_metric_definition_must_be_frozen_and_well_formed(tmp_path: Path):
     payload = json.loads(METRIC_PATH.read_text(encoding="utf-8"))
-    assert load_metric_definition(METRIC_PATH).definition_version == "1.0"
+    assert load_metric_definition(METRIC_PATH).definition_version == "1.1"
     with pytest.raises(ValueError):
         load_metric_definition(tmp_path / "missing.json")
     with pytest.raises(ValueError):
@@ -1147,3 +1150,236 @@ def test_the_rerun_command_rejects_an_unknown_live_source(tmp_path: Path):
         )
     assert "not-a-source" in str(excinfo.value)
 
+
+# ---------------------------------------------------------------------------
+# Metric semantics in the degenerate cases (owner integration, 2026-09-11)
+#
+# Adversarial review found that a condition which accepted nothing still scored
+# 100.0, because an unaccepted cell contributes ``accepted_hallucination_ratio
+# = 0.0`` and the roll-up averaged over *all* cells.  Blocking a cell therefore
+# raised the score.  These tests pin the corrected semantics.
+# ---------------------------------------------------------------------------
+
+
+def _summarize(cells, condition=BenchmarkCondition.GATE_ON):
+    runtime = TrustBenchmarkRuntime.__new__(TrustBenchmarkRuntime)
+    return runtime._summarize(condition, cells)
+
+
+def _mechanism_metrics(cells):
+    runtime = TrustBenchmarkRuntime.__new__(TrustBenchmarkRuntime)
+    return runtime._mechanism_metrics(cells)
+
+
+def _cells(run, condition=BenchmarkCondition.GATE_ON):
+    return [item for item in run.receipt.case_receipts if item.condition is condition]
+
+
+def test_a_condition_that_accepted_nothing_scores_none(tmp_path: Path):
+    """Blocking everything must not read as a perfect score.
+
+    The live run under review reported ``acceptance_rate = 0.0`` next to
+    ``score = 100.0``: with every cell unaccepted, the old roll-up averaged 24
+    zeroes. There is no released content to score, so the answer is ``None``.
+    """
+
+    run = with_materials(tmp_path)
+    blocked = [
+        item.model_copy(
+            update={
+                "accepted": False,
+                "status": CaseStatus.BLOCKED,
+                "observed_outcome": CaseOutcome.BLOCKED,
+            }
+        )
+        for item in _cells(run)
+    ]
+    summary = _summarize(blocked)
+    assert summary.accepted == 0
+    assert summary.acceptance_rate == 0.0
+    assert summary.accepted_hallucination_ratio is None
+    assert summary.score is None
+
+
+def test_only_accepted_cells_shape_the_score(tmp_path: Path):
+    """An unaccepted cell must not enter the score's mean.
+
+    Twelve accepted cells at 0.5 and twelve blocked cells read as 0.5 -> 50.0.
+    Averaging over all twenty-four instead (the reviewed behaviour) would fold
+    the twelve blocked cells in as zeroes and report 75.0 -- i.e. blocking more
+    cells would raise the score.
+    """
+
+    run = with_materials(tmp_path)
+    cells = _cells(run)
+    half = len(cells) // 2
+    assert half > 0
+    designed = [
+        item.model_copy(
+            update={
+                "accepted": index < half,
+                "status": CaseStatus.COMPLETED if index < half else CaseStatus.BLOCKED,
+                "accepted_hallucination_ratio": 0.5 if index < half else 0.0,
+            }
+        )
+        for index, item in enumerate(cells)
+    ]
+
+    summary = _summarize(designed)
+    assert summary.accepted == half
+    assert summary.accepted_hallucination_ratio == 0.5
+    assert summary.score == 50.0
+
+
+def test_fail_closed_rate_is_none_when_there_is_nothing_to_block(tmp_path: Path):
+    """"Nothing needed blocking" is not "blocking was perfect"."""
+
+    run = with_materials(tmp_path)
+    all_accept = [
+        item.model_copy(
+            update={
+                "expected_outcome": CaseOutcome.ACCEPTED,
+                "observed_outcome": CaseOutcome.ACCEPTED,
+                "accepted": True,
+                "status": CaseStatus.COMPLETED,
+            }
+        )
+        for item in _cells(run)
+    ]
+    metrics = _mechanism_metrics(all_accept)
+    assert metrics["expected_blocks"] == 0.0
+    assert metrics["fail_closed_block_rate"] is None
+    # Here every cell was expected to be accepted, so the false-block
+    # denominator is non-empty and 0.0 is a real measurement.
+    assert metrics["false_block_rate"] == 0.0
+    # The safety score already handles this case: nothing to miss, nothing to
+    # falsely pass, so it is legitimately 100.
+    assert metrics["mechanism_safety_score"] == 100.0
+
+    all_block = [
+        item.model_copy(
+            update={
+                "expected_outcome": CaseOutcome.BLOCKED,
+                "observed_outcome": CaseOutcome.BLOCKED,
+                "accepted": False,
+                "status": CaseStatus.BLOCKED,
+            }
+        )
+        for item in _cells(run)
+    ]
+    mirror = _mechanism_metrics(all_block)
+    assert mirror["expected_accepts"] == 0.0
+    assert mirror["false_block_rate"] is None
+    assert mirror["fail_closed_block_rate"] == 100.0
+
+
+def test_zero_claim_cells_are_reported(tmp_path: Path):
+    """An empty draft scores 0.0 on a lower-is-better metric, so the count of
+    such cells has to be visible in the roll-up rather than silently perfect."""
+
+    run = with_materials(tmp_path)
+    cells = [
+        item.model_copy(update={"claims_total": 0, "unsupported_claims": []})
+        for item in _cells(run)
+    ]
+    summary = _summarize(cells)
+    assert summary.zero_claim_cells == len(cells)
+    assert _summarize(_cells(run)).zero_claim_cells == 0
+
+
+def test_the_adverse_ratio_refuses_a_nonzero_numerator_over_an_empty_denominator():
+    assert _ratio(0, 0) == 0.0
+    with pytest.raises(ValueError):
+        _ratio(3, 0)
+
+
+def test_the_live_limitations_cover_every_uninterpretable_metric():
+    """Declaring only hall/bind left a reader free to read the collapsed
+    mechanism metrics as a measured regression."""
+
+    cli = load_cli()
+    text = " ".join(cli.LIVE_RETRIEVAL_LIMITATIONS)
+    for token in (
+        "mechanism_safety_score",
+        "false_block_rate",
+        "score",
+        "budget_exhausted",
+    ):
+        assert token in text
+    assert cli.LIVE_RETRIEVAL_LIMITATIONS[0] == cli.LIVE_RETRIEVAL_LIMITATION
+
+
+# ---------------------------------------------------------------------------
+# Reserved cost schema (TASK-SPECS A5 计价衔接注记)
+#
+# A5 lands before the provider lane (O12), and the frozen spec requires *this*
+# package to reserve the receipt's cost schema so the two ends can meet without
+# a migration.  A reserved slot that defaulted to zero would read as "this run
+# was free", so the slot stays ``None`` until a provider fills it.
+# ---------------------------------------------------------------------------
+
+TOKEN_SLOT_FIELDS = ("input", "output", "cache_read", "cache_write", "reasoning")
+COST_SLOT_FIELDS = (
+    "input",
+    "output",
+    "cache_read",
+    "cache_write",
+    "total",
+    "currency",
+    "model",
+    "lane_id",
+    "attempts",
+    "price_source",
+)
+
+
+def test_the_reserved_cost_schema_mirrors_the_provider_lane():
+    """Field names are the interface: drift here breaks O12 silently."""
+
+    assert tuple(TokenUsageSlot.model_fields) == TOKEN_SLOT_FIELDS
+    assert tuple(InvocationCostSlot.model_fields) == COST_SLOT_FIELDS
+
+
+def test_unfilled_cost_slots_are_none_not_zero(tmp_path: Path):
+    """An unmeasured slot must not be readable as a free run."""
+
+    run = with_materials(tmp_path)
+    assert run.receipt.usage.cost is None
+    assert run.receipt.usage.tokens is None
+    assert all(item.cost is None for item in run.receipt.case_receipts)
+    assert all(item.tokens is None for item in run.receipt.case_receipts)
+    # The declaration goes in the report's warnings, not the receipt's notes:
+    # ``notes`` is the caller's channel and stays exactly the declared
+    # limitations (see test_declared_limitations_are_opt_in_and_reach_the_report).
+    assert not any("carry no cost" in note for note in run.receipt.notes)
+    assert any("carry no cost" in warning for warning in run.report.warnings)
+
+
+def test_the_cost_slot_reaches_the_report_artifact(tmp_path: Path):
+    """The committed report has to expose the slot, not just the receipt."""
+
+    run = with_materials(tmp_path)
+    payload = run.report.as_dict()
+    assert "cost" in payload["usage"] and payload["usage"]["cost"] is None
+    assert "cost" in run.receipt.case_receipts[0].model_dump()
+
+
+def test_a_provider_filled_slot_round_trips():
+    """O12 must be able to populate the slot and have it survive serialization."""
+
+    cost = InvocationCostSlot(
+        input=0.0012,
+        output=0.0034,
+        total=0.0046,
+        model="deepseek-v4-flash",
+        lane_id="chat",
+        attempts=2,
+        price_source="catalog 2026-09-11",
+    )
+    usage = BudgetUsage(
+        calls_used=3, tokens=TokenUsageSlot(input=11, output=7), cost=cost
+    )
+    restored = BudgetUsage.model_validate_json(usage.model_dump_json())
+    assert restored == usage
+    assert restored.cost is not None and restored.cost.total == 0.0046
+    assert restored.tokens is not None and restored.tokens.input == 11

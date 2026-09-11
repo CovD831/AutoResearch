@@ -330,6 +330,49 @@ class BudgetView(BaseModel):
     max_wall_clock_seconds: float = Field(gt=0)
 
 
+class TokenUsageSlot(BaseModel):
+    """Reserved token-accounting slot (TASK-SPECS A5 计价衔接注记).
+
+    The provider lane (O12) owns pricing and lands after this package, and the
+    frozen spec requires *this* package to reserve the receipt's cost schema so
+    the two ends can meet without a later migration.  The slot is therefore
+    declared here field-for-field identical to ``contracts.TokenUsage`` and left
+    ``None`` until a provider fills it.
+
+    ``None`` means *not measured*, not *zero tokens*: an unfilled slot must never
+    be readable as a free run.
+    """
+
+    input: int = Field(default=0, ge=0)
+    output: int = Field(default=0, ge=0)
+    cache_read: int = Field(default=0, ge=0)
+    cache_write: int = Field(default=0, ge=0)
+    reasoning: int = Field(
+        default=0, ge=0, description="Subset of output tokens; never billed twice."
+    )
+
+
+class InvocationCostSlot(BaseModel):
+    """Reserved priced-usage slot (TASK-SPECS A5 计价衔接注记).
+
+    Field-for-field mirror of ``contracts.InvocationCost``.  ``price_source`` is
+    kept because these figures are estimates from a price snapshot rather than
+    the provider's invoice, and ``attempts`` because a retried call can cost more
+    than one that succeeded first try.
+    """
+
+    input: float = Field(default=0.0, ge=0)
+    output: float = Field(default=0.0, ge=0)
+    cache_read: float = Field(default=0.0, ge=0)
+    cache_write: float = Field(default=0.0, ge=0)
+    total: float = Field(default=0.0, ge=0)
+    currency: str = Field(default="USD", max_length=8)
+    model: str | None = Field(default=None, max_length=200)
+    lane_id: str | None = Field(default=None, max_length=200)
+    attempts: int = Field(default=1, ge=1)
+    price_source: str | None = Field(default=None, max_length=200)
+
+
 class BudgetUsage(BaseModel):
     """Per-run accounting written verbatim into the run receipt."""
 
@@ -338,6 +381,8 @@ class BudgetUsage(BaseModel):
     calls_interrupted: int = Field(default=0, ge=0)
     wall_clock_seconds: float = Field(default=0.0, ge=0)
     stop_reason: BenchmarkStopReason = BenchmarkStopReason.NONE
+    tokens: TokenUsageSlot | None = None
+    cost: InvocationCostSlot | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -714,9 +759,20 @@ def hallucination_ratio(*, unsupported_claims: int, total_claims: int) -> float:
 
 
 def _ratio(numerator: int, denominator: int) -> float:
-    """Adverse rate; an empty denominator scores 0.0 rather than full credit."""
+    """Adverse rate; an empty denominator scores 0.0 rather than full credit.
+
+    A *non-zero* numerator over an empty denominator is a modelling error, not a
+    perfect score.  Every caller draws the numerator from the denominator's own
+    set, so this can only fire if that invariant breaks -- fail loudly instead of
+    silently reporting 0.0 for something that provably happened.
+    """
 
     if denominator <= 0:
+        if numerator > 0:
+            raise ValueError(
+                "adverse ratio with a non-zero numerator over an empty "
+                f"denominator: {numerator}/{denominator}"
+            )
         return 0.0
     return round(numerator / denominator, 6)
 
@@ -975,7 +1031,11 @@ class GateHook(Protocol):
 
 
 class CaseRunReceipt(BaseModel):
-    """One (case, condition) cell: what ran, what it produced, what it cost."""
+    """One (case, condition) cell: what ran, what it produced, what it cost.
+
+    The cost is a *reserved slot* here, not a measurement: A5 runs no provider,
+    so ``tokens`` / ``cost`` stay ``None`` until the provider lane fills them.
+    """
 
     case_id: str
     condition: BenchmarkCondition
@@ -1000,6 +1060,8 @@ class CaseRunReceipt(BaseModel):
     validation_verdict: ValidationVerdict | None = None
     calls: int = Field(default=0, ge=0)
     duration_seconds: float = Field(default=0.0, ge=0)
+    tokens: TokenUsageSlot | None = None
+    cost: InvocationCostSlot | None = None
     diagnostics: list[str] = Field(default_factory=list)
 
 
@@ -1043,10 +1105,18 @@ class ConditionSummary(BaseModel):
 
     ``hallucination_ratio`` covers *scored* cells (completed + blocked) and so
     measures the frozen drafts themselves.  ``accepted_hallucination_ratio``
-    covers *all* cells and measures what survived governance -- that is the
-    number the gate is expected to move.  ``score`` is ``100 * (1 -
-    accepted_hallucination_ratio)`` and is ``None`` when nothing was scored, so
-    a run that measured nothing can never present itself as a perfect score.
+    covers *accepted* cells only and measures what survived governance -- that
+    is the number the gate is expected to move.
+
+    An *unaccepted* cell contributes nothing to that measure: blocking a cell
+    means no content was released, not that clean content was released.  Folding
+    unaccepted cells in as ``0.0`` makes the score rise the more the mechanism
+    blocks, which is the opposite of what the score is for (adversarial review
+    2026-09-11: a live run with ``acceptance_rate = 0.0`` reported
+    ``score = 100.0``).  When a condition accepted nothing there is no released
+    content to score, so both ``accepted_hallucination_ratio`` and ``score`` are
+    ``None`` -- the same reason ``score`` is ``None`` when nothing was scored,
+    and it can never present itself as a perfect score.
     """
 
     condition: BenchmarkCondition
@@ -1057,9 +1127,11 @@ class ConditionSummary(BaseModel):
     denied: int = Field(ge=0)
     interrupted: int = Field(ge=0)
     failed: int = Field(ge=0)
+    accepted: int = Field(ge=0)
+    zero_claim_cells: int = Field(ge=0)
     acceptance_rate: float = Field(ge=0, le=1)
     hallucination_ratio: float = Field(ge=0, le=1)
-    accepted_hallucination_ratio: float = Field(ge=0, le=1)
+    accepted_hallucination_ratio: float | None = Field(default=None, ge=0, le=1)
     evidence_binding_rate: float = Field(ge=0, le=1)
     score: float | None = Field(default=None, ge=0, le=100)
 
@@ -1078,7 +1150,7 @@ class BenchmarkRunReport(BaseModel):
     primary_metric: str
     primary_metric_direction: str
     conditions: list[ConditionSummary]
-    mechanism_metrics: dict[str, float]
+    mechanism_metrics: dict[str, float | None]
     budget: BudgetView
     usage: BudgetUsage
     status: BenchmarkRunStatus
@@ -1572,7 +1644,11 @@ class TrustBenchmarkRuntime:
             for item in cells
             if item.status in (CaseStatus.COMPLETED, CaseStatus.BLOCKED)
         ]
-        accepted_ratios = [item.accepted_hallucination_ratio for item in cells]
+        # Only an accepted cell released content, so only an accepted cell can be
+        # scored for how clean the released content is.  Counting a blocked cell
+        # as 0.0 would make the score climb the more the mechanism blocks.
+        accepted = [item for item in cells if item.accepted]
+        accepted_ratios = [item.accepted_hallucination_ratio for item in accepted]
         return ConditionSummary(
             condition=condition,
             cases=len(cells),
@@ -1582,17 +1658,28 @@ class TrustBenchmarkRuntime:
             denied=sum(item.status is CaseStatus.DENIED for item in cells),
             interrupted=sum(item.status is CaseStatus.INTERRUPTED for item in cells),
             failed=sum(item.status is CaseStatus.FAILED for item in cells),
-            acceptance_rate=_ratio(sum(item.accepted for item in cells), len(cells)),
+            accepted=len(accepted),
+            zero_claim_cells=sum(item.claims_total == 0 for item in scored),
+            acceptance_rate=_ratio(len(accepted), len(cells)),
             hallucination_ratio=_mean([item.hallucination_ratio for item in scored]),
-            accepted_hallucination_ratio=_mean(accepted_ratios),
+            accepted_hallucination_ratio=(
+                _mean(accepted_ratios) if accepted_ratios else None
+            ),
             evidence_binding_rate=_mean([item.evidence_binding_rate for item in scored]),
             score=(
-                round(100.0 * (1.0 - _mean(accepted_ratios)), 2) if scored else None
+                round(100.0 * (1.0 - _mean(accepted_ratios)), 2)
+                if accepted_ratios
+                else None
             ),
         )
 
-    def _mechanism_metrics(self, cells: Sequence[CaseRunReceipt]) -> dict[str, float]:
-        """Fail-closed behaviour of governance-on, measured against corpus labels."""
+    def _mechanism_metrics(self, cells: Sequence[CaseRunReceipt]) -> dict[str, float | None]:
+        """Fail-closed behaviour of governance-on, measured against corpus labels.
+
+        A rate whose denominator is empty is ``None``, not ``100.0``: "there was
+        nothing to block" is not "blocking was perfect".  Same rule as
+        ``ConditionSummary.score`` (D-A5-10).
+        """
 
         gate_on = [item for item in cells if item.condition is BenchmarkCondition.GATE_ON]
         if not gate_on:
@@ -1623,9 +1710,15 @@ class TrustBenchmarkRuntime:
             "false_passes": float(false_passes),
             "false_blocks": float(false_blocks),
             "unscored_cells": float(unscored),
-            "fail_closed_block_rate": ratio_score(true_blocks, len(should_block)),
+            "fail_closed_block_rate": (
+                ratio_score(true_blocks, len(should_block)) if should_block else None
+            ),
             "false_pass_rate": round(_ratio(false_passes, total) * 100, 2),
-            "false_block_rate": round(_ratio(false_blocks, len(should_accept)) * 100, 2),
+            "false_block_rate": (
+                round(_ratio(false_blocks, len(should_accept)) * 100, 2)
+                if should_accept
+                else None
+            ),
             "mechanism_safety_score": round(max(0.0, 100.0 * (1.0 - penalty)), 2),
         }
 
@@ -1638,12 +1731,20 @@ class TrustBenchmarkRuntime:
             for condition in receipt.conditions
         ]
         warnings = list(receipt.notes)
+        unpriced = sum(item.cost is None for item in receipt.case_receipts)
+        if unpriced:
+            warnings.append(
+                f"{unpriced}/{len(receipt.case_receipts)} cell(s) carry no cost: the receipt "
+                "reserves the cost schema (TASK-SPECS A5 计价衔接注记) but this package "
+                "calls no provider, so tokens/cost stay None until the O12 provider lane "
+                "fills them"
+            )
         unscored = sum(item.denied + item.interrupted for item in summaries)
         if unscored:
             warnings.append(
                 f"{unscored} cell(s) were denied or interrupted; the ratio means cover "
-                "scored cells and the accepted ratio treats a non-accepted cell as "
-                "carrying no unsupported content"
+                "scored cells only, and a condition that accepted nothing reports no "
+                "accepted ratio (the means never treat a blocked cell as clean)"
             )
         if any(item.failed for item in summaries):
             warnings.append("failed cells are recorded in the receipt and excluded from scoring")

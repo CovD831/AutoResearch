@@ -8,6 +8,7 @@
   "conditions": [
     {
       "acceptance_rate": 1.0,
+      "accepted": 24,
       "accepted_hallucination_ratio": 1.0,
       "blocked": 0,
       "cases": 24,
@@ -19,10 +20,12 @@
       "hallucination_ratio": 1.0,
       "interrupted": 0,
       "score": 0.0,
-      "scored": 24
+      "scored": 24,
+      "zero_claim_cells": 0
     },
     {
       "acceptance_rate": 1.0,
+      "accepted": 24,
       "accepted_hallucination_ratio": 0.145833,
       "blocked": 0,
       "cases": 24,
@@ -34,10 +37,12 @@
       "hallucination_ratio": 0.145833,
       "interrupted": 0,
       "score": 85.42,
-      "scored": 24
+      "scored": 24,
+      "zero_claim_cells": 0
     },
     {
       "acceptance_rate": 0.583333,
+      "accepted": 14,
       "accepted_hallucination_ratio": 0.0,
       "blocked": 10,
       "cases": 24,
@@ -49,13 +54,14 @@
       "hallucination_ratio": 0.145833,
       "interrupted": 0,
       "score": 100.0,
-      "scored": 24
+      "scored": 24,
+      "zero_claim_cells": 0
     }
   ],
   "corpus_digest": "1e4aa96686ffcc2242210b7824ab50d74ef84c7fbdb000a3bc65bc16870609b2",
   "corpus_id": "trust-benchmark-v1",
   "corpus_version": "1.0",
-  "generated_at": "2026-09-11T03:52:57.138792Z",
+  "generated_at": "2026-09-11T13:05:21.413643Z",
   "mechanism_metrics": {
     "cases": 24.0,
     "expected_accepts": 14.0,
@@ -69,8 +75,8 @@
     "true_blocks": 10.0,
     "unscored_cells": 0.0
   },
-  "metric_definition_digest": "8f641f275ab8bdf73af42acf705bd43c52efe249d2b59e5ecd81a7581039c3fe",
-  "metric_definition_version": "1.0",
+  "metric_definition_digest": "01960a93ed5d87cc77afbb174043bf316ce590c24ca0a3005523125bde1c1fe7",
+  "metric_definition_version": "1.1",
   "primary_metric": "hallucination_ratio",
   "primary_metric_direction": "lower_is_better",
   "report_id": "benchmark-report",
@@ -79,9 +85,13 @@
     "calls_denied": 0,
     "calls_interrupted": 0,
     "calls_used": 144,
+    "cost": null,
     "stop_reason": "none",
-    "wall_clock_seconds": 0.55
+    "tokens": null,
+    "wall_clock_seconds": 0.084273
   },
   "version": "1.0",
-  "warnings": []
+  "warnings": [
+    "72/72 cell(s) carry no cost: the receipt reserves the cost schema (TASK-SPECS A5 计价衔接注记) but this package calls no provider, so tokens/cost stay None until the O12 provider lane fills them"
+  ]
 }

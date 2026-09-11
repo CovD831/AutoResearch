@@ -66,6 +66,27 @@ LIVE_RETRIEVAL_LIMITATION = (
     "not a comparable measurement of the gate."
 )
 
+# The first limitation names the two metrics it is easy to notice; the same
+# binding failure also drives every *other* reported number.  With no evidence
+# to bind, the gate sees an empty evidence set and blocks cells it accepts
+# offline, so the mechanism metrics move with the binding failure rather than
+# with the mechanism, and at realistic corpus sizes the run stops on the call
+# budget before finishing.  Declaring only hall/bind leaves a reader free to
+# read "mechanism_safety_score: 45.83" as a measured regression.
+LIVE_RETRIEVAL_MECHANISM_LIMITATION = (
+    "every other reported metric inherits the same defect: with no bindable "
+    "evidence the gate blocks cells it accepts offline, so mechanism_safety_score, "
+    "false_block_rate, true_blocks and each condition's score move with the binding "
+    "failure and not with the mechanism; a live run at realistic scale also stops "
+    "on the call budget, so its status is budget_exhausted and its rates cover only "
+    "the cells that ran. Only the offline frozen-corpus run is a comparable "
+    "measurement."
+)
+LIVE_RETRIEVAL_LIMITATIONS = (
+    LIVE_RETRIEVAL_LIMITATION,
+    LIVE_RETRIEVAL_MECHANISM_LIMITATION,
+)
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -164,7 +185,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.live_retrieval:
             materials = build_live_materials(args.source, args.limit)
-            limitations = [LIVE_RETRIEVAL_LIMITATION]
+            limitations = list(LIVE_RETRIEVAL_LIMITATIONS)
         else:
             materials = FixtureMaterialsProvider()
             limitations = []
@@ -213,6 +234,14 @@ def _print_summary(run, report_path: Path, *, live: bool, source: str) -> None:
         f"{receipt.usage.wall_clock_seconds:.3f}s wall, "
         f"stop={receipt.usage.stop_reason.value}"
     )
+    print(
+        "  cost            : "
+        + (
+            "n/a — reserved slot, no provider called (O12 fills it)"
+            if receipt.usage.cost is None
+            else f"{receipt.usage.cost.total:.6f} {receipt.usage.cost.currency}"
+        )
+    )
     print()
     print(
         f"  {'condition':<10} {'cases':>5} {'acc':>4} {'blk':>4} {'deny':>4} "
@@ -220,17 +249,23 @@ def _print_summary(run, report_path: Path, *, live: bool, source: str) -> None:
     )
     for summary in report.conditions:
         score = "n/a" if summary.score is None else f"{summary.score:.2f}"
+        acc_hall = (
+            "n/a"
+            if summary.accepted_hallucination_ratio is None
+            else f"{summary.accepted_hallucination_ratio:.6f}"
+        )
         print(
             f"  {summary.condition.value:<10} {summary.cases:>5} "
             f"{summary.completed:>4} {summary.blocked:>4} {summary.denied:>4} "
             f"{summary.hallucination_ratio:>9.6f} "
-            f"{summary.accepted_hallucination_ratio:>9.6f} "
+            f"{acc_hall:>9} "
             f"{summary.evidence_binding_rate:>9.6f} {score:>7}"
         )
     print()
     print("  mechanism metrics (label agreement)")
     for key, value in sorted(report.mechanism_metrics.items()):
-        print(f"    {key:<28} {value:.4f}")
+        rendered = "n/a" if value is None else f"{value:.4f}"
+        print(f"    {key:<28} {rendered:>10}")
     if report.warnings:
         print()
         print("  warnings")
