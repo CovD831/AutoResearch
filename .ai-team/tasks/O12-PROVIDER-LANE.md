@@ -2,8 +2,8 @@
 
 - ID: `O12-PROVIDER-LANE`
 - Title: `ProviderLane 与 LLM 调用底座（pi-ai 语义移植 + openpilot lane 约束）`
-- Status: `reviewing`
-- Status note: 段 1 + 段 2 + S3.1 完成；经**对抗性自审 v2**（6 缺陷 + 钢人论证 5 条处置）+ **独立子代理盲审 v3**（4 缺陷，全修复）+ 价目口径政策，见 `SELF-REVIEW.md` / `PRICE-POLICY.md`。提 PR #15 交成员 A 复审（不自批），S3.4 registry 回写待合并后。v3 改动**停在本地未提交未推送**。 【2026-09-11 owner 代修】成员 A 复审提出 3 条技术意见（全部复现为真），owner 追加 C1–C4 修复并 rebase 至 `main@66aba64`（冲突仅记录文件，按并集解决）：全量 **304 passed / 2 skipped**、ruff 绿、`check.mjs` 与 `check_pr_contract` 双 valid；新增 16 个测试实例中 12 个在修复前失败。见 D-O12-11~14。
+- Status: `handoff`
+- Status note: 段 1 + 段 2 + S3.1 完成；经**对抗性自审 v2**（6 缺陷 + 钢人论证 5 条处置）+ **独立子代理盲审 v3**（4 缺陷，全修复）+ 价目口径政策，见 `SELF-REVIEW.md` / `PRICE-POLICY.md`。提 PR #15 交成员 A 复审（不自批），S3.4 registry 回写待合并后。v3 改动**停在本地未提交未推送**。 【2026-09-11 owner 代修】成员 A 复审提出 3 条技术意见（全部复现为真），owner 追加 C1–C4 修复并 rebase 至 `main@66aba64`（冲突仅记录文件，按并集解决）：全量 **304 passed / 2 skipped**、ruff 绿、`check.mjs` 与 `check_pr_contract` 双 valid；新增 16 个测试实例中 12 个在修复前失败。见 D-O12-11~14。 **交回成员 A 复核**（2026-09-11）：owner 代修 C1–C4 已推送 `c5501a2`，PR 转 `MERGEABLE`、CI 三绿；请复核修复是否彻底，并回答账本 Handoff note 里列的 A/B/C 三处判断。
 - Owner: `user/team`
 - Next owner: `member A`
 
