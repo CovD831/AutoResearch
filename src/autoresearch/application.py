@@ -41,6 +41,7 @@ from autoresearch.contracts import (
 from autoresearch.evidence import EvidenceService
 from autoresearch.evolution_service import EvolutionService, ExperienceService
 from autoresearch.execution_service import ExecutionService
+from autoresearch.experience_sink import ExperienceSink, SinkSettlement
 from autoresearch.gates import GateService
 from autoresearch.graph import build_research_graph
 from autoresearch.handoffs import HandoffService
@@ -163,6 +164,7 @@ class AutoResearchApplication:
         )
         self.profile = UserProfileService(self.store, self.knowledge)
         self.experiences = ExperienceService(self.store, self.knowledge)
+        self.experience_sink = ExperienceSink(self.store, self.experiences)
         self.evolution = EvolutionService(self.store)
         self.execution = ExecutionService(self.store, self.evidence)
 
@@ -397,6 +399,17 @@ class AutoResearchApplication:
 
     def record_experience(self, item: ExperienceRecord) -> ExperienceRecord:
         return self.experiences.record(item)
+
+    def settle_failure_experiences(self, project_id: str) -> SinkSettlement:
+        """Consume new failure events and settle them as failure experiences (A6).
+
+        Read-only pull over the persisted audit event log; never touches the
+        audit chain and never raises on degraded input.
+        """
+
+        if self.projects.get(project_id) is None:
+            raise KeyError(f"unknown project: {project_id}")
+        return self.experience_sink.settle(project_id)
 
     def update_work_package(self, work_package_id: str, update: WorkPackageUpdate) -> WorkPackage:
         return self.execution.update_work_package(work_package_id, update)
