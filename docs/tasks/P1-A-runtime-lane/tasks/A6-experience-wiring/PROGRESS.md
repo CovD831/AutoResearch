@@ -22,7 +22,8 @@
 - [x] 覆盖率：`--cov=autoresearch.experience_sink --cov-report=term-missing` → **199 stmts / 0 miss / 100%**（首轮 95%，缺的 9 行是 4 类防御分支，补 4 条测试打满）。
 - [x] `ruff check src tests` → `All checks passed!`。
 - [x] `node .ai-team/check.mjs --task .ai-team/tasks/S4-A2-EXPERIENCE-WIRING.md --base origin/main` → `valid`。
-- [x] `python scripts/check_pr_contract.py --base origin/main` → 见 HANDOFF.md。
+- [x] `python scripts/check_pr_contract.py --base origin/main` → `PR contract check passed: 11 changed paths; 1 task ledger(s)`（exit 0）。
+- [x] 功能场景 harness（`F:\AutoResearch\.workbuddy\a6-scenarios\`，未跟踪、不进 PR）：`scenario.py` 12 个字段级场景 + `user-scenario.py` 端到端业务场景（`proj_llm_eval`），全部实跑并逐字段核对，0 异常、0 拒绝写入。场景 2/6/7/8/10/12 是判据最硬的几条（同因合并计数、门槛仍关、晋级不被降级、降级不抛、写失败可重试、AST 结构证明）。
 - [x] 冒烟脚本（`.workbuddy` 外、临时目录，非交付物）实跑复核了 10 个行为：首拦截 → 建记录、重跑 → 零写入、同因第二次 → 计数 2、pass/clean 诱饵不产出、fail/unknown/audit unknown 各产出、人工升过级的记录合并后 `grade`/`promoted` 保持、事件日志不可读 → 降级不抛、dry-run 零写入。
 
 ## 边界与非目标

@@ -68,7 +68,8 @@ owner 复核 D-A6-01 裁决 → 用户侧复跑验收命令与功能场景 → �
 - [x] `.venv/Scripts/python.exe -m ruff check src tests` → `All checks passed!`。
 - [x] `node .ai-team/check.mjs --task .ai-team/tasks/S4-A2-EXPERIENCE-WIRING.md --base origin/main` → `valid`，`Functional progress: 8/8 / Code progress from origin/main: 6 commits, 9 files`。
 - [x] `--base main` 口径说明：本地 `main` 停在 `380bd49`，`--base main` 会把新基线已含的 B5 提交算进本包 diff（本包真实改动用 `--base origin/main` 看）。
-- [x] `python scripts/check_pr_contract.py --base origin/main` → 见 HANDOFF.md 记录。
+- [x] `python scripts/check_pr_contract.py --base origin/main` → `PR contract check passed: 11 changed paths; 1 task ledger(s)`（exit 0）。
+- [x] 功能场景 harness（未跟踪、不进 PR）：`F:\AutoResearch\.workbuddy\a6-scenarios\scenario.py`（12 场景）与 `user-scenario.py`（端到端业务场景）实跑，逐字段输出符合预期，0 异常。
 
 ## Handoff note
 
