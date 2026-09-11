@@ -9,7 +9,7 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, Field, computed_field
 
-from autoresearch.contracts import EvidenceCandidate, utc_now
+from autoresearch.contracts import EvidenceCandidate, InvocationCost, TokenUsage, utc_now
 from autoresearch.invocation_contracts import CapabilityManifest
 
 
@@ -137,6 +137,20 @@ class CapabilityInvocationReceipt(BaseModel):
         ),
     )
     diagnostics: list[str] = Field(default_factory=list, max_length=100)
+    tokens: TokenUsage | None = Field(
+        default=None,
+        description=(
+            "O12 provider usage for this invocation. None when the adapter made no LLM call "
+            "(native adapters, or a lane that was never dispatched)."
+        ),
+    )
+    cost: InvocationCost | None = Field(
+        default=None,
+        description=(
+            "O12 priced usage (PLAN §4.2 field names, shared with A1 InvocationReceipt). "
+            "None when the invocation is unpriced; pricing never blocks admissibility."
+        ),
+    )
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 

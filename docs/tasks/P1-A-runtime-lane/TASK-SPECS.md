@@ -58,9 +58,9 @@
 - 主要交付：benchmark invocation、资源预算、停止条件、结果 receipt、报告 artifact 和重跑命令；**Semantic Scholar 真实检索 adapter（2026-09-10 增补，经 A4 registry 注册，为 benchmark 与 B 线试点提供真实文献数据源）**。
 - 必须满足：计划、观测结果和未知结果分开；资源超限触发 interrupt/deny；运行环境和命令可追溯；检索 adapter 的空结果遵循 D-F8-01、限流/离线矩阵化。
 - 验收：S4 benchmark 三组对比可重跑，失败、超时和未执行结果不会被写成通过。
-- **评估纪律条款（2026-09-10 追加，karpathy 三约束吸收，见 workspace 生态调研报告第七节）**：主指标唯一（以 hallucination ratio 为首，其余为辅指标不参与裁决）；固定语料集与固定调用预算（per-run 预算写进 receipt，计价链由 Owner 线 O12 ProviderLane 供给）；换写作头/检索源不得改变评估口径——指标定义与评估预算在本任务包内冻结，变更须走 owner 裁决。依据：无验证器/无固定口径的自进化已被 AI Scientist（57% 虚假数据）证伪。
-- **分工注记（2026-09-10）**：LLM 调用底座（ProviderLane）由 Owner 实现（O12，需参考本地 openpilot 代码），A5 通过 invocation receipt 消费其计价与调用边界，不在本任务包范围内实现。
-- **计价衔接注记（2026-09-10 对抗审查）**：O12 交付（09-12）晚于本包交付（09-11）——receipt 的成本字段 schema 由本包**预留**（字段位固定），端到端计价验收在 O12 交付后补验；计价缺失不阻塞本包 accepted。
+- **评估纪律条款（2026-09-10 追加，karpathy 三约束吸收，见 workspace 生态调研报告第七节）**：主指标唯一（以 hallucination ratio 为首，其余为辅指标不参与裁决）；固定语料集与固定调用预算（**per-run 预算以 tokens 为主口径写进 receipt，cost 为辅**——tokens 是 provider 报告的事实，cost 是用价目表折算的推断，会随价目表滞后而失准，故预算纪律一律写在 tokens 上；口径定义见 O12 `PRICE-POLICY.md`；计价链由 Owner 线 O12 ProviderLane 供给）；换写作头/检索源不得改变评估口径——指标定义与评估预算在本任务包内冻结，变更须走 owner 裁决。依据：无验证器/无固定口径的自进化已被 AI Scientist（57% 虚假数据）证伪。
+- **分工注记（2026-09-10）**：LLM 调用底座（ProviderLane）由 Owner 实现（O12，需参考本地 openpilot 代码），A5 通过 invocation receipt 消费其调用边界与 `tokens`/`cost` 字段，不在本任务包范围内实现。
+- **计价衔接注记（2026-09-10 追加；2026-09-11 更新为 O12 实际交付口径）**：receipt 的成本 schema 原由本包**预留字段位**，现已由 O12 冻结落地——`tokens`（主口径，provider 报告的事实）与 `cost`（辅口径，估算）定义在共享 `contracts.py`（`TokenUsage` / `InvocationCost`）；`cost` 携带 `price_source`（价目表 + 核对日期）与 `attempts`（重试上界），未命中价目时为 `None` 而非 0。**引用任何成本数字必须带 `price_source`**；本项目快照与 provider 官方价目实测存在系统性偏差（最高约 4.5×），故 cost 只用于对外报数，**不用于评估纪律裁决**。端到端计价验收在本包 accepted 后补验，不阻塞。口径定义见 O12 `PRICE-POLICY.md`。
 - **候选消费纪律（2026-09-10 D-S3-01 硬条款）**：A5 消费 A4 invocation 时，候选准入必须走 `CapabilityInvocation.admissible_candidates` / `receipt.candidates_admissible` 单点判据（computed，keyed on `outcome_status`），**不得直接读 `candidates` 做准入**——失败路径的 `candidates` 是原始事实记录，非准入许可（D-7 裁决落位）。同窗口收紧项：`request_fingerprint` 对 raw dict 的确定性（A5 request 全部 pydantic 化）。
 
 ## A6 — S4 经验沉淀接线（追加包，2026-09-10；原 Owner O9 接线点①前移成员 A）

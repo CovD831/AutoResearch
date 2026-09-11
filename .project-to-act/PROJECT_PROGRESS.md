@@ -6,7 +6,7 @@
 
 | 任务 | 状态 | 负责人 | 完成条件 | 证据 ID | 最后更新 |
 |---|---|---|---|---|---|
-| P1 双 worktree + MVP 集成 | 进行中（S1/S2/S3 promoted+accepted，S3-A2（O12 实施中）/S4-A/S4-B/S4-A2 ready，I0–I2 integrated，I3 首轮收口完成） | 用户/项目负责人；成员 A/B | A/B 任务与 I0–I4 集成任务全部 accepted，并通过最小 Evaluation Section 端到端验收 | UD-006、UD-007、P1-WORKTREE-TASK-PLAN、TASK-PACKAGE-REGISTRY | 2026-09-10 |
+| P1 双 worktree + MVP 集成 | 进行中（S1/S2/S3 promoted+accepted，S3-A2（O12 已交付、PR #15 待复审）/S4-A/S4-B/S4-A2 ready，I0–I2 integrated，I3 首轮收口完成） | 用户/项目负责人；成员 A/B | A/B 任务与 I0–I4 集成任务全部 accepted，并通过最小 Evaluation Section 端到端验收 | UD-006、UD-007、P1-WORKTREE-TASK-PLAN、TASK-PACKAGE-REGISTRY | 2026-09-11 |
 
 ## 当前任务
 
@@ -35,8 +35,8 @@
 ## 下一步
 
 1. ~~A4/B4 交付 + owner 深审 + O7 gate~~ 已完成：S3 promotion 通过，S3-A/S3-B accepted（2026-09-10，base main@36ddbab）。
-2. O12 ProviderLane（Owner 亲自实现，speculative 段已开工）09-11 交付；A5 消费其计价（receipt 成本字段已预留）。
-3. 09-11 **B5 已交付并合入**（PR #17 `7fdfb89`：owner 深审发现阻断缺陷 + 代修 + 独立对抗复核）；A5 待交付、A6 待排期；09-12 B6 试点 + O5 空窗；09-13 B7 稿件 + O4 收官 MVP-CLOSED。
+2. ~~O12 ProviderLane 09-11 交付~~ **已交付**：PR #15 open（owner 自修中）；A5 消费其计价——receipt 字段已冻结为 `tokens` 主口径 / `cost` 辅口径（带 `price_source`、`attempts`），A5 任务包已同步修订。
+3. 09-11 **B5 已交付并合入**（PR #17 `7fdfb89`：owner 深审发现阻断缺陷 + 代修 + 独立对抗复核）；A5 已交付并进入 owner 集成（PR #18 → **PR #19**）、A6 待排期；09-12 B6 试点 + O5 空窗；09-13 B7 稿件 + O4 收官 MVP-CLOSED。
 4. MVP 收口后，再用真实 idea、语料和实验资源建立 gold set 与真实论文试点。
 
 ## 进度历史
@@ -46,6 +46,7 @@
 - 2026-09-11｜A5 S4 benchmark runtime：深审 + owner 代修 + owner 集成合入（runtime 线）：成员 A PR #18 → owner 深度审查发现**指标语义缺陷族「空/无样本被当作满分」**——`score` 在全部单元上取 `accepted_hallucination_ratio` 均值而未接受单元该值恒 0 → **拦得越多分越高**（live 实测 `acceptance_rate=0.0` 却 `score=100.0`）；空分母比率报 100.0/0.0；`hall(total_claims=0)=0.0`。根因**再次在规格**（`metric-definition.json` notes 原文即规定错误语义，同 B5）→ owner 代修 D-A5-12~16：只对已接受单元求均值、空分母一律 `None`、live 局限声明扩为两条、指标定义升版 1.0→1.1、补齐 TASK-SPECS 要求但未交付的 **F9**（receipt 成本字段位预留）。**独立盲审复核代修**另抓出 `false_block_rate` 空分母仍报 0.0（与自写 D-A5-13 自相矛盾）并修复。owner 集成 **PR #19 squash 合入 `8f6e7de`**（取代 #18）。合入后 main 全量 275 passed、ruff clean、报告逐位可复现、离线指标数值零变化｜遗留：F8（三条件从不调 LLM 却名 `bare_llm`）待裁决、`search_service.py` 第二条裸 S2 路径待裁决、`docs/BENCHMARK.md` 口径差未统一｜下一步：S4-A2 可领取；O12 PR #15 待成员 A 复核｜确认来源：用户指令（「我们来代修吧」「你帮他补一个 PR」「先合并 19 吧」）。
 
 - 2026-09-11｜B5 真实数据源与解析层：深审 + owner 代修 + 独立对抗复核（owner 主线任务）：成员 PR #16 深审发现**阻断级缺陷**——撤稿判据读 Crossref `update-to[]`（语义为「本文更新了谁」）方向反转，**被撤稿论文判 `found`、撤稿声明判 `retracted`**（真实 API 复核确认）；根因在任务包本身（`TASK-SPECS` B5:50 与 ADR-01 槽位 7 同错）。owner 代修 PR #17 合入 `7fdfb89`：判据改读 `updated-by[]`、fixture 依真实 payload 重录并区分两个 Lancet DOI、`hallucination_ratio` 只计 `not_found`（新增 `undetermined_ratio`）、`citation_recall`/`citation_precision` 去恒等、解析层按后端记因 + 去假 locator 改 fail-closed、规格与 ADR 就地修订 + 勘误。**独立对抗审查**（不知情子代理）复核代修，另发现 `resolver_record()` 把 404 DOI 投影成 `current` 的 fail-open（成员原版即有、owner 两轮自查漏报）并修复。聚焦 20 / 全量 166 passed。证据：`reviews/PR16-B5-deep-review.md`、`reviews/PR16-B5-fix-review.md`。遗留：docling 解析路径未验证（两 parser 均未安装）。
+- 2026-09-11｜O12 ProviderLane 交付与对抗性自审（owner 主线任务）：段 1（S1.1–S1.5）+ 段 2（S2.0–S2.6）+ S3.1 完成并 rebase 至 `main@380bd49`（零冲突）；`LLMService` 内部改走 lane（公共签名不变、消费方零改动），共享 `contracts.py` 增 `TokenUsage`/`InvocationCost`（`invocation_contracts.py` re-export）；**PR #15 open**（CI 三项绿：PR quality / Task contract / repo-task-sync）。评审证据：全量 **268 passed / 2 skipped / 0 failed**（`-W error`）、ruff 绿、`check.mjs` valid、`check_pr_contract` passed；真实 parity（WorkBuddy 端点）`deepseek-v4-pro` 计价 delta=0、`glm-5.3` 无目录条目记 unpriced。审查：**对抗性自查 v2（6 项）+ 独立子代理盲审 v3（4 项）全部修复**（`SELF-REVIEW.md` / `CONTRACT-PARITY.md`）。**硬发现**：官方价目实测对照显示本项目快照与 DeepSeek 官方**偏差最高约 4.5×、且缺 peak/off-peak 结构** → 计价口径定为 **tokens 为主、cost 为辅**（`PRICE-POLICY.md` + D-O12-09 + D-O12-10），内置模型按官方 peak 档钉住（`price_overrides.json`），A5 任务包同步修订｜遗留：S3.3 成员 A 复审 → S3.4 registry 回写；`lane_drift_event` 无写入路径、peak/off-peak 双档不可表达、provider 改模型路由刷新脚本发现不了｜下一步：成员 A 复审 PR #15 → 合并后 registry 回写 `integrated`；09-11 A5 + B5 交付即审｜确认来源：用户指令（「走审核，但是在这之前你需要深度自审」「可以推送了」）。
 
 - 2026-09-10｜S3 双线审查、集成与 O7 promotion（owner 主线任务）：A4 Capability Registry（PR #12，成员 A，R-1~R-6 self-review 后零集成修复）owner 深审通过合入 `f620915`（D-S3-01 三裁决：D-1 采纳回写 L2、D-4 双 receipt 保留+bridge 映射、D-7 确认单点准入判据）；B4 Reader/Writer Ports（PR #13，成员 B）深审后 owner 代修集成 PR #14 合入 `7b88e30`（rebase 3 commit + 孤儿 map-key gate 检查 + 更名，D-SYNC-01 先例，146 passed）；O7 S3 promotion 四项核验通过（fresh：focused 39 / 全量 146 / ruff / check.mjs @main `36ddbab`）→ **S3-A/S3-B accepted、S3-A2（O12 实施中）/S4-A/S4-B/S4-A2 ready（S4-A3 仍 planned，依赖 A6）**｜遗留：O12 今晚领取（speculative 段已开工）、A5/B5 明日交付即审、S3 promotion 后 S3-A2/B5 前置全满足｜下一步：O12 ProviderLane 09-11 交付；A5/B5 交付即审；09-13 O4 收官 MVP-CLOSED｜确认来源：用户指令（「可以，合并吧」「我们代修吧」「现在开」）。
 
