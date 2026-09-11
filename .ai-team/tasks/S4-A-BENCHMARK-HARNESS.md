@@ -3,7 +3,7 @@
 - ID: `S4-A-BENCHMARK-HARNESS`
 - Title: `S4 benchmark runtime and real retrieval adapter`
 - Status: `handoff`
-- Status note: 两个切片均已本地 commit（检索 adapter `8cf0d7c`+`4488ad8`；benchmark 运行时 `30a12d1`）。分支已 rebase 到最新主线 `main@66aba64`。fresh 证据：99 focused / 245 full passed、`benchmark.py` 覆盖率 98%、ruff 绿、`check.mjs` 18/18 valid、`evidence/benchmark-report.json` 已生成、固定场景 12/12 + 端到端用户场景全绿。用户侧已独立复跑全部验收命令且全部通过。按用户要求**未 push、未开 PR**，故按 repo-task-sync 停在 `handoff` 而非 `done`；待 owner 裁决 D-A5-偏离-1 与晋级。
+- Status note: 两个切片均已本地 commit（检索 adapter `8cf0d7c`+`4488ad8`；benchmark 运行时 `30a12d1`）。分支已 rebase 到最新主线 `main@66aba64`。fresh 证据：99 focused / 全量 265 passed（rebase 后；rebase 前旧基线为 245，差 20 全部来自新基线已含的 B5 集成，本包代码未变）、`benchmark.py` 覆盖率 98%、ruff 绿、`check.mjs` 18/18 valid、`evidence/benchmark-report.json` 已生成、固定场景 12/12 + 端到端用户场景全绿。用户侧已独立复跑全部验收命令且全部通过。按用户要求**未 push、未开 PR**，故按 repo-task-sync 停在 `handoff` 而非 `done`；待 owner 裁决 D-A5-偏离-1 与晋级。
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -86,7 +86,9 @@ owner 裁决 D-A5-偏离-1（`search_service.py` 第二条裸 S2 路径）与本
 - [x] `--cov=autoresearch.search_adapters`（99%，287 stmts / 3 miss）。
 - [x] `python -m pytest tests/test_benchmark_runtime.py tests/test_benchmark.py`（63 passed）。
 - [x] `--cov=autoresearch.benchmark`（98%，679 stmts / 14 miss；剩余 14 行全为既有 scoring 层的输入校验分支）。
-- [x] `python -m pytest tests`（245 passed in 56s）。
+- [x] `python -m pytest tests`（245 passed in 56s；**rebase 前**的旧基线 `main@380bd49`）。
+- [x] Rebase 到 `main@66aba64` 后全量重跑（2026-09-11 18:2x）：`python -m pytest tests`（**265 passed in 55.99s**）。本包代码在 rebase 中逐位未变（commit hash 全部重写），增量 20 全部来自新基线已含的 B5 集成（PR #17）。**该行为 AI 侧 provenance，非用户侧验收证据。**
+- [x] 基线口径提醒：本地 `main` 仍停在 `380bd49`（未随 `origin/main` 前移，rebase 是用 `origin/main` 做的）。故 `--base main` 会把 B5 的 3 个提交算进本包 diff（10 commits / 29 files），需看本包真实改动请用 `--base origin/main`（7 commits / 13 files / +5762-6）。两口径均 Result: valid。
 - [x] `python -m ruff check src tests`（All checks passed）。
 - [x] `python scripts/benchmark_trust.py --report evidence/benchmark-report.json`（status=completed，三条件 24/24/24 格）。
 - [x] `node .ai-team/check.mjs --task .ai-team/tasks/S4-A-BENCHMARK-HARNESS.md --base main`（Result: valid）。
