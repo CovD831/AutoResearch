@@ -2,8 +2,8 @@
 
 - ID: `S4-A-BENCHMARK-HARNESS`
 - Title: `S4 benchmark runtime and real retrieval adapter`
-- Status: `reviewing`
-- Status note: 两个切片均已本地 commit（检索 adapter `8cf0d7c`+`4488ad8`；benchmark 运行时 `30a12d1`）。分支已 rebase 到最新主线 `main@66aba64`。fresh 证据：99 focused / 全量 265 passed（rebase 后；rebase 前旧基线为 245，差 20 全部来自新基线已含的 B5 集成，本包代码未变）、`benchmark.py` 覆盖率 98%、ruff 绿、`check.mjs` 18/18 valid、`evidence/benchmark-report.json` 已生成、固定场景 12/12 + 端到端用户场景全绿。用户最新独立全量复跑为 `265 passed in 50.48s`。PR #18 已创建并停在 `handoff`；owner 深度审查发现 2 项中危指标语义缺陷，**代修已应用于 `owner/s4-a-integration`**（见 Decisions D-A5-12~15 与 Verification）。代修后全量 **271 passed**、ruff 绿、`check.mjs` valid、报告可复现（逐位一致）。第二轮 owner 补齐 TASK-SPECS 明确要求但 member 未交付的 **F9**（receipt 成本字段位预留，见 D-A5-16）：全量 **275 passed**、ruff 绿、`check.mjs` / `check_pr_contract` 双 valid；owner 分支 `owner/s4-a-integration` 已开 PR 取代 #18。
+- Status: `integrated`
+- Status note: 两个切片均已本地 commit（检索 adapter `8cf0d7c`+`4488ad8`；benchmark 运行时 `30a12d1`）。分支已 rebase 到最新主线 `main@66aba64`。fresh 证据：99 focused / 全量 265 passed（rebase 后；rebase 前旧基线为 245，差 20 全部来自新基线已含的 B5 集成，本包代码未变）、`benchmark.py` 覆盖率 98%、ruff 绿、`check.mjs` 18/18 valid、`evidence/benchmark-report.json` 已生成、固定场景 12/12 + 端到端用户场景全绿。用户最新独立全量复跑为 `265 passed in 50.48s`。PR #18 已创建并停在 `handoff`；owner 深度审查发现 2 项中危指标语义缺陷，**代修已应用于 `owner/s4-a-integration`**（见 Decisions D-A5-12~15 与 Verification）。代修后全量 **271 passed**、ruff 绿、`check.mjs` valid、报告可复现（逐位一致）。第二轮 owner 补齐 TASK-SPECS 明确要求但 member 未交付的 **F9**（receipt 成本字段位预留，见 D-A5-16）：全量 **275 passed**、ruff 绿、`check.mjs` / `check_pr_contract` 双 valid；owner 分支 `owner/s4-a-integration` 已开 PR 取代 #18。 **合入**：2026-09-11 owner 集成 **PR #19** squash 合入 `8f6e7de`（取代 #18）；合入后 `main@8f6e7de` 全量 **275 passed**、ruff clean、报告逐位可复现。
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -84,7 +84,7 @@
 
 ## Next step
 
-owner 裁决 D-A5-偏离-1（`search_service.py` 第二条裸 S2 路径）与本包晋级；随后按 repo-task-sync 的 Hand off 流程开 PR（本包因用户要求未 push/未开 PR，故停在 `handoff`）。
+本包**已合入**（`8f6e7de`）。剩余 owner 裁决项：① `search_service.py` 第二条裸 S2 路径（D-A5-偏离-1）；② F8「三条件从不调用 LLM 而名为 `bare_llm`」是否补声明；③ `docs/BENCHMARK.md`「四条件」与「三组」口径差。下游 S4-A2-EXPERIENCE-WIRING 可领取（registry 已回写 `integrated`）。
 
 ## Verification
 
@@ -108,6 +108,7 @@ owner 裁决 D-A5-偏离-1（`search_service.py` 第二条裸 S2 路径）与本
 - [x] **离线报告数值零影响（精确口径）**：代修后重跑 `evidence/benchmark-report.json`，所有**指标数值**（各条件 score / hall / acc_hall / bind、机制指标、usage）逐位不变；变化仅两部分：① 新增 `accepted` / `zero_claim_cells` 两键；② `metric_definition_version` 1.0→1.1 与 `metric_definition_digest` 随之更新（**因此不是逐字节相同**，此前表述过宽，已更正）。片段：`bare_llm=0.00` / `gate_off=85.42` / `gate_on=100.00`、144 calls、机制指标全部不变；报告仍逐位可复现。
 - [x] **独立审查复核（2026-09-11，第二轮盲审）**：不知情子代理对代修复审，抓出 `false_block_rate` 空分母仍报 `0.0`（与 D-A5-13 自相矛盾，属同一缺陷族漏修）并已修复 + 扩测试；另指出「零影响」表述过宽（见上）。修复后全量 **271 passed**。
 - [x] **live 假满分消失**：`--live-retrieval --source openalex --max-calls 30` 复跑，`gate_on` 由 `acc=0 / score=100.0` 变为 **`acc=0 / acc_hall=n/a / score=n/a`**；报告 warnings 出现第二条（机制指标局限）。
+- [x] **合入后复验（2026-09-11，`main@8f6e7de`）**：全量 `-W error` → **275 passed**；`ruff check src tests` → All checks passed；报告与 committed `evidence/benchmark-report.json` 逐位一致（除时间戳）。本包**已合入**，PR #18 由 owner 集成 PR #19 取代。
 - [x] **F9 补齐后复验（2026-09-11）**：全量 `-W error` → **275 passed**（271 + 4 条 F9 测试）；`ruff check src tests` → All checks passed；`check.mjs` → valid；`check_pr_contract` → valid。**4 条 F9 测试在原版代码下全部失败**（连 `InvocationCostSlot` 都 import 不到，feature 确系新增）。
 - [x] **F9 的离线数值零影响**：重跑 `evidence/benchmark-report.json`，各条件 `score`（0.00 / 85.42 / 100.00）、`hall` / `acc_hall` / `bind`、机制指标、`calls_used=144` **全部逐位不变**；新增仅为 `usage.tokens` / `usage.cost`（恒 `None`）、每格 `tokens` / `cost`（恒 `None`）与 1 条 warnings。
 - [x] live 局限告警（D-A5-11）实测：`--live-retrieval` 的报告 `warnings[0]` 即「live retrieval cannot bind the frozen corpus…」，离线路径 `receipt.notes` 仍为 `[]`（`notes` 为调用方专属通道），但其 `warnings` 现含 1 条内在的成本槽声明（D-A5-16）。
