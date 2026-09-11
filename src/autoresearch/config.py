@@ -20,6 +20,15 @@ class Settings(BaseSettings):
     llm_model: str | None = Field(default=None, alias="LLM_MODEL")
     llm_timeout_seconds: float = Field(default=60, alias="LLM_TIMEOUT_SECONDS")
 
+    semantic_scholar_api_key: SecretStr | None = Field(
+        default=None, alias="SEMANTIC_SCHOLAR_API_KEY"
+    )
+    semantic_scholar_timeout_seconds: float = Field(
+        default=30, alias="SEMANTIC_SCHOLAR_TIMEOUT_SECONDS"
+    )
+    openalex_api_key: SecretStr | None = Field(default=None, alias="OPENALEX_API_KEY")
+    openalex_mailto: str | None = Field(default=None, alias="OPENALEX_MAILTO")
+
     data_dir: Path = Field(default=Path("var"), alias="AUTORESEARCH_DATA_DIR")
     db_path: Path = Field(default=Path("var/autoresearch.sqlite3"), alias="AUTORESEARCH_DB_PATH")
     checkpoint_path: Path = Field(
@@ -40,6 +49,12 @@ class Settings(BaseSettings):
             and self.llm_model
         )
 
+    @property
+    def semantic_scholar_configured(self) -> bool:
+        """ADR-01 slot 2 primary retrieval source needs a registered free key."""
+
+        return bool(self.semantic_scholar_api_key)
+
     def ensure_runtime_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -52,6 +67,7 @@ class Settings(BaseSettings):
             "llm_model": self.llm_model,
             "llm_base_url_configured": bool(self.llm_base_url),
             "llm_api_key_configured": bool(self.llm_api_key),
+            "semantic_scholar_api_key_configured": bool(self.semantic_scholar_api_key),
             "network_enabled": self.network_enabled,
             "db_path": str(self.db_path),
             "checkpoint_path": str(self.checkpoint_path),

@@ -1,0 +1,56 @@
+{
+  "task_id": "S4-A-BENCHMARK-HARNESS",
+  "phase": "S4",
+  "owner_lane": "runtime",
+  "status": "ready",
+  "base_ref": "380bd49",
+  "branch": "codex/s4-a-benchmark-harness",
+  "depends_on": ["S3 promotion"],
+  "merge_after": ["S3 promotion"],
+  "allowed_paths": [
+    "src/autoresearch/benchmark.py",
+    "src/autoresearch/search_adapters.py",
+    "src/autoresearch/config.py",
+    "scripts/benchmark_trust.py",
+    "tests/test_search_adapters.py",
+    "tests/test_benchmark_runtime.py",
+    "tests/fixtures/benchmark/",
+    ".env.example",
+    "evidence/benchmark-report.json",
+    "docs/tasks/P1-A-runtime-lane/tasks/A5-benchmark-runtime/",
+    ".ai-team/tasks/S4-A-BENCHMARK-HARNESS.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/invocation_contracts.py",
+    "src/autoresearch/capability.py",
+    "src/autoresearch/capability_registry.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/gates.py",
+    "src/autoresearch/application.py",
+    "src/autoresearch/writing_service.py",
+    "src/autoresearch/search_service.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "deliverables": [
+    "benchmark invocation runtime (executes the three-condition comparison, not score-only)",
+    "resource budget with per-run accounting written into the receipt",
+    "stop conditions (budget exceeded -> deny, single-call timeout -> interrupt/recovery)",
+    "benchmark-level run receipt (separate from the A4 CapabilityInvocationReceipt)",
+    "report artifact at evidence/benchmark-report.json plus a re-runnable command",
+    "Semantic Scholar real retrieval adapter registered through the A4 CapabilityRegistry",
+    "arXiv supplement adapter and the ADR-01 section 5 OpenAlex degraded track",
+    "rate-limit / offline matrix with per-cell terminal outcomes (D-F8-01 aligned)",
+    "frozen corpus fixture and frozen metric definition (karpathy three constraints)",
+    "task-local ledger, handoff note and rollback boundary"
+  ],
+  "acceptance_commands": [
+    "python -m pytest tests/test_search_adapters.py tests/test_benchmark_runtime.py",
+    "python -m pytest tests",
+    "python -m ruff check src tests",
+    "python scripts/benchmark_trust.py --report evidence/benchmark-report.json",
+    "node .ai-team/check.mjs --task .ai-team/tasks/S4-A-BENCHMARK-HARNESS.md --base main"
+  ],
+  "next_package": "S4-A2-EXPERIENCE-WIRING"
+}
