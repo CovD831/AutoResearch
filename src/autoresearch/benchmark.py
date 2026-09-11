@@ -1218,6 +1218,7 @@ class TrustBenchmarkRuntime:
         run_id: str = "benchmark-run",
         report_id: str = "benchmark-report",
         profile_id: str = "benchmark-profile",
+        limitations: Sequence[str] = (),
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.corpus = corpus
@@ -1234,6 +1235,10 @@ class TrustBenchmarkRuntime:
         self.run_id = run_id
         self.report_id = report_id
         self.profile_id = profile_id
+        # Limitations declared by the caller (e.g. "this run used live retrieval")
+        # are carried into the report's warnings, so a reader can never mistake a
+        # measurement for one that was actually comparable.
+        self._limitations = tuple(limitations)
         self._clock = clock
         self._ledger = CallBudget(self.budget, clock=clock)
         self._ran = False
@@ -1273,7 +1278,7 @@ class TrustBenchmarkRuntime:
         finished_at = utc_now()
 
         status = BenchmarkRunStatus.COMPLETED
-        notes: list[str] = []
+        notes: list[str] = list(self._limitations)
         if any(item.status is CaseStatus.FAILED for item in cells):
             status = BenchmarkRunStatus.FAILED
             notes.append("at least one cell failed; the comparison is not clean")

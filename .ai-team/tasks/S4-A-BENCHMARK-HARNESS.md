@@ -3,7 +3,7 @@
 - ID: `S4-A-BENCHMARK-HARNESS`
 - Title: `S4 benchmark runtime and real retrieval adapter`
 - Status: `handoff`
-- Status note: 两个切片均已本地 commit（检索 adapter `65ada56`+`2cca01a`；benchmark 运行时 `6829391`）。fresh 证据：98 focused（39+59）/ 244 full passed、`benchmark.py` 覆盖率 98%、ruff 绿、`check.mjs` 18/18 valid、`evidence/benchmark-report.json` 已生成、固定场景 12/12 + 端到端用户场景全绿。按用户要求**未 push、未开 PR**，故按 repo-task-sync 停在 `handoff` 而非 `done`；待 owner 裁决 D-A5-偏离-1 与晋级。
+- Status note: 两个切片均已本地 commit（检索 adapter `65ada56`+`2cca01a`；benchmark 运行时 `6829391`）。fresh 证据：99 focused（39+60）/ 245 full passed、`benchmark.py` 覆盖率 98%、ruff 绿、`check.mjs` 18/18 valid、`evidence/benchmark-report.json` 已生成、固定场景 12/12 + 端到端用户场景全绿。用户侧已独立复跑全部验收命令且全部通过。按用户要求**未 push、未开 PR**，故按 repo-task-sync 停在 `handoff` 而非 `done`；待 owner 裁决 D-A5-偏离-1 与晋级。
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -54,6 +54,7 @@
 - **D-A5-08 硬/软停止条件语义分离**：调用数上限与 wall clock 上限在**调用前**判（`deny`，可观测 `calls_denied` + `stop_reason`）；单次调用超时在**调用后**判（`interrupt`，路由 recovery，不进 ratio）。硬停止若放到调用后，预算可被单次慢调用绕过。
 - **D-A5-09 三组「唯一变量是执法」**：同一冻结语料驱动三组，`gate_off` 与 `gate_on` 的草稿级 `hallucination_ratio` / `evidence_binding_rate` 必须逐位相同；差异只在 `accepted_hallucination_ratio` 与 `acceptance_rate`。测试直接断言这两个数值相等，任何把检索/校验也塞进执法差异的改动都会被挡。
 - **D-A5-10 `ConditionSummary.score` 在无可评分格时为 `None`**：不是 `0.0`。给一个没跑成的条件打 0 分会读成「这个条件最差」，而事实是「这个条件没测」。报告同时写 warning。
+- **D-A5-11 运行方声明的局限必须写进报告 artifact**：`TrustBenchmarkRuntime(limitations=...)` 的每一条会原样进入 `report.warnings` 与 `receipt.notes`。起因是 `--live-retrieval`：语料每题的 `claim_evidence_map` 钉死在 fixture 材料 id（`ev-case-XXX-N`）上，而 live 候选到 admission 时 `evidence_id is None` → 被 `new_id("ev")` 铸成新 id，`_fully_bound` 因此**永远不可能满足**，`hallucination_ratio` / `evidence_binding_rate` 在所有条件下结构性固定在 1.0 / 0.0。所以 live 报告里的 `score` 不是测量值，CLI 现在把它当局限显式写进 report，而不是留一句「live 不当晋级证据」的口头约定。
 - **偏离/待裁决（见 `L3.md`）**：`search_service.py` 存在第二条未带凭据的 S2 代码路径（A1 `PaperSearchService` 的裸 connector），本包未改（S1 已 accepted 路径）。建议 owner 裁决是否在后续包把主链路切到 A5 adapter，或删除裸 connector。
 
 ## Completed
@@ -67,6 +68,7 @@
 - 冻结 fixture：`tests/fixtures/benchmark/corpus.json`（24 case，digest `1e4aa966…09b2`）与 `metric-definition.json`（digest `8f641f27…c3fe`）；`MetricDefinition.frozen=False` 加载即 `ValueError`。
 - 59 个 focused 测试（含 4 个重跑命令 CLI 测试）锁定三组对比：`bare_llm` hall=1.0 / bind=0.0；`gate_off` 与 `gate_on` 草稿级 hall=0.145833、bind=0.881944 逐位相同，`gate_on` accepted_hall=0.0；机制指标 `mechanism_safety_score=100.0`，标签零错配。
 - `scripts/benchmark_trust.py`（`--report` / `--live-retrieval` / `--source` / `--max-calls`），离线默认跑出 `evidence/benchmark-report.json`（144/240 calls，status=completed，0 warnings）。
+- 运行方局限通道（D-A5-11）：`TrustBenchmarkRuntime(limitations=...)` → `report.warnings` / `receipt.notes`；`--live-retrieval` 用它把「live 无法绑定冻结语料」写进报告。离线路径不受影响（`warnings` 仍为 `[]`，报告除 `generated_at` / `wall_clock_seconds` 外逐位不变）。
 
 ## Pending
 
@@ -82,9 +84,9 @@ owner 裁决 D-A5-偏离-1（`search_service.py` 第二条裸 S2 路径）与本
 
 - [x] `python -m pytest tests/test_search_adapters.py`（39 passed）。
 - [x] `--cov=autoresearch.search_adapters`（99%，287 stmts / 3 miss）。
-- [x] `python -m pytest tests/test_benchmark_runtime.py tests/test_benchmark.py`（62 passed）。
-- [x] `--cov=autoresearch.benchmark`（98%，678 stmts / 14 miss；剩余 14 行全为既有 scoring 层的输入校验分支）。
-- [x] `python -m pytest tests`（244 passed in 54.94s）。
+- [x] `python -m pytest tests/test_benchmark_runtime.py tests/test_benchmark.py`（63 passed）。
+- [x] `--cov=autoresearch.benchmark`（98%，679 stmts / 14 miss；剩余 14 行全为既有 scoring 层的输入校验分支）。
+- [x] `python -m pytest tests`（245 passed in 56s）。
 - [x] `python -m ruff check src tests`（All checks passed）。
 - [x] `python scripts/benchmark_trust.py --report evidence/benchmark-report.json`（status=completed，三条件 24/24/24 格）。
 - [x] `node .ai-team/check.mjs --task .ai-team/tasks/S4-A-BENCHMARK-HARNESS.md --base main`（Result: valid）。
@@ -92,6 +94,8 @@ owner 裁决 D-A5-偏离-1（`search_service.py` 第二条裸 S2 路径）与本
 - [x] 固定场景 harness（`F:\AutoResearch\.workbuddy\a5-scenarios\`，未跟踪、不进 PR）：`scenario.py` 12 个编号场景全绿 —— 1-6 打检索 adapter（注册边界 / 无 key fail-closed 零网络 / 空结果确定性成功 / 429-4xx-5xx-传输中断四格终态矩阵 / 凭据只进 header / 幂等重放 + 同 id 异请求冲突）；7-12 打 benchmark 运行时（三组真跑并复现报告数字 / 唯一变量是执法 off==on / 硬停止调用数 / 硬停止 wall clock / 软停止超时且无 FAILED / run receipt 与 A4 receipt 分离 + 冻结资产 fail-closed）。
 - [x] `user-scenario.py` 端到端固定字段场景：24 题 × 3 条件 = 72 格，逐格打印全部字段（含 `unsupported_claims` / `validation_verdict` / `calls`），三组汇总与 `mechanism_metrics` 与 committed `evidence/benchmark-report.json` 逐位一致（bare hall=1.000000 / off 与 on 草稿级 hall=0.145833、bind=0.881944 / on accepted_hall=0.000000 / `mechanism_safety_score=100.0` / 144 calls）。
 - [x] 场景 harness 复跑方式（cwd = 本 worktree，用其 venv）：`.venv/Scripts/python.exe F:/AutoResearch/.workbuddy/a5-scenarios/scenario.py <1-12>` 与 `.venv/Scripts/python.exe F:/AutoResearch/.workbuddy/a5-scenarios/user-scenario.py`。**用户侧独立复跑才构成验收证据**；AI 侧运行仅记为 provenance。
+- [x] **用户侧独立复跑（2026-09-11 15:5x，member A 机器上的同一 worktree）**：聚焦 99 passed / 全量 245 passed / 覆盖率 benchmark 98% + search_adapters 99% / `ruff check src tests` 通过 / `check.mjs` valid 18/18 / 12 场景全绿 / `user-scenario.py` 与 committed 报告逐位一致 / 离线重跑 status=completed / live 三源冒烟（openalex 3 格接受、arxiv 1 格接受、S2 零网络 fail-closed）/ 非法源名报可用源列表并退出 1。**全部与预期一致，无异常。**
+- [x] live 局限告警（D-A5-11）实测：`--live-retrieval` 的报告 `warnings[0]` 即「live retrieval cannot bind the frozen corpus…」，离线路径 `warnings` 仍为 `[]`。
 
 ## Handoff note
 
@@ -100,6 +104,6 @@ owner 裁决 D-A5-偏离-1（`search_service.py` 第二条裸 S2 路径）与本
 - 代码与任务包/账本均在 `codex/s4-a-benchmark-harness`；两个切片（检索 adapter + benchmark 运行时）均已完成并本地 commit，待 owner 裁决与开 PR。
 - **需 owner 补的项目级账本（本包 forbidden_paths，未改）**：`.project-to-act/PROJECT_PROGRESS.md` 当前仍记 A5 为「交付即审」（2026-09-10 快照），未反映两个切片已交付；`.project-to-act/PROJECT_OVERVIEW.md` 的「最后更新」仍是 2026-09-04。按 project-to-act skill「路线变化后立即同步」应由 owner 侧回写。
 - **committed 报告的口径**：`evidence/benchmark-report.json` 是**离线**结果（冻结语料即材料库），digest 锚定在 `corpus_digest` / `metric_definition_digest`；重跑命令 `python scripts/benchmark_trust.py --report evidence/benchmark-report.json`。
-- **明确局限（R004-05 要求载明）**：①作者即评测者偏差——语料与标签由本包自造，非外部标注集；②离线默认，非真实检索；③单主指标，`evidence_binding_rate` 仅报告级；④第四条件未交付。
-- 检索源现状（2026-09-11 实测）：S2 需免费 key 且申请表单拒收免费邮箱 → 由公司后续申请；当前可用的真实源是 OpenAlex（§5 已授权的降级轨），arXiv 代码就绪但被 provider 限流。
+- **明确局限（R004-05 要求载明）**：①作者即评测者偏差——语料与标签由本包自造，非外部标注集；②离线默认，非真实检索——且 **live 轨结构上不可与离线报告相比**（语料 `claim_evidence_map` 钉在 fixture 材料 id 上，live 候选 `evidence_id is None` 由 admission 铸新 id，`_fully_bound` 永不满足 → 各条件 `hall`=1.0 / `bind`=0.0 恒定）；live 只验证检索通路，已由 D-A5-11 写进报告 warnings；③单主指标，`evidence_binding_rate` 仅报告级；④第四条件未交付。
+- 检索源现状（2026-09-11 复测）：**OpenAlex 可用**（§5 已授权的降级轨，匿名可用；当日配额 312/1000、$0.001/query）；**arXiv 限流已解除**（当日实测 3 hits completed，上午曾连续 429）；S2 无 key → fail-closed（申请表单拒收免费邮箱，由公司后续申请）。
 - 上报记录级不一致：`docs/tasks/P1-B-evidence-lane/tasks/B5-data-sources/TASK.md:8` 把 Crossref 与 S2 混写为「Crossref S2 免费 key 主选」，且括号内「2026-02 起强制 key + 用量计费」按 ADR-01 §2/§3 实为 **OpenAlex** 的政策（Crossref polite pool 未作废）。共享文件，未改。

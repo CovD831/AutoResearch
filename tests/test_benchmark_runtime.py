@@ -106,6 +106,7 @@ def build_runtime(
     agent=None,
     clock=None,
     report_id: str = "benchmark-report",
+    limitations=(),
 ) -> TrustBenchmarkRuntime:
     corpus, definition = load_fixtures()
     evidence, gates = build_ledger(tmp_path)
@@ -123,6 +124,7 @@ def build_runtime(
         admission=EvidenceLedgerAdmission(evidence) if admission is _UNSET else admission,
         gate=gates if gate is _UNSET else gate,
         report_id=report_id,
+        limitations=limitations,
         clock=clock or StepClock(),
     )
 
@@ -368,6 +370,28 @@ def test_budget_accounting_is_written_into_the_receipt(tmp_path: Path):
     assert run.receipt.budget.max_calls == 500
     assert run.receipt.budget.single_call_timeout_seconds == 30.0
     assert sum(item.calls for item in run.receipt.case_receipts) == usage.calls_used
+
+
+def test_declared_limitations_are_opt_in_and_reach_the_report(tmp_path: Path):
+    """A caller-declared limitation must show up verbatim, and only when declared.
+
+    ``--live-retrieval`` uses this channel: a live run cannot bind the frozen
+    corpus, so its ratios are structurally 1.0 / 0.0 and the report has to say so
+    instead of letting a bare score read like a measurement.
+    """
+
+    marker = "live retrieval cannot bind the frozen corpus"
+
+    clean = with_materials(tmp_path)
+    assert not any(marker in item for item in clean.report.warnings)
+
+    declared = build_runtime(tmp_path, limitations=[marker]).run(
+        [BenchmarkCondition.GATE_OFF]
+    )
+    assert marker in declared.report.warnings
+    assert declared.receipt.notes == [marker]
+    # Declaring a limitation must not mask the run's own status.
+    assert declared.report.status is BenchmarkRunStatus.COMPLETED
 
 
 def test_call_budget_guard_is_usable_on_its_own():

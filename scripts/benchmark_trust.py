@@ -51,6 +51,21 @@ DEFAULT_REPORT = REPO_ROOT / "evidence" / "benchmark-report.json"
 # credentials today, so it is the live default.  The primary slot is not changed.
 DEFAULT_LIVE_SOURCE = "openalex"
 
+# A live run exercises the retrieval plumbing; it does not measure the gate.
+# Every corpus case binds its claims to fixture material ids (``ev-case-XXX-N``),
+# while a live candidate arrives with ``evidence_id=None`` and admission mints a
+# fresh ``ev-*`` id for it, so ``_fully_bound`` can never be satisfied and
+# ``hallucination_ratio`` / ``evidence_binding_rate`` come out structurally at
+# 1.0 / 0.0 no matter which condition ran.  The report says so out loud, because
+# a bare "score: 87.50" from a live run reads like a measurement.
+LIVE_RETRIEVAL_LIMITATION = (
+    "live retrieval cannot bind the frozen corpus: each case binds its claims to "
+    "fixture material ids while a live candidate arrives without one, so "
+    "hallucination_ratio and evidence_binding_rate are structurally 1.0 and 0.0 "
+    "in every condition. A live run exercises the retrieval plumbing only and is "
+    "not a comparable measurement of the gate."
+)
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -149,8 +164,10 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.live_retrieval:
             materials = build_live_materials(args.source, args.limit)
+            limitations = [LIVE_RETRIEVAL_LIMITATION]
         else:
             materials = FixtureMaterialsProvider()
+            limitations = []
 
         runtime = TrustBenchmarkRuntime(
             corpus=corpus,
@@ -160,6 +177,7 @@ def main(argv: list[str] | None = None) -> int:
             admission=admission,
             gate=gate,
             run_id=args.run_id,
+            limitations=limitations,
         )
         run = runtime.run(conditions)
 
