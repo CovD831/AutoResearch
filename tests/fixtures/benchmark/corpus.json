@@ -1,0 +1,953 @@
+{
+  "corpus_id": "trust-benchmark-v1",
+  "version": "1.0",
+  "cases": [
+    {
+      "case_id": "case-001",
+      "question": "Does evidence gating change how an evaluation section is planned?",
+      "title": "Evaluation: case-001",
+      "risk_level": "L2",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "Gating binds each drafted claim to a retrieved source.",
+        "Planned metrics are reported before execution."
+      ],
+      "claim_evidence_map": {
+        "Gating binds each drafted claim to a retrieved source.": [
+          "ev-case-001-1"
+        ],
+        "Planned metrics are reported before execution.": [
+          "ev-case-001-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-001-1",
+          "independent_source": "openalex:W0011",
+          "claim": "Peer-reviewed benchmark protocol exists.",
+          "grade": "E2",
+          "evidence_type": "paper",
+          "title": "A reproducible protocol for agent evaluation",
+          "source_uri": "https://example.invalid/openalex/case-001-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Does evidence gating change how an evaluation section is planned?\n\n## Claims\n- Gating binds each drafted claim to a retrieved source.\n- Planned metrics are reported before execution.\n\n## Evidence\n- openalex:W0011 (E2): A reproducible protocol for agent evaluation\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-002",
+      "question": "Does independent corroboration change the accepted evidence score?",
+      "title": "Evaluation: case-002",
+      "risk_level": "L2",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "Each independent source contributes once to the score.",
+        "Duplicate claims from one source do not stack.",
+        "Corroboration raises the accepted score."
+      ],
+      "claim_evidence_map": {
+        "Each independent source contributes once to the score.": [
+          "ev-case-002-1"
+        ],
+        "Duplicate claims from one source do not stack.": [
+          "ev-case-002-1",
+          "ev-case-002-2"
+        ],
+        "Corroboration raises the accepted score.": [
+          "ev-case-002-1",
+          "ev-case-002-2"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-002-1",
+          "independent_source": "openalex:W0021",
+          "claim": "Independent replication of the protocol.",
+          "grade": "E2",
+          "evidence_type": "paper",
+          "title": "Replication of agent evaluation protocols",
+          "source_uri": "https://example.invalid/openalex/case-002-1"
+        },
+        {
+          "evidence_id": "ev-case-002-2",
+          "independent_source": "openalex:W0022",
+          "claim": "A second independent replication.",
+          "grade": "E2",
+          "evidence_type": "paper",
+          "title": "Second replication of agent evaluation protocols",
+          "source_uri": "https://example.invalid/arxiv/case-002-2"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Does independent corroboration change the accepted evidence score?\n\n## Claims\n- Each independent source contributes once to the score.\n- Duplicate claims from one source do not stack.\n- Corroboration raises the accepted score.\n\n## Evidence\n- openalex:W0021 (E2): Replication of agent evaluation protocols\n- openalex:W0022 (E2): Second replication of agent evaluation protocols\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-003",
+      "question": "What is the weakest evidence that still admits a planned evaluation?",
+      "title": "Evaluation: case-003",
+      "risk_level": "L1",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "A single weak source can admit a planned-only section.",
+        "Weak evidence is still surfaced as a limitation."
+      ],
+      "claim_evidence_map": {
+        "A single weak source can admit a planned-only section.": [
+          "ev-case-003-1"
+        ],
+        "Weak evidence is still surfaced as a limitation.": [
+          "ev-case-003-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-003-1",
+          "independent_source": "openalex:W0031",
+          "claim": "A preprint describes the protocol.",
+          "grade": "E1",
+          "evidence_type": "paper",
+          "title": "Preprint describing a planned evaluation protocol",
+          "source_uri": "https://example.invalid/arxiv/case-003-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: What is the weakest evidence that still admits a planned evaluation?\n\n## Claims\n- A single weak source can admit a planned-only section.\n- Weak evidence is still surfaced as a limitation.\n\n## Evidence\n- openalex:W0031 (E1): Preprint describing a planned evaluation protocol\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-004",
+      "question": "How does strong evidence change the recorded gate score?",
+      "title": "Evaluation: case-004",
+      "risk_level": "L2",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "Strong evidence is weighted above weak evidence.",
+        "The recorded score reflects the strongest source only.",
+        "Planned metrics stay planned."
+      ],
+      "claim_evidence_map": {
+        "Strong evidence is weighted above weak evidence.": [
+          "ev-case-004-1"
+        ],
+        "The recorded score reflects the strongest source only.": [
+          "ev-case-004-1"
+        ],
+        "Planned metrics stay planned.": [
+          "ev-case-004-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-004-1",
+          "independent_source": "openalex:W0041",
+          "claim": "A peer-reviewed study reports the protocol.",
+          "grade": "E3",
+          "evidence_type": "paper",
+          "title": "Peer-reviewed study of agent evaluation protocols",
+          "source_uri": "https://example.invalid/openalex/case-004-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: How does strong evidence change the recorded gate score?\n\n## Claims\n- Strong evidence is weighted above weak evidence.\n- The recorded score reflects the strongest source only.\n- Planned metrics stay planned.\n\n## Evidence\n- openalex:W0041 (E3): Peer-reviewed study of agent evaluation protocols\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-005",
+      "question": "Can a closed-loop high-risk run be admitted by two strong sources?",
+      "title": "Evaluation: case-005",
+      "risk_level": "L3",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": true,
+      "claims": [
+        "Closed-loop lineage is required at this risk level.",
+        "Two independent strong sources satisfy the threshold."
+      ],
+      "claim_evidence_map": {
+        "Closed-loop lineage is required at this risk level.": [
+          "ev-case-005-1",
+          "ev-case-005-2"
+        ],
+        "Two independent strong sources satisfy the threshold.": [
+          "ev-case-005-1",
+          "ev-case-005-2"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-005-1",
+          "independent_source": "openalex:W0051",
+          "claim": "Peer-reviewed closed-loop study.",
+          "grade": "E3",
+          "evidence_type": "paper",
+          "title": "Closed-loop evaluation of research agents",
+          "source_uri": "https://example.invalid/openalex/case-005-1"
+        },
+        {
+          "evidence_id": "ev-case-005-2",
+          "independent_source": "openalex:W0052",
+          "claim": "Independent closed-loop study.",
+          "grade": "E3",
+          "evidence_type": "paper",
+          "title": "Independent closed-loop evaluation",
+          "source_uri": "https://example.invalid/arxiv/case-005-2"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Can a closed-loop high-risk run be admitted by two strong sources?\n\n## Claims\n- Closed-loop lineage is required at this risk level.\n- Two independent strong sources satisfy the threshold.\n\n## Evidence\n- openalex:W0051 (E3): Closed-loop evaluation of research agents\n- openalex:W0052 (E3): Independent closed-loop evaluation\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-006",
+      "question": "Is the exact threshold boundary inclusive for a high-risk run?",
+      "title": "Evaluation: case-006",
+      "risk_level": "L3",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": true,
+      "claims": [
+        "The threshold boundary is inclusive.",
+        "Independent sources must be distinct."
+      ],
+      "claim_evidence_map": {
+        "The threshold boundary is inclusive.": [
+          "ev-case-006-1",
+          "ev-case-006-2"
+        ],
+        "Independent sources must be distinct.": [
+          "ev-case-006-1",
+          "ev-case-006-2"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-006-1",
+          "independent_source": "openalex:W0061",
+          "claim": "Peer-reviewed closed-loop study.",
+          "grade": "E3",
+          "evidence_type": "paper",
+          "title": "Boundary study of closed-loop thresholds",
+          "source_uri": "https://example.invalid/openalex/case-006-1"
+        },
+        {
+          "evidence_id": "ev-case-006-2",
+          "independent_source": "openalex:W0062",
+          "claim": "Supporting independent study.",
+          "grade": "E2",
+          "evidence_type": "paper",
+          "title": "Supporting independent threshold study",
+          "source_uri": "https://example.invalid/arxiv/case-006-2"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Is the exact threshold boundary inclusive for a high-risk run?\n\n## Claims\n- The threshold boundary is inclusive.\n- Independent sources must be distinct.\n\n## Evidence\n- openalex:W0061 (E3): Boundary study of closed-loop thresholds\n- openalex:W0062 (E2): Supporting independent threshold study\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-007",
+      "question": "How is human-provided evidence weighted in the planned section?",
+      "title": "Evaluation: case-007",
+      "risk_level": "L2",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "Human evidence is weighted above paper evidence.",
+        "The record is surfaced with its source."
+      ],
+      "claim_evidence_map": {
+        "Human evidence is weighted above paper evidence.": [
+          "ev-case-007-1"
+        ],
+        "The record is surfaced with its source.": [
+          "ev-case-007-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-007-1",
+          "independent_source": "openalex:W0071",
+          "claim": "A maintainer recorded the protocol.",
+          "grade": "H3",
+          "evidence_type": "human",
+          "title": "Maintainer record of the evaluation protocol",
+          "source_uri": "https://example.invalid/human/case-007-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: How is human-provided evidence weighted in the planned section?\n\n## Claims\n- Human evidence is weighted above paper evidence.\n- The record is surfaced with its source.\n\n## Evidence\n- openalex:W0071 (H3): Maintainer record of the evaluation protocol\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-008",
+      "question": "Does a low-risk planned section still require a baseline?",
+      "title": "Evaluation: case-008",
+      "risk_level": "L1",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "A concrete baseline is required even at low risk.",
+        "The baseline is reported before execution."
+      ],
+      "claim_evidence_map": {
+        "A concrete baseline is required even at low risk.": [
+          "ev-case-008-1"
+        ],
+        "The baseline is reported before execution.": [
+          "ev-case-008-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-008-1",
+          "independent_source": "openalex:W0081",
+          "claim": "A preprint names the baseline.",
+          "grade": "E1",
+          "evidence_type": "paper",
+          "title": "Preprint naming the evaluation baseline",
+          "source_uri": "https://example.invalid/arxiv/case-008-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Does a low-risk planned section still require a baseline?\n\n## Claims\n- A concrete baseline is required even at low risk.\n- The baseline is reported before execution.\n\n## Evidence\n- openalex:W0081 (E1): Preprint naming the evaluation baseline\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-009",
+      "question": "Can one source support many planned claims without stacking?",
+      "title": "Evaluation: case-009",
+      "risk_level": "L2",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "One source can bind several claims.",
+        "The source contributes once to the score.",
+        "Every claim still needs a binding.",
+        "Unbound claims are recorded as unsupported."
+      ],
+      "claim_evidence_map": {
+        "One source can bind several claims.": [
+          "ev-case-009-1"
+        ],
+        "The source contributes once to the score.": [
+          "ev-case-009-1"
+        ],
+        "Every claim still needs a binding.": [
+          "ev-case-009-1"
+        ],
+        "Unbound claims are recorded as unsupported.": [
+          "ev-case-009-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-009-1",
+          "independent_source": "openalex:W0091",
+          "claim": "One study supports several planned claims.",
+          "grade": "E2",
+          "evidence_type": "paper",
+          "title": "Single-source multi-claim evaluation study",
+          "source_uri": "https://example.invalid/openalex/case-009-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Can one source support many planned claims without stacking?\n\n## Claims\n- One source can bind several claims.\n- The source contributes once to the score.\n- Every claim still needs a binding.\n- Unbound claims are recorded as unsupported.\n\n## Evidence\n- openalex:W0091 (E2): Single-source multi-claim evaluation study\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-010",
+      "question": "Does explicit human approval unblock the highest risk level?",
+      "title": "Evaluation: case-010",
+      "risk_level": "L4",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": true,
+      "work_closed_loop": true,
+      "claims": [
+        "Human approval is required at this risk level.",
+        "Approval is recorded with the decision."
+      ],
+      "claim_evidence_map": {
+        "Human approval is required at this risk level.": [
+          "ev-case-010-1",
+          "ev-case-010-2"
+        ],
+        "Approval is recorded with the decision.": [
+          "ev-case-010-1",
+          "ev-case-010-2"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-010-1",
+          "independent_source": "openalex:W0101",
+          "claim": "Peer-reviewed highest-risk study.",
+          "grade": "E3",
+          "evidence_type": "paper",
+          "title": "Highest-risk closed-loop evaluation",
+          "source_uri": "https://example.invalid/openalex/case-010-1"
+        },
+        {
+          "evidence_id": "ev-case-010-2",
+          "independent_source": "openalex:W0102",
+          "claim": "Independent highest-risk study.",
+          "grade": "E3",
+          "evidence_type": "paper",
+          "title": "Independent highest-risk evaluation",
+          "source_uri": "https://example.invalid/arxiv/case-010-2"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Does explicit human approval unblock the highest risk level?\n\n## Claims\n- Human approval is required at this risk level.\n- Approval is recorded with the decision.\n\n## Evidence\n- openalex:W0101 (E3): Highest-risk closed-loop evaluation\n- openalex:W0102 (E3): Independent highest-risk evaluation\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-011",
+      "question": "Does the planned section preserve unknowns and limitations?",
+      "title": "Evaluation: case-011",
+      "risk_level": "L2",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "Unknowns are preserved verbatim.",
+        "Limitations are preserved verbatim."
+      ],
+      "claim_evidence_map": {
+        "Unknowns are preserved verbatim.": [
+          "ev-case-011-1"
+        ],
+        "Limitations are preserved verbatim.": [
+          "ev-case-011-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-011-1",
+          "independent_source": "openalex:W0111",
+          "claim": "A study reports preserved limitations.",
+          "grade": "E2",
+          "evidence_type": "paper",
+          "title": "Study of preserved limitations in evaluations",
+          "source_uri": "https://example.invalid/openalex/case-011-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Does the planned section preserve unknowns and limitations?\n\n## Claims\n- Unknowns are preserved verbatim.\n- Limitations are preserved verbatim.\n\n## Evidence\n- openalex:W0111 (E2): Study of preserved limitations in evaluations\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-012",
+      "question": "Does strong evidence remove the need for a revision cycle?",
+      "title": "Evaluation: case-012",
+      "risk_level": "L2",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "Strong evidence shortens the revision cycle.",
+        "The gate still runs on every draft."
+      ],
+      "claim_evidence_map": {
+        "Strong evidence shortens the revision cycle.": [
+          "ev-case-012-1"
+        ],
+        "The gate still runs on every draft.": [
+          "ev-case-012-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-012-1",
+          "independent_source": "openalex:W0121",
+          "claim": "Strong evidence removes revision cycles.",
+          "grade": "E3",
+          "evidence_type": "paper",
+          "title": "Study of revision cycles under strong evidence",
+          "source_uri": "https://example.invalid/openalex/case-012-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Does strong evidence remove the need for a revision cycle?\n\n## Claims\n- Strong evidence shortens the revision cycle.\n- The gate still runs on every draft.\n\n## Evidence\n- openalex:W0121 (E3): Study of revision cycles under strong evidence\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-013",
+      "question": "Is a single weak source enough for a low-risk section?",
+      "title": "Evaluation: case-013",
+      "risk_level": "L1",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "A single weak source admits a low-risk section.",
+        "The weakness is recorded as a limitation."
+      ],
+      "claim_evidence_map": {
+        "A single weak source admits a low-risk section.": [
+          "ev-case-013-1"
+        ],
+        "The weakness is recorded as a limitation.": [
+          "ev-case-013-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-013-1",
+          "independent_source": "openalex:W0131",
+          "claim": "A preprint reports the low-risk protocol.",
+          "grade": "E1",
+          "evidence_type": "paper",
+          "title": "Low-risk protocol preprint",
+          "source_uri": "https://example.invalid/arxiv/case-013-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Is a single weak source enough for a low-risk section?\n\n## Claims\n- A single weak source admits a low-risk section.\n- The weakness is recorded as a limitation.\n\n## Evidence\n- openalex:W0131 (E1): Low-risk protocol preprint\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-014",
+      "question": "Do mixed-grade sources accumulate into one score?",
+      "title": "Evaluation: case-014",
+      "risk_level": "L2",
+      "expected_gate": "pass",
+      "expected_outcome": "accepted",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "Mixed grades accumulate across distinct sources.",
+        "Ties resolve to the strongest grade.",
+        "The strongest grade is kept per source."
+      ],
+      "claim_evidence_map": {
+        "Mixed grades accumulate across distinct sources.": [
+          "ev-case-014-1",
+          "ev-case-014-2"
+        ],
+        "Ties resolve to the strongest grade.": [
+          "ev-case-014-1",
+          "ev-case-014-2"
+        ],
+        "The strongest grade is kept per source.": [
+          "ev-case-014-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-014-1",
+          "independent_source": "openalex:W0141",
+          "claim": "Peer-reviewed study of mixed sources.",
+          "grade": "E2",
+          "evidence_type": "paper",
+          "title": "Mixed-grade source study",
+          "source_uri": "https://example.invalid/openalex/case-014-1"
+        },
+        {
+          "evidence_id": "ev-case-014-2",
+          "independent_source": "openalex:W0142",
+          "claim": "Supporting weak study.",
+          "grade": "E1",
+          "evidence_type": "paper",
+          "title": "Supporting weak mixed-grade study",
+          "source_uri": "https://example.invalid/arxiv/case-014-2"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Do mixed-grade sources accumulate into one score?\n\n## Claims\n- Mixed grades accumulate across distinct sources.\n- Ties resolve to the strongest grade.\n- The strongest grade is kept per source.\n\n## Evidence\n- openalex:W0141 (E2): Mixed-grade source study\n- openalex:W0142 (E1): Supporting weak mixed-grade study\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-015",
+      "question": "What happens when a claim has no binding at all?",
+      "title": "Evaluation: case-015",
+      "risk_level": "L2",
+      "expected_gate": "pass",
+      "expected_outcome": "blocked",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "Strong evidence is available for the section.",
+        "An unbound claim is recorded as unsupported."
+      ],
+      "claim_evidence_map": {
+        "Strong evidence is available for the section.": [
+          "ev-case-015-1"
+        ],
+        "An unbound claim is recorded as unsupported.": []
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-015-1",
+          "independent_source": "openalex:W0151",
+          "claim": "Strong evidence is available.",
+          "grade": "E3",
+          "evidence_type": "paper",
+          "title": "Strong-evidence study with one unbound claim",
+          "source_uri": "https://example.invalid/openalex/case-015-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: What happens when a claim has no binding at all?\n\n## Claims\n- Strong evidence is available for the section.\n- An unbound claim is recorded as unsupported.\n\n## Evidence\n- openalex:W0151 (E3): Strong-evidence study with one unbound claim\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-016",
+      "question": "What happens when a draft reports an observed number?",
+      "title": "Evaluation: case-016",
+      "risk_level": "L2",
+      "expected_gate": "pass",
+      "expected_outcome": "blocked",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "Evidence is sufficient for the section.",
+        "Planned metrics stay planned."
+      ],
+      "claim_evidence_map": {
+        "Evidence is sufficient for the section.": [
+          "ev-case-016-1"
+        ],
+        "Planned metrics stay planned.": [
+          "ev-case-016-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-016-1",
+          "independent_source": "openalex:W0161",
+          "claim": "Evidence is sufficient.",
+          "grade": "E2",
+          "evidence_type": "paper",
+          "title": "Sufficient-evidence study with a reported number",
+          "source_uri": "https://example.invalid/openalex/case-016-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: What happens when a draft reports an observed number?\n\n## Claims\n- Evidence is sufficient for the section.\n- Planned metrics stay planned.\n\n## Evidence\n- openalex:W0161 (E2): Sufficient-evidence study with a reported number\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported.\nAccuracy improved by 14% under gating."
+    },
+    {
+      "case_id": "case-017",
+      "question": "What happens when the only claim carries no binding?",
+      "title": "Evaluation: case-017",
+      "risk_level": "L2",
+      "expected_gate": "pass",
+      "expected_outcome": "blocked",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "A claim without binding cannot be admitted."
+      ],
+      "claim_evidence_map": {
+        "A claim without binding cannot be admitted.": []
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-017-1",
+          "independent_source": "openalex:W0171",
+          "claim": "Evidence is sufficient but unused.",
+          "grade": "E2",
+          "evidence_type": "paper",
+          "title": "Sufficient-evidence study with an unused claim",
+          "source_uri": "https://example.invalid/openalex/case-017-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: What happens when the only claim carries no binding?\n\n## Claims\n- A claim without binding cannot be admitted.\n\n## Evidence\n- openalex:W0171 (E2): Sufficient-evidence study with an unused claim\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-018",
+      "question": "Does weak evidence alone meet the medium-risk threshold?",
+      "title": "Evaluation: case-018",
+      "risk_level": "L2",
+      "expected_gate": "revise",
+      "expected_outcome": "blocked",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "Weak evidence alone is below the threshold.",
+        "The shortfall is recorded as a revision request."
+      ],
+      "claim_evidence_map": {
+        "Weak evidence alone is below the threshold.": [
+          "ev-case-018-1"
+        ],
+        "The shortfall is recorded as a revision request.": [
+          "ev-case-018-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-018-1",
+          "independent_source": "openalex:W0181",
+          "claim": "Only weak evidence is available.",
+          "grade": "E1",
+          "evidence_type": "paper",
+          "title": "Weak-evidence study below the threshold",
+          "source_uri": "https://example.invalid/arxiv/case-018-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Does weak evidence alone meet the medium-risk threshold?\n\n## Claims\n- Weak evidence alone is below the threshold.\n- The shortfall is recorded as a revision request.\n\n## Evidence\n- openalex:W0181 (E1): Weak-evidence study below the threshold\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-019",
+      "question": "Does a revision request surface every unbound claim?",
+      "title": "Evaluation: case-019",
+      "risk_level": "L2",
+      "expected_gate": "revise",
+      "expected_outcome": "blocked",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "Weak evidence triggers a revision.",
+        "Unbound claims are listed.",
+        "Every claim needs a binding."
+      ],
+      "claim_evidence_map": {
+        "Weak evidence triggers a revision.": [
+          "ev-case-019-1"
+        ],
+        "Unbound claims are listed.": [
+          "ev-case-019-1"
+        ],
+        "Every claim needs a binding.": []
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-019-1",
+          "independent_source": "openalex:W0191",
+          "claim": "Only weak evidence is available.",
+          "grade": "E1",
+          "evidence_type": "paper",
+          "title": "Weak-evidence study with an unbound claim",
+          "source_uri": "https://example.invalid/arxiv/case-019-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Does a revision request surface every unbound claim?\n\n## Claims\n- Weak evidence triggers a revision.\n- Unbound claims are listed.\n- Every claim needs a binding.\n\n## Evidence\n- openalex:W0191 (E1): Weak-evidence study with an unbound claim\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-020",
+      "question": "Is a completed retrieval with zero hits a known outcome?",
+      "title": "Evaluation: case-020",
+      "risk_level": "L2",
+      "expected_gate": "revise",
+      "expected_outcome": "blocked",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "A completed empty retrieval is a known outcome.",
+        "Material absence is not an unknown outcome."
+      ],
+      "claim_evidence_map": {
+        "A completed empty retrieval is a known outcome.": [
+          "ev-case-020-1"
+        ],
+        "Material absence is not an unknown outcome.": [
+          "ev-case-020-2"
+        ]
+      },
+      "materials": [],
+      "metadata": {
+        "note": "retrieval is completed with zero hits; deterministic empty, D-F8-01"
+      },
+      "body": "## Objective\nReport on the evaluation question: Is a completed retrieval with zero hits a known outcome?\n\n## Claims\n- A completed empty retrieval is a known outcome.\n- Material absence is not an unknown outcome.\n\n## Evidence\n- No admissible material was retrieved for this case.\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding; the retrieval completed with zero hits.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-021",
+      "question": "Can a high-risk section pass without a closed loop?",
+      "title": "Evaluation: case-021",
+      "risk_level": "L3",
+      "expected_gate": "revise",
+      "expected_outcome": "blocked",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "A closed loop is required at this risk level.",
+        "The lineage gap is recorded."
+      ],
+      "claim_evidence_map": {
+        "A closed loop is required at this risk level.": [
+          "ev-case-021-1",
+          "ev-case-021-2"
+        ],
+        "The lineage gap is recorded.": [
+          "ev-case-021-1",
+          "ev-case-021-2"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-021-1",
+          "independent_source": "openalex:W0211",
+          "claim": "Peer-reviewed high-risk study.",
+          "grade": "E3",
+          "evidence_type": "paper",
+          "title": "High-risk study without closed loop",
+          "source_uri": "https://example.invalid/openalex/case-021-1"
+        },
+        {
+          "evidence_id": "ev-case-021-2",
+          "independent_source": "openalex:W0212",
+          "claim": "Independent high-risk study.",
+          "grade": "E3",
+          "evidence_type": "paper",
+          "title": "Independent high-risk study without closed loop",
+          "source_uri": "https://example.invalid/arxiv/case-021-2"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Can a high-risk section pass without a closed loop?\n\n## Claims\n- A closed loop is required at this risk level.\n- The lineage gap is recorded.\n\n## Evidence\n- openalex:W0211 (E3): High-risk study without closed loop\n- openalex:W0212 (E3): Independent high-risk study without closed loop\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-022",
+      "question": "Does a weak-evidence revision also catch a reported number?",
+      "title": "Evaluation: case-022",
+      "risk_level": "L2",
+      "expected_gate": "revise",
+      "expected_outcome": "blocked",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "Weak evidence triggers a revision.",
+        "Reported numbers are rejected."
+      ],
+      "claim_evidence_map": {
+        "Weak evidence triggers a revision.": [
+          "ev-case-022-1"
+        ],
+        "Reported numbers are rejected.": [
+          "ev-case-022-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-022-1",
+          "independent_source": "openalex:W0221",
+          "claim": "Only weak evidence is available.",
+          "grade": "E1",
+          "evidence_type": "paper",
+          "title": "Weak-evidence study with a reported number",
+          "source_uri": "https://example.invalid/arxiv/case-022-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: Does a weak-evidence revision also catch a reported number?\n\n## Claims\n- Weak evidence triggers a revision.\n- Reported numbers are rejected.\n\n## Evidence\n- openalex:W0221 (E1): Weak-evidence study with a reported number\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported.\nError rate reduced by 8% under gating."
+    },
+    {
+      "case_id": "case-023",
+      "question": "What happens when the highest risk level lacks approval?",
+      "title": "Evaluation: case-023",
+      "risk_level": "L4",
+      "expected_gate": "interrupt",
+      "expected_outcome": "blocked",
+      "explicitly_rejected": false,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "Approval is required at the highest risk level.",
+        "The request is interrupted for a human."
+      ],
+      "claim_evidence_map": {
+        "Approval is required at the highest risk level.": [
+          "ev-case-023-1",
+          "ev-case-023-2"
+        ],
+        "The request is interrupted for a human.": [
+          "ev-case-023-1",
+          "ev-case-023-2"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-023-1",
+          "independent_source": "openalex:W0231",
+          "claim": "Peer-reviewed highest-risk study.",
+          "grade": "E3",
+          "evidence_type": "paper",
+          "title": "Highest-risk study without approval",
+          "source_uri": "https://example.invalid/openalex/case-023-1"
+        },
+        {
+          "evidence_id": "ev-case-023-2",
+          "independent_source": "openalex:W0232",
+          "claim": "Independent highest-risk study.",
+          "grade": "E3",
+          "evidence_type": "paper",
+          "title": "Independent highest-risk study without approval",
+          "source_uri": "https://example.invalid/arxiv/case-023-2"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: What happens when the highest risk level lacks approval?\n\n## Claims\n- Approval is required at the highest risk level.\n- The request is interrupted for a human.\n\n## Evidence\n- openalex:W0231 (E3): Highest-risk study without approval\n- openalex:W0232 (E3): Independent highest-risk study without approval\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    },
+    {
+      "case_id": "case-024",
+      "question": "What happens when a reviewer explicitly rejects the section?",
+      "title": "Evaluation: case-024",
+      "risk_level": "L2",
+      "expected_gate": "deny",
+      "expected_outcome": "blocked",
+      "explicitly_rejected": true,
+      "human_approval": false,
+      "work_closed_loop": false,
+      "claims": [
+        "An explicit rejection overrides the evidence score.",
+        "The rejection is recorded verbatim."
+      ],
+      "claim_evidence_map": {
+        "An explicit rejection overrides the evidence score.": [
+          "ev-case-024-1"
+        ],
+        "The rejection is recorded verbatim.": [
+          "ev-case-024-1"
+        ]
+      },
+      "materials": [
+        {
+          "evidence_id": "ev-case-024-1",
+          "independent_source": "openalex:W0241",
+          "claim": "Evidence is present but rejected.",
+          "grade": "E3",
+          "evidence_type": "paper",
+          "title": "Rejected section with sufficient evidence",
+          "source_uri": "https://example.invalid/openalex/case-024-1"
+        }
+      ],
+      "metadata": {},
+      "body": "## Objective\nReport on the evaluation question: What happens when a reviewer explicitly rejects the section?\n\n## Claims\n- An explicit rejection overrides the evidence score.\n- The rejection is recorded verbatim.\n\n## Evidence\n- openalex:W0241 (E3): Rejected section with sufficient evidence\n\n## Benchmark Plan\nBaseline: the frozen corpus baseline recorded for this case. Metrics: claim-evidence consistency.\n\n## Missing Materials\nNo material is outstanding for this case.\n\n## Unknowns\nThe planned comparison has not been executed yet.\n\n## Limitations\nThe planned comparison is reported as planned only.\n\n## Notes\nDraft stays planned-only; no observed results are reported."
+    }
+  ]
+}

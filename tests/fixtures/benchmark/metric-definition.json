@@ -1,0 +1,36 @@
+{
+  "definition_version": "1.1",
+  "primary_metric": "hallucination_ratio",
+  "direction": "lower_is_better",
+  "formula": "hallucination_ratio = unsupported_claims / total_claims, in [0, 1]; a draft with no claims scores 0.0 (deterministic empty, D-F8-01), so the count of such cells must be reported alongside it",
+  "unsupported_claim_rule": "A drafted claim is unsupported unless it is bound to a non-empty set of admitted material ids. Each result-like numeric sentence matched by SectionValidator.RESULT_NUMBER_PATTERNS counts as one additional unsupported claim, because an evaluation draft must stay planned-only.",
+  "conditions": [
+    "bare_llm",
+    "gate_off",
+    "gate_on"
+  ],
+  "case_metrics": [
+    "hallucination_ratio",
+    "accepted_hallucination_ratio",
+    "evidence_binding_rate"
+  ],
+  "report_metrics": [
+    "hallucination_ratio",
+    "accepted_hallucination_ratio",
+    "acceptance_rate",
+    "evidence_binding_rate",
+    "fail_closed_block_rate",
+    "false_pass_rate",
+    "false_block_rate",
+    "mechanism_safety_score"
+  ],
+  "frozen": true,
+  "notes": [
+    "One primary metric only (karpathy constraint 1): hallucination_ratio.",
+    "The corpus and this definition are frozen together; changing either needs a new version.",
+    "hallucination_ratio covers scored cells (completed + blocked). accepted_hallucination_ratio covers ACCEPTED cells only: a non-accepted cell released no content, so it is excluded rather than counted as 0.0 -- counting it would make the score rise the more the mechanism blocks. A condition that accepted nothing reports null, never a perfect score. (Changed in 1.1; 1.0 zeroed a non-accepted cell, which let a live run with acceptance_rate 0.0 report score 100.0.)",
+    "A rate whose denominator is empty is null, not 100.0: \"there was nothing to block\" is not \"blocking was perfect\".",
+    "Unsupported claims are computed against the corpus label binding, so a condition that never retrieves material can never look well bound."
+  ]
+}
+
