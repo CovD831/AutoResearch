@@ -2,8 +2,8 @@
 
 - ID: `S4-A-BENCHMARK-HARNESS`
 - Title: `S4 benchmark runtime and real retrieval adapter`
-- Status: `active`
-- Status note: 两个切片均已完成（检索 adapter：S2 + arXiv + OpenAlex，39 focused / 185 full passed；benchmark 运行时：三条件可执行对比 + 预算/停止条件 + run receipt + 报告 artifact + 冻结语料与冻结指标，62 focused / 244 full passed，覆盖率 98%）。未 commit/push/PR。
+- Status: `handoff`
+- Status note: 两个切片均已本地 commit（检索 adapter `65ada56`+`2cca01a`；benchmark 运行时 `6829391`）。fresh 证据：39+62 focused / 244 full passed、`benchmark.py` 覆盖率 98%、ruff 绿、`check.mjs` 18/18 valid、`evidence/benchmark-report.json` 已生成。按用户要求**未 push、未开 PR**，故按 repo-task-sync 停在 `handoff` 而非 `done`；待 owner 裁决 D-A5-偏离-1 与晋级。
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -76,7 +76,7 @@
 
 ## Next step
 
-commit 本切片（不 push、不开 PR）；owner 裁决 D-A5-偏离-1（`search_service.py` 第二条裸 S2 路径）与本包晋级。
+owner 裁决 D-A5-偏离-1（`search_service.py` 第二条裸 S2 路径）与本包晋级；随后按 repo-task-sync 的 Hand off 流程开 PR（本包因用户要求未 push/未开 PR，故停在 `handoff`）。
 
 ## Verification
 
@@ -94,7 +94,8 @@ commit 本切片（不 push、不开 PR）；owner 裁决 D-A5-偏离-1（`searc
 
 - From: `member A`
 - To: `user/team`
-- 代码与任务包/账本均在 `codex/s4-a-benchmark-harness`；两个切片（检索 adapter + benchmark 运行时）均已完成，待 commit 与 owner 裁决。
+- 代码与任务包/账本均在 `codex/s4-a-benchmark-harness`；两个切片（检索 adapter + benchmark 运行时）均已完成并本地 commit，待 owner 裁决与开 PR。
+- **需 owner 补的项目级账本（本包 forbidden_paths，未改）**：`.project-to-act/PROJECT_PROGRESS.md` 当前仍记 A5 为「交付即审」（2026-09-10 快照），未反映两个切片已交付；`.project-to-act/PROJECT_OVERVIEW.md` 的「最后更新」仍是 2026-09-04。按 project-to-act skill「路线变化后立即同步」应由 owner 侧回写。
 - **committed 报告的口径**：`evidence/benchmark-report.json` 是**离线**结果（冻结语料即材料库），digest 锚定在 `corpus_digest` / `metric_definition_digest`；重跑命令 `python scripts/benchmark_trust.py --report evidence/benchmark-report.json`。
 - **明确局限（R004-05 要求载明）**：①作者即评测者偏差——语料与标签由本包自造，非外部标注集；②离线默认，非真实检索；③单主指标，`evidence_binding_rate` 仅报告级；④第四条件未交付。
 - 检索源现状（2026-09-11 实测）：S2 需免费 key 且申请表单拒收免费邮箱 → 由公司后续申请；当前可用的真实源是 OpenAlex（§5 已授权的降级轨），arXiv 代码就绪但被 provider 限流。
