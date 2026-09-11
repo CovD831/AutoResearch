@@ -41,7 +41,7 @@ invocation receipt（A2 幂等/审计基线，已有）← cost 字段由 O12 �
 1. **同步 transport**：现有调用方全部同步，pi-ai 的 async iterator 语义移植为同步生成器；流式后置为 backlog。
 2. **目录 vendored 快照**：`models_catalog.json` 进 repo（models.dev 口径，$ / 1M tokens 四档+tiers）；刷新脚本 `scripts/refresh_model_catalog.py` 显式网络运行，离线禁网不受影响。
 3. **薄缝策略**：B4 契约未知 → provider_lane 暴露自有接口 `lane.complete(request) → LaneResult`；B4 契约落地后缝由 `LLMService`/adapter 层适配，lane 本体不动。
-4. **llm.py 兼容**：`LLMService(settings)` 构造签名保留；内部从 settings 解析 lane，计价按 model id 从快照目录解析（endpoint 拼写差异不影响计价）。**实现期修订（2026-09-11，自审发现）**：①`complete_json` 保持 `{"type":"json_object"}` 而非本计划原写的 `strict=require`——无 schema ⇒ require 无语义，且 deepseek lane 不支持 strict json_schema，require 会直接破坏「零破坏」验收（D-O12-03）；②漂移校验（`validate_lane_settings` / `lane_drift_event`）只对持有冻结 preset lane 的消费方有意义：settings 派生路径上 lane 与观测同源，不存在漂移对象，故 `LLMService` 不调用它（记为已知未接线项，非静默省略）。
+4. **llm.py 兼容**：`LLMService(settings)` 构造签名保留；内部从 settings 解析 lane，计价按 model id 从快照目录解析（endpoint 拼写差异不影响计价）。**实现期修订（2026-09-11，自审发现）**：①`complete_json` 保持 `{"type":"json_object"}` 而非本计划原写的 `strict=require`——无 schema ⇒ require 无语义，且 deepseek lane 不支持 strict json_schema，require 会直接破坏「零破坏」验收（D-O12-03）；②漂移校验（`validate_lane_settings` / `lane_drift_event`）只对持有冻结 preset lane 的消费方有意义：settings 派生路径上 lane 与观测同源，不存在漂移对象，故 `LLMService` 不调用它（记为已知未接线项，非静默省略）。**实现期修订（2026-09-11，成员复审后的 owner 代修）**：③`LLMService.__init__` 增加**可选**关键字参数 `ledger`（D-O12-12）——既有 `LLMService(settings)` / `available` / `complete` / `complete_json` 调用语义**不变**（属超集），目的是让同一 run 里的 `LLMService` 与 `LaneLLMAdapter` 共享一份预算，否则同一 run 的预算按 transport 数量被复制；若判定该处违反本计划原写的「构造签名保留」，可回退为仅在 adapter 侧注入（详见账本 D-O12-12）。
 
 ## 3. 预置 lane 目录（ADR-01 §1.1 用户 key 插槽）
 

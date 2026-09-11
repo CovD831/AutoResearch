@@ -26,6 +26,7 @@ from autoresearch.provider_lane import (
     LaneNotConfiguredError,
     LaneRequest,
     LaneResult,
+    LaneRunLedger,
     LaneTransport,
     ModelCost,
     ProviderLaneError,
@@ -125,12 +126,20 @@ def lane_from_settings(settings: Settings) -> LaneIdentity:
 
 
 class LLMService:
-    """Optional OpenAI-compatible boundary. Secrets remain inside Settings."""
+    """Optional OpenAI-compatible boundary. Secrets remain inside Settings.
 
-    def __init__(self, settings: Settings):
+    ``LLMService(settings)`` keeps working unchanged. The optional ``ledger``
+    lets a caller put this service and any other consumer of the same lane
+    (:class:`~autoresearch.lane_llm_adapter.LaneLLMAdapter`) on **one** budget
+    for the run: without it each transport counts its own requests, so a single
+    run could spend the cap once per transport (D-O12-12).
+    """
+
+    def __init__(self, settings: Settings, *, ledger: LaneRunLedger | None = None):
         self.settings = settings
         self._lane: LaneIdentity | None = None
         self._transport: LaneTransport | None = None
+        self._ledger = ledger if ledger is not None else LaneRunLedger()
         self.last_result: LaneResult | None = None
 
     @property
@@ -154,6 +163,7 @@ class LLMService:
                 self.lane,
                 credential=credential,
                 timeout_seconds=self.settings.llm_timeout_seconds,
+                ledger=self._ledger,
             )
         return self._transport
 

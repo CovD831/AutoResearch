@@ -6,9 +6,13 @@ import httpx
 import pytest
 
 from autoresearch.provider_lane import (
+    DEFAULT_MAX_CALLS_PER_RUN,
+    PRESET_LANE_IDS,
     LaneBudgetExceededError,
     LaneBudgetProfile,
     LaneRequest,
+    LaneResponseError,
+    LaneRunLedger,
     LaneStrictError,
     LaneTransport,
     LaneTransportError,
@@ -461,3 +465,210 @@ def test_convert_thinking_drops_redacted_and_downgrades_to_text() -> None:
         {"type": "text", "text": "step one"},
         {"type": "text", "text": "answer"},
     ]
+
+
+# --------------------------------------------------------------------------
+# 对抗审查修复（2026-09-11 owner 代修，D-O12-11/12/13）
+#
+# 这四个缺陷在修复前**全部存在，而既有测试全绿** —— 下面的断言在旧实现下必须
+# 失败，否则它们只是“怎么都过”的装饰。
+# --------------------------------------------------------------------------
+
+
+class InvalidJsonResponse:
+    """2xx，但 body 根本不是 JSON（网关 HTML、被截断的流）。"""
+
+    status_code = 200
+
+    def __init__(self, text: str = "<html>502 Bad Gateway</html>") -> None:
+        self.text = text
+
+    def json(self):
+        raise ValueError("Expecting value: line 1 column 1 (char 0)")
+
+
+def _deepseek_transport(client: object, **kwargs: object) -> LaneTransport:
+    lane = kwargs.pop("lane", build_preset_lane("deepseek:chat:v1"))
+    return LaneTransport(
+        lane,
+        environ={"DEEPSEEK_API_KEY": "k"},
+        client=client,
+        sleep=lambda _seconds: None,
+        **kwargs,
+    )
+
+
+# --- C1：provider 应答不可读时，必须落在 lane 自己的异常面内 ----------------
+# 修复前分别逃出 ``json.JSONDecodeError`` / ``ValueError`` / ``AttributeError``。
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        InvalidJsonResponse(),  # 非 JSON body
+        FakeResponse(200, ["not", "an", "object"]),  # JSON 但不是对象
+    ],
+    ids=["non-json", "non-object"],
+)
+def test_unreadable_response_body_raises_a_lane_error(response: object) -> None:
+    transport = _deepseek_transport(FakeClient([response]))
+
+    with pytest.raises(LaneResponseError) as excinfo:
+        transport.complete(LaneRequest(system="s", user="u"))
+
+    assert excinfo.value.retryable is False  # 2xx + 畸形 body 是确定性结论
+
+
+@pytest.mark.parametrize(
+    "usage",
+    [
+        {"prompt_tokens": "not-a-number"},
+        {"prompt_tokens": 10, "completion_tokens": "n/a"},
+        [1000, 100],  # usage 是 list → 旧实现 raw.get 抛 AttributeError
+        {"prompt_tokens_details": "cached"},  # details 是 str → 同上
+        {"completion_tokens_details": 7},
+    ],
+    ids=["prompt-str", "completion-str", "usage-list", "details-str", "completion-details-int"],
+)
+def test_unusable_usage_block_raises_a_lane_error(usage: object) -> None:
+    payload = _completion_payload()
+    payload["usage"] = usage
+    transport = _deepseek_transport(FakeClient([FakeResponse(200, payload)]))
+
+    with pytest.raises(ProviderLaneError):
+        transport.complete(LaneRequest(system="s", user="u"))
+
+
+def test_no_foreign_exception_type_escapes_the_public_surface() -> None:
+    """只要 provider 能发出的东西，都必须以 ProviderLaneError 回来。
+
+    模块把 ``ProviderLaneError`` 声明为唯一错误面；修复前三种 payload 各自以
+    ``ValueError`` / ``AttributeError`` / ``JSONDecodeError`` 逃出，凡是按契约
+    捕获基类的调用方全都接不住（下游没炸只因它们用了 ``except Exception``）。
+    """
+
+    bad_payloads = [
+        InvalidJsonResponse(),
+        FakeResponse(200, ["not", "an", "object"]),
+        FakeResponse(200, {**_completion_payload(), "usage": [1, 2]}),
+        FakeResponse(200, {"choices": []}),
+        FakeResponse(200, {"choices": [{"message": "not-a-dict"}]}),
+    ]
+    for payload in bad_payloads:
+        transport = _deepseek_transport(FakeClient([payload]))
+        try:
+            transport.complete(LaneRequest(system="s", user="u"))
+        except ProviderLaneError:
+            continue
+        except Exception as exc:  # noqa: BLE001 - 断言本身就是要抓这个
+            pytest.fail(f"{type(exc).__name__} escaped the lane error surface: {exc}")
+        pytest.fail(f"payload {payload!r} was accepted instead of failing closed")
+
+
+# --- C2：预置 lane 一律带完整预算（旧实现六个 lane 全 None）----------------
+
+
+def test_every_preset_lane_ships_a_complete_budget() -> None:
+    """“默认不设上限”不是默认值，而是没有默认值（D-O12-11）。"""
+
+    for lane_id in PRESET_LANE_IDS:
+        profile = build_preset_lane(lane_id).budget_profile
+        assert profile.max_calls_per_run == DEFAULT_MAX_CALLS_PER_RUN, lane_id
+        assert profile.max_tokens_per_run is not None, lane_id
+        assert profile.max_cost_per_call_usd is not None, lane_id
+
+
+def test_the_default_call_cap_matches_a5s_frozen_budget() -> None:
+    """计价链两端必须认同一个数字（A5 ResourceBudget.max_calls）。"""
+
+    assert DEFAULT_MAX_CALLS_PER_RUN == 240
+
+
+def test_the_default_cost_cap_cannot_reject_a_full_window_call() -> None:
+    """上限由 lane 自身价目推导，所以只可能拦住失控调用，不会误伤合法调用。"""
+
+    for lane_id in PRESET_LANE_IDS:
+        lane = build_preset_lane(lane_id)
+        worst_legitimate = (
+            lane.cost.input * lane.context_window / 1_000_000
+            + lane.cost.output * lane.max_output_tokens / 1_000_000
+        )
+        cap = lane.budget_profile.max_cost_per_call_usd
+        assert cap is not None
+        assert cap >= worst_legitimate, lane_id
+
+
+def test_an_explicit_budget_profile_still_overrides_the_default() -> None:
+    lane = build_preset_lane(
+        "deepseek:chat:v1", budget_profile=LaneBudgetProfile(max_calls_per_run=7)
+    )
+    assert lane.budget_profile.max_calls_per_run == 7
+
+
+# --- C3：预算作用域是 run，不是 transport ---------------------------------
+
+
+def test_two_transports_sharing_a_ledger_share_one_budget() -> None:
+    """旧实现把计数器挂在 transport 实例上，同一 run 的预算被复制成两份。"""
+
+    lane = build_preset_lane(
+        "deepseek:chat:v1", budget_profile=LaneBudgetProfile(max_calls_per_run=1)
+    )
+    ledger = LaneRunLedger()
+    client_a = FakeClient([FakeResponse(200, _completion_payload())])
+    client_b = FakeClient([FakeResponse(200, _completion_payload())])
+    first = _deepseek_transport(client_a, lane=lane, ledger=ledger)
+    second = _deepseek_transport(client_b, lane=lane, ledger=ledger)
+
+    first.complete(LaneRequest(system="s", user="u"))
+
+    with pytest.raises(LaneBudgetExceededError):
+        second.complete(LaneRequest(system="s", user="u"))
+    assert len(client_b.calls) == 0  # 第二个 transport 的请求从未出网
+    assert ledger.requests_made == 1
+
+
+def test_transports_without_a_shared_ledger_keep_independent_budgets() -> None:
+    """缺省作用域是「每 transport 一份」，对单次调用与单测是正确的。"""
+
+    lane = build_preset_lane(
+        "deepseek:chat:v1", budget_profile=LaneBudgetProfile(max_calls_per_run=1)
+    )
+    for _ in range(2):
+        transport = _deepseek_transport(
+            FakeClient([FakeResponse(200, _completion_payload())]), lane=lane
+        )
+        transport.complete(LaneRequest(system="s", user="u"))
+
+
+# --- C4：预算计的是网络请求，不是成功次数（Owner 口径 2026-09-11）---------
+
+
+def test_a_retry_consumes_the_request_budget() -> None:
+    """一个卡在 429 的 run 必须仍然能触顶，否则预算形同不存在。"""
+
+    lane = build_preset_lane(
+        "deepseek:chat:v1", budget_profile=LaneBudgetProfile(max_calls_per_run=1)
+    )
+    client = FakeClient(
+        [FakeResponse(429, {"error": "slow down"}), FakeResponse(200, _completion_payload())]
+    )
+    transport = _deepseek_transport(client, lane=lane)
+
+    with pytest.raises(LaneBudgetExceededError):
+        transport.complete(LaneRequest(system="s", user="u"))
+
+    assert len(client.calls) == 1  # 重试没有出网
+
+
+def test_the_budget_counts_network_requests_not_successes() -> None:
+    client = FakeClient(
+        [FakeResponse(429, {"error": "slow down"}), FakeResponse(200, _completion_payload())]
+    )
+    transport = _deepseek_transport(client)
+
+    result = transport.complete(LaneRequest(system="s", user="u"))
+
+    assert result.attempts == 2
+    assert transport.calls_made == 2  # 预算单位 == 网络请求
+    assert transport.ledger.calls_completed == 1

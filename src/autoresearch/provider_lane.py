@@ -39,11 +39,14 @@ __all__ = [
     "LaneDriftError",
     "LaneBudgetExceededError",
     "LaneStrictError",
+    "LaneResponseError",
     "ReasoningLevel",
     "THINKING_LEVELS_ORDERED",
     "ModelCost",
     "CostTier",
     "LaneBudgetProfile",
+    "DEFAULT_MAX_CALLS_PER_RUN",
+    "default_budget_profile",
     "LaneIdentity",
     "Usage",
     "UsageCost",
@@ -61,8 +64,10 @@ __all__ = [
     "selftest_catalog",
     "LaneRequest",
     "LaneResult",
+    "LaneRunLedger",
     "LaneTransport",
     "LaneTransportError",
+    "LaneResponseError",
     "RetryPolicy",
     "build_openai_completions_payload",
     "normalize_usage_openai",
@@ -294,13 +299,64 @@ class LaneBudgetProfile:
 
     ``None`` means "no cap configured" for that dimension; caps that ARE
     configured are enforced by :func:`check_call_budget` (and by the transport
-    in 段 2 before dispatch).
+    before dispatch).
+
+    ``None`` is a *test/probe* shape, not a shipped one: every preset lane is
+    built through :func:`default_budget_profile`, so no preset lane can run
+    unbounded. Shipping all three dimensions as ``None`` while the transport
+    docstring claimed the caps were enforced was the original defect (D-O12-11).
     """
 
     max_cost_per_call_usd: float | None = None
     max_calls_per_run: int | None = None
     max_tokens_per_run: int | None = None
     local_endpoint: bool = False
+
+
+# A preset lane's default budget (D-O12-11). Deriving the caps from the lane's own
+# catalog entry is what keeps them from ever rejecting legitimate work: the token
+# cap is "every call in the run used a full context window", and the per-call cost
+# cap is that same worst case priced at this lane's own worst rate tier.
+DEFAULT_MAX_CALLS_PER_RUN = 240  # == A5 ResourceBudget.max_calls, so both ends agree
+_FALLBACK_CONTEXT_TOKENS = 128_000  # used when the catalog reports context 0 (unknown)
+_FALLBACK_OUTPUT_TOKENS = 8_192
+_COST_CAP_HEADROOM = 1.5  # a provider may overshoot its own declared output limit
+
+
+def default_budget_profile(
+    *,
+    context_window: int,
+    max_output_tokens: int,
+    cost: ModelCost,
+    local_endpoint: bool = False,
+) -> LaneBudgetProfile:
+    """Build the complete, fail-closed budget a preset lane ships with.
+
+    Every dimension is filled, because a default that caps nothing is not a
+    default -- it is the absence of one. The values are the *worst case this lane
+    could ever legitimately produce*, so they stop a runaway without ever
+    rejecting real work:
+
+    * ``max_calls_per_run``: 240, the same fixed call budget A5 records in its run
+      receipt, so the two ends of the pricing chain agree on one number.
+    * ``max_tokens_per_run``: 240 calls x (context window + max output).
+    * ``max_cost_per_call_usd``: one full-window call at this lane's worst rate
+      tier, times a small headroom factor.
+    """
+
+    context = context_window if context_window > 0 else _FALLBACK_CONTEXT_TOKENS
+    output = max_output_tokens if max_output_tokens > 0 else _FALLBACK_OUTPUT_TOKENS
+    rate_input = max([cost.input, *(tier.input for tier in cost.tiers)])
+    rate_output = max([cost.output, *(tier.output for tier in cost.tiers)])
+    worst_call_usd = (
+        rate_input * context / 1_000_000 + rate_output * output / 1_000_000
+    ) * _COST_CAP_HEADROOM
+    return LaneBudgetProfile(
+        max_cost_per_call_usd=worst_call_usd,
+        max_calls_per_run=DEFAULT_MAX_CALLS_PER_RUN,
+        max_tokens_per_run=DEFAULT_MAX_CALLS_PER_RUN * (context + output),
+        local_endpoint=local_endpoint,
+    )
 
 
 API_FAMILIES = ("openai-completions", "anthropic-messages")
@@ -613,7 +669,9 @@ LANE_SPECS: tuple[dict[str, Any], ...] = (
         "model": "local-model",
         "credential_env_names": (),
         "thinking_format": "openai",
-        "budget_profile": LaneBudgetProfile(local_endpoint=True),
+        # No credential to check, but the budget is still derived and enforced:
+        # an unbounded local lane is a spin loop, not a free run.
+        "local_endpoint": True,
     },
 )
 
@@ -637,14 +695,24 @@ def build_preset_lane(
     catalog = catalog if catalog is not None else load_default_catalog()
     model_id = model_override or spec["model"]
     model = catalog.get_model(spec["provider"], model_id)
-    profile = budget_profile or spec.get("budget_profile") or LaneBudgetProfile()
+    cost = ModelCost.from_dict(model["cost"])
+    profile = (
+        budget_profile
+        or spec.get("budget_profile")
+        or default_budget_profile(
+            context_window=int(model["limit"]["context"]),
+            max_output_tokens=int(model["limit"]["output"]),
+            cost=cost,
+            local_endpoint=bool(spec.get("local_endpoint", False)),
+        )
+    )
     return LaneIdentity(
         lane_id=lane_id,
         provider=spec["provider"],
         endpoint=spec["endpoint"],
         model=model_id,
         api_family=model["api_family"],
-        cost=ModelCost.from_dict(model["cost"]),
+        cost=cost,
         context_window=int(model["limit"]["context"]),
         max_output_tokens=int(model["limit"]["output"]),
         reasoning_supported=bool(model["reasoning"]),
@@ -1052,6 +1120,25 @@ class LaneTransportError(ProviderLaneError):
         super().__init__(message)
 
 
+class LaneResponseError(LaneTransportError):
+    """The provider answered, but the payload could not be read.
+
+    A 2xx whose body is not JSON, whose ``usage`` block is missing or unusable,
+    or whose ``choices`` have the wrong shape is a *deterministic* verdict, so
+    this is never retryable -- retrying only pays for the same answer twice.
+
+    It subclasses ``LaneTransportError`` so callers that already catch transport
+    failures keep working, while a caller that wants to tell "the request failed"
+    apart from "the answer was garbage" can catch this one.
+    """
+
+    def __init__(self, message: str, *, suggested_recovery: str | None = None) -> None:
+        self.suggested_recovery = suggested_recovery
+        if suggested_recovery:
+            message = f"{message} (recovery: {suggested_recovery})"
+        super().__init__(message, retryable=False)
+
+
 _RETRYABLE_STATUS = frozenset({408, 429})
 
 
@@ -1121,22 +1208,67 @@ def normalize_usage_openai(raw: Mapping[str, Any]) -> Usage:
     """provider 原生 usage → 归一化 Usage。
 
     OpenAI/deepseek 的 ``prompt_tokens`` *包含* 命中缓存的 token：缓存命中的
-    部分按 cache_read 计价、其余按 input 计价（pi-ai 同口径）。"""
-    prompt = int(raw.get("prompt_tokens") or 0)
-    completion = int(raw.get("completion_tokens") or 0)
-    details = raw.get("prompt_tokens_details") or {}
-    cached = int(details.get("cached_tokens") or 0)
-    cached = int(raw.get("prompt_cache_hit_tokens") or cached)  # deepseek 原生字段
-    cache_write = int(raw.get("cache_creation_input_tokens") or 0)  # anthropic 形状透传
-    reasoning_details = raw.get("completion_tokens_details") or {}
-    reasoning = int(reasoning_details.get("reasoning_tokens") or 0)
-    return Usage(
-        input_tokens=max(prompt - cached, 0),
-        output_tokens=completion,
-        cache_read_tokens=cached,
-        cache_write_tokens=cache_write,
-        reasoning_tokens=reasoning,
-    )
+    部分按 cache_read 计价、其余按 input 计价（pi-ai 同口径）。
+
+    Every failure mode below is the *provider's* payload being unusable, so it is
+    reported as ``LaneResponseError``. Left unguarded, ``int("n/a")`` raises a
+    bare ``ValueError`` and a non-mapping ``usage`` / ``*_details`` a bare
+    ``AttributeError`` -- neither of which a caller honouring this module's error
+    contract would catch.
+    """
+    if not isinstance(raw, Mapping):
+        raise LaneResponseError(
+            f"usage block must be an object, got {type(raw).__name__}",
+            suggested_recovery="record the model as unpriced (cost=None) rather than a cost of 0",
+        )
+    try:
+        prompt = int(raw.get("prompt_tokens") or 0)
+        completion = int(raw.get("completion_tokens") or 0)
+        details = raw.get("prompt_tokens_details") or {}
+        cached = int(details.get("cached_tokens") or 0)
+        cached = int(raw.get("prompt_cache_hit_tokens") or cached)  # deepseek 原生字段
+        cache_write = int(raw.get("cache_creation_input_tokens") or 0)  # anthropic 形状透传
+        reasoning_details = raw.get("completion_tokens_details") or {}
+        reasoning = int(reasoning_details.get("reasoning_tokens") or 0)
+        return Usage(
+            input_tokens=max(prompt - cached, 0),
+            output_tokens=completion,
+            cache_read_tokens=cached,
+            cache_write_tokens=cache_write,
+            reasoning_tokens=reasoning,
+        )
+    except ProviderLaneError:
+        # ``Usage.__post_init__`` already fails closed on negative counts; keep its
+        # more specific message rather than flattening it into a parse error.
+        raise
+    except (TypeError, ValueError, AttributeError, KeyError) as exc:
+        raise LaneResponseError(
+            f"provider usage block is unreadable: {exc!r}",
+            suggested_recovery="record the model as unpriced (cost=None) rather than a cost of 0",
+        ) from exc
+
+
+@dataclass
+class LaneRunLedger:
+    """Per-*run* budget counters, shared by every transport serving that run.
+
+    The counters used to live on the transport instance, and both consumers of a
+    lane build their own transport (`lane_llm_adapter.py`, `llm.py`), so a single
+    run's budget was silently multiplied by the number of transports that
+    happened to exist. A caller that wants a genuine per-run budget passes one
+    ledger to every transport it builds; a transport built without one gets its
+    own, which is the right scope for one call or a unit test.
+
+    ``requests_made`` counts *network requests*, not successful completions. The
+    budget protects the provider's quota and the operator's bill, so a run stuck
+    on retries has to consume it -- counting only successes would let a
+    permanently-429 lane retry forever without ever reaching its cap.
+    """
+
+    requests_made: int = 0
+    calls_completed: int = 0
+    spent_usd: float = 0.0
+    spent_tokens: int = 0
 
 
 class LaneTransport:
@@ -1144,7 +1276,9 @@ class LaneTransport:
 
     - 构造即验凭据（白名单 → fail-closed）。
     - retry：429/5xx/网络错误按 RetryPolicy 指数退避；401/403/422 等 fail fast。
-    - 预算：dispatch 前查 per-run 调用上限，事后累计 cost/tokens，超限 fail-closed。
+    - 预算：**每次网络请求前**查 per-run 请求上限（重试同样计入），事后累计
+      cost/tokens，超限 fail-closed；计数器挂在 :class:`LaneRunLedger` 上，
+      同一 run 的多个 transport 共享一个 ledger 才构成真正的 per-run 预算。
     - post-call 计价：provider usage → 归一化 → 快照价 → LaneResult。
     - anthropic-messages 族 transport 二期（目录/计价/档位已就绪）。
     """
@@ -1159,6 +1293,7 @@ class LaneTransport:
         sleep: Any = time.sleep,
         retry_policy: RetryPolicy | None = None,
         timeout_seconds: float = 45.0,
+        ledger: LaneRunLedger | None = None,
     ) -> None:
         if lane.api_family != "openai-completions":
             raise ProviderLaneError(
@@ -1177,10 +1312,24 @@ class LaneTransport:
         self.retry_policy = retry_policy or RetryPolicy()
         self.timeout_seconds = timeout_seconds
         # Per-run budget counters (A5 evaluation discipline: a fixed call budget
-        # must be *enforced*, not merely declared in the profile).
-        self.calls_made = 0
-        self.spent_usd = 0.0
-        self.spent_tokens = 0
+        # must be *enforced*, not merely declared in the profile). Pass a shared
+        # ledger to make the scope genuinely per-run; the default is one ledger
+        # per transport, which is correct for a single call or a unit test.
+        self.ledger = ledger if ledger is not None else LaneRunLedger()
+
+    @property
+    def calls_made(self) -> int:
+        """Budgeted calls; equal to network requests (see ``LaneRunLedger``)."""
+
+        return self.ledger.requests_made
+
+    @property
+    def spent_usd(self) -> float:
+        return self.ledger.spent_usd
+
+    @property
+    def spent_tokens(self) -> int:
+        return self.ledger.spent_tokens
 
     def _endpoint(self) -> str:
         return self.lane.endpoint.rstrip("/") + "/chat/completions"
@@ -1192,23 +1341,27 @@ class LaneTransport:
         return headers
 
     def complete(self, request: LaneRequest) -> LaneResult:
-        # Fail closed *before* dispatch when the per-run call cap is exhausted.
-        check_call_budget(self.lane, calls_used=self.calls_made)
-
         payload = build_openai_completions_payload(self.lane, request)
+        ledger = self.ledger
         attempts = 0
 
         def _dispatch(_attempt: int) -> dict[str, Any]:
             nonlocal attempts
+            # Fail closed *before* every network request, retries included: the
+            # budget protects the provider's quota, so an attempt that would
+            # exceed the cap must never leave the process.
+            check_call_budget(self.lane, calls_used=ledger.requests_made)
+            ledger.requests_made += 1
             attempts += 1
             return self._post(payload)
 
         raw = retry_with_backoff(_dispatch, policy=self.retry_policy, sleep=self._sleep)
         try:
             text = raw["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError) as exc:
-            raise LaneTransportError(
-                "malformed chat completion response: missing choices[0].message.content"
+        except (KeyError, IndexError, TypeError, AttributeError) as exc:
+            raise LaneResponseError(
+                "malformed chat completion response: missing choices[0].message.content",
+                suggested_recovery="inspect the raw payload; it did not match the api_family shape",
             ) from exc
         usage = normalize_usage_openai(raw.get("usage") or {})
         usage_cost = calculate_cost(usage, self.lane.cost)
@@ -1217,9 +1370,9 @@ class LaneTransport:
         # the provider reports usage (there is no token estimator yet), so it — and
         # the per-run token cap — stop the run rather than pretend to pre-empt it.
         profile = self.lane.budget_profile
-        self.calls_made += 1
-        self.spent_usd += usage_cost.total
-        self.spent_tokens += (
+        ledger.calls_completed += 1
+        ledger.spent_usd += usage_cost.total
+        ledger.spent_tokens += (
             usage.input_tokens
             + usage.output_tokens
             + usage.cache_read_tokens
@@ -1234,10 +1387,10 @@ class LaneTransport:
                 suggested_recovery="raise max_cost_per_call_usd or shrink the prompt",
             )
         if profile.max_tokens_per_run is not None and (
-            self.spent_tokens > profile.max_tokens_per_run
+            ledger.spent_tokens > profile.max_tokens_per_run
         ):
             raise LaneBudgetExceededError(
-                f"lane {self.lane.lane_id} run tokens {self.spent_tokens} exceed "
+                f"lane {self.lane.lane_id} run tokens {ledger.spent_tokens} exceed "
                 f"cap {profile.max_tokens_per_run}",
                 suggested_recovery="raise max_tokens_per_run or stop the run",
             )
@@ -1271,7 +1424,21 @@ class LaneTransport:
                 status_code=response.status_code,
                 retryable=is_retryable_status(response.status_code),
             )
-        return response.json()
+        try:
+            payload = response.json()
+        except ValueError as exc:  # json.JSONDecodeError subclasses ValueError
+            raise LaneResponseError(
+                f"provider returned HTTP {response.status_code} with a non-JSON body: "
+                f"{response.text[:200]}",
+                suggested_recovery="inspect the raw body; a gateway or proxy may be answering",
+            ) from exc
+        if not isinstance(payload, dict):
+            raise LaneResponseError(
+                f"provider returned HTTP {response.status_code} with a "
+                f"{type(payload).__name__} body where an object was expected",
+                suggested_recovery="check that the endpoint points at the chat-completions API",
+            )
+        return payload
 
 
 def retry_with_backoff(fn: Any, *, policy: RetryPolicy, sleep: Any) -> Any:

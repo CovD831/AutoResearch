@@ -16,7 +16,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from autoresearch.provider_lane import LaneIdentity, LaneRequest, LaneResult, LaneTransport
+from autoresearch.provider_lane import (
+    LaneIdentity,
+    LaneRequest,
+    LaneResult,
+    LaneRunLedger,
+    LaneTransport,
+)
 from autoresearch.reader_writer_ports import (
     AdapterKind,
     ReaderRequest,
@@ -40,11 +46,17 @@ class LaneLLMAdapter:
         lane: LaneIdentity,
         *,
         transport: LaneTransport | None = None,
+        ledger: LaneRunLedger | None = None,
         adapter_name: str = "lane.llm",
         adapter_version: str = "v1",
     ) -> None:
         self.lane = lane
-        self.transport = transport if transport is not None else LaneTransport(lane)
+        # ``ledger`` puts this adapter on the same per-run budget as any other
+        # consumer of the lane (e.g. LLMService); pass either a ledger or a
+        # ready-made transport, not both.
+        self.transport = (
+            transport if transport is not None else LaneTransport(lane, ledger=ledger)
+        )
         self.last_result: LaneResult | None = None
         self._reader = StructuredReaderAdapter(
             AdapterKind.LLM, adapter_name=adapter_name, adapter_version=adapter_version
