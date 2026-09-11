@@ -3,7 +3,7 @@
 - ID: `S4-A-BENCHMARK-HARNESS`
 - Title: `S4 benchmark runtime and real retrieval adapter`
 - Status: `handoff`
-- Status note: 两个切片均已本地 commit（检索 adapter `65ada56`+`2cca01a`；benchmark 运行时 `6829391`）。fresh 证据：99 focused（39+60）/ 245 full passed、`benchmark.py` 覆盖率 98%、ruff 绿、`check.mjs` 18/18 valid、`evidence/benchmark-report.json` 已生成、固定场景 12/12 + 端到端用户场景全绿。用户侧已独立复跑全部验收命令且全部通过。按用户要求**未 push、未开 PR**，故按 repo-task-sync 停在 `handoff` 而非 `done`；待 owner 裁决 D-A5-偏离-1 与晋级。
+- Status note: 两个切片均已本地 commit（检索 adapter `8cf0d7c`+`4488ad8`；benchmark 运行时 `30a12d1`）。分支已 rebase 到最新主线 `main@66aba64`。fresh 证据：99 focused / 245 full passed、`benchmark.py` 覆盖率 98%、ruff 绿、`check.mjs` 18/18 valid、`evidence/benchmark-report.json` 已生成、固定场景 12/12 + 端到端用户场景全绿。用户侧已独立复跑全部验收命令且全部通过。按用户要求**未 push、未开 PR**，故按 repo-task-sync 停在 `handoff` 而非 `done`；待 owner 裁决 D-A5-偏离-1 与晋级。
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -59,7 +59,7 @@
 
 ## Completed
 
-- 基线核对：分支从 `main@380bd49` 切出（worktree `.worktrees/s4-a-benchmark-harness`），基线全量 146 passed。
+- 基线核对：分支已从 `main@66aba64` rebase（worktree `.worktrees/s4-a-benchmark-harness`）；A5 之前的主线已包含 B5 集成。
 - 新增 `src/autoresearch/search_adapters.py`：`SemanticScholarSearchAdapter`、`ArxivSearchAdapter`、`OpenAlexSearchAdapter`，统一 A4 `CapabilityAdapter` 形状，transport 可注入（矩阵全离线可跑）。
 - `Settings` 增加 `semantic_scholar_api_key` / `semantic_scholar_timeout_seconds` / `openalex_api_key` / `openalex_mailto` 与 `semantic_scholar_configured` 判据；`.env.example` 同步。
 - 39 个 focused 测试覆盖上表全部已完成项；模块覆盖率 99%（287 stmts / 3 miss，剩余为抽象方法与真实 transport 成功路径）。
@@ -102,6 +102,7 @@ owner 裁决 D-A5-偏离-1（`search_service.py` 第二条裸 S2 路径）与本
 - From: `member A`
 - To: `user/team`
 - 代码与任务包/账本均在 `codex/s4-a-benchmark-harness`；两个切片（检索 adapter + benchmark 运行时）均已完成并本地 commit，待 owner 裁决与开 PR。
+- **Rollback boundary**：若 A5 promotion 未通过，回滚本包在 `main@66aba64` 之后的 A5 提交即可；保留主线已有 A1–A4/B5，A5 的 adapter、benchmark、fixture 和报告 artifact 可重新生成，无数据库迁移。
 - **需 owner 补的项目级账本（本包 forbidden_paths，未改）**：`.project-to-act/PROJECT_PROGRESS.md` 当前仍记 A5 为「交付即审」（2026-09-10 快照），未反映两个切片已交付；`.project-to-act/PROJECT_OVERVIEW.md` 的「最后更新」仍是 2026-09-04。按 project-to-act skill「路线变化后立即同步」应由 owner 侧回写。
 - **committed 报告的口径**：`evidence/benchmark-report.json` 是**离线**结果（冻结语料即材料库），digest 锚定在 `corpus_digest` / `metric_definition_digest`；重跑命令 `python scripts/benchmark_trust.py --report evidence/benchmark-report.json`。
 - **明确局限（R004-05 要求载明）**：①作者即评测者偏差——语料与标签由本包自造，非外部标注集；②离线默认，非真实检索——且 **live 轨结构上不可与离线报告相比**（语料 `claim_evidence_map` 钉在 fixture 材料 id 上，live 候选 `evidence_id is None` 由 admission 铸新 id，`_fully_bound` 永不满足 → 各条件 `hall`=1.0 / `bind`=0.0 恒定）；live 只验证检索通路，已由 D-A5-11 写进报告 warnings；③单主指标，`evidence_binding_rate` 仅报告级；④第四条件未交付。

@@ -3,7 +3,7 @@
   "phase": "S4",
   "owner_lane": "runtime",
   "status": "ready",
-  "base_ref": "380bd49",
+  "base_ref": "66aba64",
   "branch": "codex/s4-a-benchmark-harness",
   "depends_on": ["S3 promotion"],
   "merge_after": ["S3 promotion"],
