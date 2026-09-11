@@ -3,7 +3,7 @@
 - ID: `S4-A-BENCHMARK-HARNESS`
 - Title: `S4 benchmark runtime and real retrieval adapter`
 - Status: `handoff`
-- Status note: 两个切片均已本地 commit（检索 adapter `8cf0d7c`+`4488ad8`；benchmark 运行时 `30a12d1`）。分支已 rebase 到最新主线 `main@66aba64`。fresh 证据：99 focused / 全量 265 passed（rebase 后；rebase 前旧基线为 245，差 20 全部来自新基线已含的 B5 集成，本包代码未变）、`benchmark.py` 覆盖率 98%、ruff 绿、`check.mjs` 18/18 valid、`evidence/benchmark-report.json` 已生成、固定场景 12/12 + 端到端用户场景全绿。用户侧已独立复跑全部验收命令且全部通过。按用户要求**未 push、未开 PR**，故按 repo-task-sync 停在 `handoff` 而非 `done`；待 owner 裁决 D-A5-偏离-1 与晋级。
+- Status note: 两个切片均已本地 commit（检索 adapter `8cf0d7c`+`4488ad8`；benchmark 运行时 `30a12d1`）。分支已 rebase 到最新主线 `main@66aba64`。fresh 证据：99 focused / 全量 265 passed（rebase 后；rebase 前旧基线为 245，差 20 全部来自新基线已含的 B5 集成，本包代码未变）、`benchmark.py` 覆盖率 98%、ruff 绿、`check.mjs` 18/18 valid、`evidence/benchmark-report.json` 已生成、固定场景 12/12 + 端到端用户场景全绿。用户最新独立全量复跑为 `265 passed in 50.48s`。PR #18 已创建，当前按 repo-task-sync 停在 `handoff` 等待审查。
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -96,7 +96,8 @@ owner 裁决 D-A5-偏离-1（`search_service.py` 第二条裸 S2 路径）与本
 - [x] 固定场景 harness（`F:\AutoResearch\.workbuddy\a5-scenarios\`，未跟踪、不进 PR）：`scenario.py` 12 个编号场景全绿 —— 1-6 打检索 adapter（注册边界 / 无 key fail-closed 零网络 / 空结果确定性成功 / 429-4xx-5xx-传输中断四格终态矩阵 / 凭据只进 header / 幂等重放 + 同 id 异请求冲突）；7-12 打 benchmark 运行时（三组真跑并复现报告数字 / 唯一变量是执法 off==on / 硬停止调用数 / 硬停止 wall clock / 软停止超时且无 FAILED / run receipt 与 A4 receipt 分离 + 冻结资产 fail-closed）。
 - [x] `user-scenario.py` 端到端固定字段场景：24 题 × 3 条件 = 72 格，逐格打印全部字段（含 `unsupported_claims` / `validation_verdict` / `calls`），三组汇总与 `mechanism_metrics` 与 committed `evidence/benchmark-report.json` 逐位一致（bare hall=1.000000 / off 与 on 草稿级 hall=0.145833、bind=0.881944 / on accepted_hall=0.000000 / `mechanism_safety_score=100.0` / 144 calls）。
 - [x] 场景 harness 复跑方式（cwd = 本 worktree，用其 venv）：`.venv/Scripts/python.exe F:/AutoResearch/.workbuddy/a5-scenarios/scenario.py <1-12>` 与 `.venv/Scripts/python.exe F:/AutoResearch/.workbuddy/a5-scenarios/user-scenario.py`。**用户侧独立复跑才构成验收证据**；AI 侧运行仅记为 provenance。
-- [x] **用户侧独立复跑（2026-09-11 15:5x，member A 机器上的同一 worktree）**：聚焦 99 passed / 全量 245 passed / 覆盖率 benchmark 98% + search_adapters 99% / `ruff check src tests` 通过 / `check.mjs` valid 18/18 / 12 场景全绿 / `user-scenario.py` 与 committed 报告逐位一致 / 离线重跑 status=completed / live 三源冒烟（openalex 3 格接受、arxiv 1 格接受、S2 零网络 fail-closed）/ 非法源名报可用源列表并退出 1。**全部与预期一致，无异常。**
+- [x] **用户侧独立复跑（rebase 前，2026-09-11 15:5x，member A 机器上的同一 worktree）**：聚焦 99 passed / 全量 245 passed / 覆盖率 benchmark 98% + search_adapters 99% / `ruff check src tests` 通过 / `check.mjs` valid 18/18 / 12 场景全绿 / `user-scenario.py` 与 committed 报告逐位一致 / 离线重跑 status=completed / live 三源冒烟（openalex 3 格接受、arxiv 1 格接受、S2 零网络 fail-closed）/ 非法源名报可用源列表并退出 1。**该条中的 245 是 rebase 前旧基线。**
+- [x] **用户侧最新全量复跑（2026-09-11，用户提供日志）**：使用项目 `.venv`、关闭 pytest addopts/cache 后，全量 `pytest tests` 结果为 **265 passed in 50.48s**。
 - [x] live 局限告警（D-A5-11）实测：`--live-retrieval` 的报告 `warnings[0]` 即「live retrieval cannot bind the frozen corpus…」，离线路径 `warnings` 仍为 `[]`。
 
 ## Handoff note
