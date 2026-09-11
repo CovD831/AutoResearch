@@ -3,7 +3,7 @@
 - ID: `S4-A2-EXPERIENCE-WIRING`
 - Title: `S4 失败经验自动沉淀接线（原 Owner O9 接线点①前移成员 A）`
 - Status: `handoff`
-- Status note: 2026-09-11 开工并完成实现。基线 `origin/main@66aba64`（**不是**本地 `main`，后者停在 `380bd49`）。已定案：事件消费钩子实现为**对已落地事件日志的只读消费**（产生侧在 B3/A3 独占路径上，A6 禁触），同因去重复用 A1/A2 `idempotency` 底座，自动沉淀写出的记录恒为 `E0` 且永不调用 `promote`。验收命令全绿（focused 22 / 全量 188 / 新模块覆盖率 100% / ruff / check.mjs valid），**未 push、未开 PR**（用户明令），等 owner 复核与 D-A6-01 裁决。
+- Status note: 2026-09-11 开工并完成实现。基线 `origin/main@66aba64`（**不是**本地 `main`，后者停在 `380bd49`）。已定案：事件消费钩子实现为**对已落地事件日志的只读消费**（产生侧在 B3/A3 独占路径上，A6 禁触），同因去重复用 A1/A2 `idempotency` 底座，自动沉淀写出的记录恒为 `E0` 且永不调用 `promote`。验收命令全绿（focused 22 / 全量 188 / 新模块覆盖率 100% / ruff / check.mjs valid）。**handoff 后复盘重读任务书，发现 D-A6-05**：规格「主要交付」第 2 条的「打 `failure` 标签」半句未落地（合法通道在 `forbidden_paths` 里，见 D-A6-05），故验收清单停在 `8/9`。该子句不产生可观测行为，所有命令数字不受影响。**未 push、未开 PR**（用户明令），等 owner 复核 D-A6-01 与裁决 D-A6-05。
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -23,6 +23,7 @@
 - [x] 静默降级：事件源不可用或单条 payload 畸形时返回诊断、不抛异常，主管线行为不变。
 - [x] 生产可达：`Application` 方法 + HTTP 端点 + CLI 子命令三条真实触发通路（避免「接线了但生产上永不触发」）。
 - [x] fixture 与离线测试：全部离线可重跑。
+- [ ] **失败经验的 `failure` 标签**（规格 `主要交付` 第 2 条原文的一半，**未落地**）：`ExperienceRecord` 无标签字段（`contracts.py`）、`WikiPage.tags` 由 `evolution_service.py` 在 `record()` 里硬编码为 `["experience", grade]`，两个文件都在本包 `forbidden_paths` → 本包**没有任何合法通道**在记录或镜像页上打 `failure` 标签。本包不擅自把标签塞进 `technique` / `outcome` 文本。**待 owner 裁决落点**（D-A6-05，三个候选见 `L3.md`）。此条不在规格的「验收」四条里，而在「主要交付」里——把它放上验收清单正是为了防止这类「不产生可观测行为的条款」在转述式清单里消失。
 
 ## Invariants
 
@@ -39,6 +40,7 @@
 - **D-A6-01（无推送钩子，改为只读消费事件日志）**：规格原文写「订阅 `audit_evidence.*` / fail-closed 拦截事件」。实测：`evidence.candidate_blocked` 的产生点在 `src/autoresearch/audit_evidence.py`（B3 独占 allowed path，属 B 线 evidence 路径），`audit.report_created` 的产生点在 `src/autoresearch/audit.py`（A3 独占）——**产生侧对 A6 是禁止触碰的**，故任何 `subscribe`/`callback` 式推送钩子都无法在不越界的情况下落地。且全仓确无订阅抽象（无 `subscribe/listener/publish/hook` 实现），只有 `RecordStore.events(project_id)` 这一读取口。因此「事件消费钩子」实现为**对已落地事件日志的只读拉取**：既满足「只读消费 / 不改审计链」，又使越界在机制上不可能。此为对规格措辞的偏离，**报 owner 裁决**。
 - **D-A6-02（复用 idempotency 底座做消费标记）**：重放安全不采用「新表 / 游标文件」方案，直接用 A1/A2 既有的 `RecordStore.remember_idempotent(scope, key, result)`（`INSERT OR IGNORE`，返回是否新插入）以 `event_id` 为 key 标记已消费。追加决定：**`recurrence_count` 是派生的，不是自增的** —— `1 + (同因的已消费标记数)`。理由：自增计数器在「写记录成功、写标记前崩溃」时会重复计数；派生使重跑自愈，且标记表不可读时降级为 1（下次健康 settle 自动纠正）。见 `_recurrence_count`。
 - **D-A6-03（自动沉淀永不触及晋级路径）**：写出的记录 `grade` 取 `ExperienceRecord` 默认值 `E0`；重复拦截只递增 `recurrence_count`，不回填 grade；`promoted` 字段在合并时**原样保留**（已晋级记录不被自动合并降级）。`evolution_service.py` 列入 `forbidden_paths`，使「不改 promote 语义」由 diff 机械可证，而非仅靠承诺。
+- **D-A6-05（`failure` 标签的落点不在本包可改范围，待裁决）**：规格要求把拦截类型模板化为 `ExperienceRecord` 时「打 `failure` 标签」。实测无合法通道：`ExperienceRecord`（`contracts.py:367-376`）没有标签字段；唯一标签通道 `WikiPage.tags` 由 `evolution_service.py:27-38` 的 `record()` **硬编码**为 `["experience", grade.value]`；两文件均在本包 `forbidden_paths`。**本包不擅自发明替代编码**。三个候选落点（改 schema 加 `tags` / 约定「technique ∈ FAILURE_TECHNIQUES 即失败」 / 判定标签不需要）请 owner 选一个，详见 `L3.md` 的 D-A6-05 详述。此条是 handoff 后复盘重读任务书时发现的，已在验收清单里落成一条**未勾选**项（`8/9`），不再让它藏在「已完成」的转述里。
 
 ## Completed
 
@@ -50,6 +52,7 @@
 ## Pending
 
 - 规格偏离 D-A6-01 待 owner 裁决。
+- **D-A6-05 待 owner 裁决**：`failure` 标签的落点（改 `contracts.py` / 约定 technique 集合 / 判定不需要）。裁决前验收清单停在 `8/9`。
 - registry 行 `S4-A2-EXPERIENCE-WIRING` 状态仍为 `ready`（`docs/rearchitecture/TASK-PACKAGE-REGISTRY.md` 为共享文档，本包未改，报 owner 回写）。
 - 用户侧独立复跑（数值 + 功能场景）未做 —— 本包只完成 AI 侧验收。
 - D-A6-02 的派生式 `recurrence_count` 是对「复现 ≥2」门槛基数的**语义选择**，owner 若要「事件计数与记录计数严格一致」，需复核 `_recurrence_count`。
@@ -73,4 +76,4 @@ owner 复核 D-A6-01 裁决 → 用户侧复跑验收命令与功能场景 → �
 
 ## Handoff note
 
-实现完成、已 commit 在 `codex/s4-a2-experience-wiring`，**未 push、未开 PR**。owner 需先裁决 D-A6-01（规格写「订阅」，本包按只读拉取落地），再看 D-A6-02 的派生计数是否符合对角色的定义。三个触发通路都已实测可达，不存在 O12 式「接线了但生产上永不触发」。详见 `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/HANDOFF.md`。
+实现完成、已 commit 在 `codex/s4-a2-experience-wiring`，**未 push、未开 PR**。owner 需先裁决 D-A6-01（规格写「订阅」，本包按只读拉取落地）与 **D-A6-05**（`failure` 标签无合法落点，三选一），再看 D-A6-02 的派生计数是否符合对角色的定义。三个触发通路都已实测可达，不存在 O12 式「接线了但生产上永不触发」。**验收清单为 `8/9`，未勾选那一条就是 `failure` 标签**——这是本包唯一的未完成项，也是 handoff 后复盘才发现的。详见 `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/HANDOFF.md`。

@@ -5,6 +5,8 @@
 - Branch: `codex/s4-a2-experience-wiring`
 - Base: `origin/main@66aba64` (the local `main` ref still sits at `380bd49` and was deliberately **not** touched)
 - Status: implemented and verified on the AI side, `handoff`; **not pushed, no PR opened** (per instruction)
+- Acceptance list: **`8/9`** — the unchecked item is the `failure` label (D-A6-05, found
+  after handoff; see the last section)
 - Worktree: `F:\AutoResearch\.worktrees\s4-a2-experience-wiring`, own venv (`.venv`, python 3.12.13)
 
 ## Delivered files
@@ -131,6 +133,18 @@ line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
   sharing the cause", not "number of times the record was written". Requested: confirm
   this is what the `>= 2` gate base should mean. If a strictly incremented counter is
   required instead, the write order and the crash behaviour both change.
+- **D-A6-05 (the `failure` label — found after handoff, unfixed)**: the spec's A6
+  `主要交付` item 2 requires the mapper to tag the record `failure`. It is not
+  implemented, and it cannot be implemented inside this package: `ExperienceRecord`
+  (`contracts.py:367-376`) has no tag field, and the only tag channel (`WikiPage.tags`)
+  is constructed by `ExperienceService.record` (`evolution_service.py:27-38`) with
+  `tags=["experience", grade.value]` hardcoded. Both files are in this package's
+  `forbidden_paths`. No substitute encoding was invented. Labels are not selectable on
+  the record or its mirrored page today. The ledger consequently reports `8/9`, not
+  `8/8`. Requested: pick (a) add `tags` to the shared schema and pass it through
+  `record()`, (b) accept "`technique in FAILURE_TECHNIQUES`" as the selector (the three
+  constants are already exported), or (c) declare the label unnecessary and drop that
+  half-sentence from the spec. See `L3.md` D-A6-05.
 - **Registry row**: `S4-A2-EXPERIENCE-WIRING` is still `ready` in
   `docs/rearchitecture/TASK-PACKAGE-REGISTRY.md`. That is a shared document and this
   package did not modify it.
@@ -139,6 +153,27 @@ line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
 
 ## Next owner action
 
-Adjudicate D-A6-01 (and confirm/deny D-A6-02), run the acceptance commands and the
-scenario harness in your own environment, then decide whether to push / open the PR.
-Next package: `S4-A3-KNOWLEDGE-VECTOR`.
+Adjudicate D-A6-01 (and confirm/deny D-A6-02) plus D-A6-05 (the `failure` label
+landing spot), run the acceptance commands and the scenario harness in your own
+environment, then decide whether to push / open the PR. Next package:
+`S4-A3-KNOWLEDGE-VECTOR`.
+
+## Late finding: how the `failure` label half-sentence escaped (process note)
+
+D-A6-05 was found by re-reading the task book line by line *after* handoff, not by any
+tool. The clause produces no observable behaviour: without it, all 22 tests, the 100%
+coverage, all three trigger paths and the scenario harness stay green. The package's
+acceptance list was a **paraphrase** of the spec written by me, so a clause with no
+behavioural footprint had nothing to attach to and was dropped silently — while every
+number the reviewer could check came back green, which is what made it look complete.
+
+The same failure mode produced a known instance in the A5 delivery shipped the same day
+(TASK-SPECS A5's costing note: the "receipt reserves the cost-field schema" half of the
+sentence, next to a half that says "missing pricing does not block acceptance"). Both
+dropped clauses are **obligations the package owes to another package**, not behaviour of
+the package itself; both sat next to a clause that scopes the risk away.
+
+Rule adopted for the next packages: before handoff, every numbered clause of the task
+book gets a row in a `条款原文 → 落地位置 → 验证证据` table, and any row without a
+landing spot becomes an **unchecked acceptance item** (as done here) or an explicit
+Decision — never a sentence inside a paraphrase.
