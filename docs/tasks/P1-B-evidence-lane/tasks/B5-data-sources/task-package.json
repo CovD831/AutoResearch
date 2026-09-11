@@ -1,0 +1,47 @@
+{
+  "task_id": "S3-B2-DATA-SOURCES",
+  "phase": "S3",
+  "owner_lane": "evidence/domain",
+  "status": "handoff",
+  "base_ref": "main@380bd49",
+  "branch": "codex/s3-b2-data-sources",
+  "depends_on": [
+    "S3-B-READER-WRITER-PORTS",
+    "S3-promotion"
+  ],
+  "allowed_paths": [
+    "src/autoresearch/external_sources.py",
+    "tests/test_external_sources.py",
+    "tests/fixtures/external_sources/",
+    "docs/tasks/P1-B-evidence-lane/tasks/B5-data-sources/",
+    ".ai-team/tasks/S3-B2-DATA-SOURCES.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/application.py",
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/config.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/capability.py",
+    "src/autoresearch/capability_registry.py",
+    "src/autoresearch/gates.py",
+    "src/autoresearch/cli.py",
+    "src/autoresearch/api.py",
+    "src/autoresearch/reader_service.py",
+    "src/autoresearch/writing_service.py",
+    "src/autoresearch/audit_evidence.py",
+    "src/autoresearch/audit.py",
+    "src/autoresearch/reader_writer_ports.py",
+    ".project-to-act/",
+    ".ai-team/TASK.md"
+  ],
+  "deliverables": [
+    "Crossref DOI verdict adapter (existence/metadata/correction/retraction)",
+    "Semantic Scholar / arXiv offline search adapter",
+    "docling-default + pymupdf4llm-fallback PDF parsing layer",
+    "candidate-only flow via EvidenceService.admit_candidate",
+    "resolver snapshot material for B3 verdict flow (no direct evidence write)",
+    "offline verdict matrix, rate-limit/timeout/partial-response matrix, E2E parse->candidate->admission",
+    "L3, PROGRESS, HANDOFF, and member ledger"
+  ],
+  "next_step": "owner review, commit, push, and pull request"
+}
