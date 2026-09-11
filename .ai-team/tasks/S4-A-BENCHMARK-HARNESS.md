@@ -2,7 +2,7 @@
 
 - ID: `S4-A-BENCHMARK-HARNESS`
 - Title: `S4 benchmark runtime and real retrieval adapter`
-- Status: `in_progress`
+- Status: `active`
 - Status note: 检索 adapter 切片已完成（S2 + arXiv + OpenAlex，全部经 A4 registry 注册，39 focused / 185 full passed）；benchmark 运行时切片未开工。未 commit/push/PR。
 - Owner: `member A`
 - Next owner: `user/team`
