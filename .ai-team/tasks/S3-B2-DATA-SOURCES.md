@@ -2,10 +2,10 @@
 
 - ID: `S3-B2-DATA-SOURCES`
 - Title: `Real Crossref verification, PDF parsing, and gold-set metrics`
-- Status: `reviewing`
+- Status: `integrated`
 - Owner: `member B`
 - Next owner: `user/team`
-- Status note: 成员交付 → owner 深度审查发现阻断级缺陷（撤稿判据方向反转）→ owner 代修于 `owner/s3-b2-integration`，待 re-verify 与合并。
+- Status note: 成员交付 PR #16 → owner 深审发现阻断级缺陷（撤稿判据方向反转）→ owner 代修 PR #17 合入 main（`7fdfb89`，2026-09-11）→ 独立对抗审查复核通过。docling 解析路径未验证（两 parser 均未安装），不计入验收。
 
 ## Goal
 
@@ -74,4 +74,4 @@ Owner re-verify scope diff → merge `owner/s3-b2-integration` → 回写 regist
 
 - From: `member B`（原始交付）
 - To: `user/team`
-- Summary: B5 交付真实 Crossref 核验 + docling-first 解析 + ScholarQABench 三指标 + candidate-only 回流。**owner 深度审查发现阻断级缺陷（撤稿方向反转），已代修**：判据改 `updated-by[]`、fixture 重建、指标口径分离、解析层留因去假 locator，并同步修订任务包与 ADR 原表述。回滚仅移除 B5 allowed paths 内文件；owner 代修的回滚点为 `1eec625`。
+- Summary: **已合入 main（PR #17，`7fdfb89`）**。B5 交付真实 Crossref 核验 + docling-first 解析 + ScholarQABench 三指标 + candidate-only 回流。**owner 深度审查发现阻断级缺陷（撤稿方向反转），已代修**：判据改 `updated-by[]`、fixture 重建、指标口径分离、解析层留因去假 locator，并同步修订任务包与 ADR 原表述。回滚仅移除 B5 allowed paths 内文件；owner 代修的回滚点为 `1eec625`。

@@ -36,12 +36,14 @@
 
 1. ~~A4/B4 交付 + owner 深审 + O7 gate~~ 已完成：S3 promotion 通过，S3-A/S3-B accepted（2026-09-10，base main@36ddbab）。
 2. O12 ProviderLane（Owner 亲自实现，speculative 段已开工）09-11 交付；A5 消费其计价（receipt 成本字段已预留）。
-3. 09-11 A5 + B5 交付即审（前置 S3 promotion 已满足）；09-12 B6 试点 + O5 空窗；09-13 B7 稿件 + O4 收官 MVP-CLOSED。
+3. 09-11 **B5 已交付并合入**（PR #17 `7fdfb89`：owner 深审发现阻断缺陷 + 代修 + 独立对抗复核）；A5 待交付、A6 待排期；09-12 B6 试点 + O5 空窗；09-13 B7 稿件 + O4 收官 MVP-CLOSED。
 4. MVP 收口后，再用真实 idea、语料和实验资源建立 gold set 与真实论文试点。
 
 ## 进度历史
 
 按时间倒序追加：日期、完成事项、证据 ID、遗留问题、下一步和确认来源。不要覆盖旧记录。
+
+- 2026-09-11｜B5 真实数据源与解析层：深审 + owner 代修 + 独立对抗复核（owner 主线任务）：成员 PR #16 深审发现**阻断级缺陷**——撤稿判据读 Crossref `update-to[]`（语义为「本文更新了谁」）方向反转，**被撤稿论文判 `found`、撤稿声明判 `retracted`**（真实 API 复核确认）；根因在任务包本身（`TASK-SPECS` B5:50 与 ADR-01 槽位 7 同错）。owner 代修 PR #17 合入 `7fdfb89`：判据改读 `updated-by[]`、fixture 依真实 payload 重录并区分两个 Lancet DOI、`hallucination_ratio` 只计 `not_found`（新增 `undetermined_ratio`）、`citation_recall`/`citation_precision` 去恒等、解析层按后端记因 + 去假 locator 改 fail-closed、规格与 ADR 就地修订 + 勘误。**独立对抗审查**（不知情子代理）复核代修，另发现 `resolver_record()` 把 404 DOI 投影成 `current` 的 fail-open（成员原版即有、owner 两轮自查漏报）并修复。聚焦 20 / 全量 166 passed。证据：`reviews/PR16-B5-deep-review.md`、`reviews/PR16-B5-fix-review.md`。遗留：docling 解析路径未验证（两 parser 均未安装）。
 
 - 2026-09-10｜S3 双线审查、集成与 O7 promotion（owner 主线任务）：A4 Capability Registry（PR #12，成员 A，R-1~R-6 self-review 后零集成修复）owner 深审通过合入 `f620915`（D-S3-01 三裁决：D-1 采纳回写 L2、D-4 双 receipt 保留+bridge 映射、D-7 确认单点准入判据）；B4 Reader/Writer Ports（PR #13，成员 B）深审后 owner 代修集成 PR #14 合入 `7b88e30`（rebase 3 commit + 孤儿 map-key gate 检查 + 更名，D-SYNC-01 先例，146 passed）；O7 S3 promotion 四项核验通过（fresh：focused 39 / 全量 146 / ruff / check.mjs @main `36ddbab`）→ **S3-A/S3-B accepted、S3-A2（O12 实施中）/S4-A/S4-B/S4-A2 ready（S4-A3 仍 planned，依赖 A6）**｜遗留：O12 今晚领取（speculative 段已开工）、A5/B5 明日交付即审、S3 promotion 后 S3-A2/B5 前置全满足｜下一步：O12 ProviderLane 09-11 交付；A5/B5 交付即审；09-13 O4 收官 MVP-CLOSED｜确认来源：用户指令（「可以，合并吧」「我们代修吧」「现在开」）。
 
