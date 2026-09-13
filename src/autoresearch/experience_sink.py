@@ -59,6 +59,12 @@ TECHNIQUE_EVIDENCE_BLOCKED = "evidence_admission_blocked"
 TECHNIQUE_AUDIT_EVIDENCE_REMEDIATION = "audit_evidence_remediation"
 TECHNIQUE_AUDIT_UNKNOWN_RESOLUTION = "audit_unknown_resolution"
 
+# The interception->experience mapping tags every record it writes (TASK-SPECS
+# A6). It is the shared vocabulary for "this record is an archived failure":
+# B6 archives rejected / blind-reviewed-back drafts as failure experiences too,
+# so the word lives in the shared schema and both producers fill it in.
+FAILURE_TAG = "failure"
+
 # Frozen event-log contract for `audit_evidence.report_created` payloads
 # (producer enum `audit_evidence.AuditStatus`: pass / fail / unknown).
 _AUDIT_EVIDENCE_FAILURE_STATUSES = frozenset({"fail", "unknown"})
@@ -499,6 +505,7 @@ class ExperienceSink:
                 grade=EvidenceGrade.E0,
                 recurrence_count=max(1, recurrence),
                 evidence_ids=list(match.evidence_ids),
+                tags=[FAILURE_TAG],
                 promoted=False,
             )
         existing = ExperienceRecord.model_validate(raw)
@@ -511,6 +518,9 @@ class ExperienceSink:
                 "outcome": match.outcome,
                 "recurrence_count": max(existing.recurrence_count, recurrence),
                 "evidence_ids": sorted({*existing.evidence_ids, *match.evidence_ids}),
+                # union, not replace: a merge also heals a record written before
+                # the tag existed, and never drops a tag someone else added.
+                "tags": sorted({*existing.tags, FAILURE_TAG}),
             }
         )
 
@@ -529,6 +539,7 @@ def _replace(settlement: SinkSettlement, **changes: Any) -> SinkSettlement:
 
 
 __all__ = [
+    "FAILURE_TAG",
     "MAPPING_RULES",
     "SINK_SCOPE",
     "TECHNIQUE_AUDIT_EVIDENCE_REMEDIATION",

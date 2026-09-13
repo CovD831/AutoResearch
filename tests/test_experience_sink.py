@@ -23,6 +23,7 @@ from autoresearch.application import AutoResearchApplication
 from autoresearch.cli import app as cli_app
 from autoresearch.contracts import EvidenceGrade, ExperienceRecord
 from autoresearch.experience_sink import (
+    FAILURE_TAG,
     MAPPING_RULES,
     SINK_SCOPE,
     TECHNIQUE_AUDIT_EVIDENCE_REMEDIATION,
@@ -593,3 +594,81 @@ def test_record_failure_degrades_and_leaves_the_event_for_retry(runtime, project
     retried = runtime.settle_failure_experiences("demo")
     assert retried.recorded == MAPPED_RECORDINGS
     assert len(_experiences(runtime)) == UNIQUE_EXPERIENCES
+
+
+# ---------------------------------------------------------------------------
+# acceptance scenario 8 (cont.): the failure label (D-A6-05, option a)
+# ---------------------------------------------------------------------------
+
+
+def test_every_settled_record_and_mirror_page_carry_the_failure_tag(runtime, project):
+    """The label has to survive the round trip to the retrieval surface.
+
+    Asserting on the record alone would not prove anything: `ExperienceRecord`
+    ignores unknown fields, so a sink passing ``tags=`` to a schema without the
+    field still constructs an object and silently writes nothing. The assertion
+    that matters is on the mirrored WikiPage, because that is where a tag
+    changes `KnowledgeService._score`.
+    """
+
+    _seed(runtime)
+    runtime.settle_failure_experiences("demo")
+
+    records = _experiences(runtime)
+    assert len(records) == UNIQUE_EXPERIENCES
+    assert all(FAILURE_TAG in raw["tags"] for raw in records)
+
+    pages = runtime.store.list("wiki_page", project_id="demo", partition="experiences")
+    assert len(pages) == len(records)
+    for page in pages:
+        # the pre-existing tags survive; the failure label is appended
+        assert page["tags"][:2] == ["experience", EvidenceGrade.E0.value]
+        assert FAILURE_TAG in page["tags"]
+
+
+def test_merge_heals_a_record_written_before_the_tag_existed(runtime, project):
+    """A union, not a replace: pre-tag records gain the label on their next merge."""
+
+    _seed(runtime)
+    runtime.settle_failure_experiences("demo")
+    target = next(
+        raw
+        for raw in _experiences(runtime)
+        if raw["problem"] == "candidate lacks evidence classification: evidence_type, grade"
+    )
+    legacy = target | {"tags": [], "recurrence_count": 1}
+    runtime.store.put(
+        "experience",
+        legacy["experience_id"],
+        legacy,
+        project_id="demo",
+        partition="experiences",
+    )
+    runtime.store.append_event(
+        "evidence.candidate_blocked",
+        {
+            "result_id": "evar_blocked_9",
+            "project_id": "demo",
+            "candidate_id": "evcand_alpha_9",
+            "status": "blocked",
+            "reasons": ["candidate lacks evidence classification: evidence_type, grade"],
+            "created_at": "2026-09-11T04:00:00+00:00",
+        },
+        project_id="demo",
+        actor="evidence_service",
+    )
+
+    settlement = runtime.settle_failure_experiences("demo")
+
+    assert settlement.recorded == 1
+    merged = ExperienceRecord.model_validate(
+        runtime.store.get("experience", target["experience_id"])
+    )
+    assert merged.tags == [FAILURE_TAG]
+    assert merged.recurrence_count == CLASSIFICATION_CAUSE_EVENTS + 1
+    # the healed record still stays below the four gates
+    assert merged.grade is EvidenceGrade.E0
+    assert merged.promoted is False
+
+    page = runtime.store.get("wiki_page", target["experience_id"])
+    assert FAILURE_TAG in page["tags"]
