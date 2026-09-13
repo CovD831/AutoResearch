@@ -31,7 +31,7 @@ class ExperienceService:
                 partition=KnowledgePartition.EXPERIENCES,
                 title=experience.problem,
                 body=f"Technique: {experience.technique}\nOutcome: {experience.outcome}",
-                tags=["experience", experience.grade.value],
+                tags=["experience", experience.grade.value, *experience.tags],
                 evidence_ids=experience.evidence_ids,
                 level=1 if not experience.promoted else 2,
             )

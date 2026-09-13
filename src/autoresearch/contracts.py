@@ -373,6 +373,7 @@ class ExperienceRecord(BaseModel):
     grade: EvidenceGrade = EvidenceGrade.E0
     recurrence_count: int = Field(default=1, ge=1)
     evidence_ids: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
     promoted: bool = False
 
 
