@@ -1,6 +1,6 @@
 # A6 Experience Wiring
 
-状态：`active`（2026-09-11 开工；基线 `origin/main@66aba64`）。完整目标、交付物、边界和验收见 `../../TASK-SPECS.md` 的 A6 节。
+状态：`handoff`（2026-09-12 已 rebase 到 `origin/main@1e7e196` 并完成实现与自动验证）。完整目标、交付物、边界和验收见 `../../TASK-SPECS.md` 的 A6 节。
 
 要点注记（实现前必读，均为已冻结条款或本包开工时确认的事实）：
 
@@ -10,4 +10,4 @@
 - **只写 experiences 分区**：全部写入经 `ExperienceService.record`（它自身只写 `KnowledgePartition.EXPERIENCES` 的 record 与 WikiPage 镜像），本包不直接调 `KnowledgeService.add_page`。
 - **降级方向**：拦截事件源不可用 / 单条 payload 畸形 → 不抛异常、不阻塞调用方，返回的诊断里可见；主管线行为不变。
 - **生产可达性**：本包必须给出真实触发通路（`Application` 方法 + HTTP 端点 + CLI 子命令），否则重演 O12 的「接线了但生产上永不触发」缺陷。
-- 基线口径：本包从 `origin/main@66aba64` 切出（非本地 `main`，后者停在 `380bd49`）。看本包真实改动用 `--base origin/main`；`--base main` 会把 B5 的提交一并计入。
+- 基线口径：本包当前基于 `origin/main@1e7e196`。看本包真实改动使用 `--base origin/main`。

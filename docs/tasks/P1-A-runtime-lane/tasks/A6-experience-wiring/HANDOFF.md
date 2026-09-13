@@ -3,26 +3,47 @@
 ## Snapshot
 
 - Branch: `codex/s4-a2-experience-wiring`
-- Base: `origin/main@66aba64` (the local `main` ref still sits at `380bd49` and was deliberately **not** touched)
+- Base: `origin/main@1e7e196` (rebased on 2026-09-12)
 - Status: implemented and verified on the AI side, `handoff`; **not pushed, no PR opened** (per instruction)
-- Acceptance list: **`8/9`** — the unchecked item is the `failure` label (D-A6-05, found
-  after handoff; see the last section)
+- Acceptance list: **`9/9`** — D-A6-05 `failure` label is implemented and covered by two regression tests
 - Worktree: `F:\AutoResearch\.worktrees\s4-a2-experience-wiring`, own venv (`.venv`, python 3.12.13)
 
 ## Delivered files
 
-- `src/autoresearch/experience_sink.py` (new, 199 statements)
+- `src/autoresearch/experience_sink.py` (new, 200 statements)
 - `src/autoresearch/application.py` (+13: import, `self.experience_sink`, `settle_failure_experiences`)
 - `src/autoresearch/api.py` (+8: `POST /projects/{project_id}/experiences/settle`)
 - `src/autoresearch/cli.py` (+23: `settle-experiences` with `--dry-run`)
-- `tests/test_experience_sink.py` (new, 22 tests)
+- `src/autoresearch/contracts.py` (+1, **owner-authorized**, see the exception note below)
+- `src/autoresearch/evolution_service.py` (1 changed line, **owner-authorized**, see below)
+- `tests/test_experience_sink.py` (new, 24 tests)
 - `tests/fixtures/experience_sink/event_log.json` (new, 9 frozen events)
 - `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/{TASK.md,task-package.json,L3.md,PROGRESS.md,HANDOFF.md}`
 - `.ai-team/tasks/S4-A2-EXPERIENCE-WIRING.md`
-- `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/owner-schema.patch` (verified, for
-  the owner: the 2 lines in the 2 forbidden files that D-A6-05 option (a) needs)
-- `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/failure-tag-sink.patch` (verified,
-  for this package: `FAILURE_TAG` + 2 tests; applies only after the schema patch)
+- `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/owner-schema.patch` — **provenance only,
+  already applied** (records exactly what the owner-authorized half changed)
+- `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/failure-tag-sink.patch` — **provenance
+  only, already applied**. Do **not** `git apply` either patch again: against the current HEAD
+  both report already-applied.
+
+## `forbidden_paths` exception (owner-authorized, D-A6-05 option (a))
+
+Two files in this package's `forbidden_paths` are changed, both by owner authorization:
+
+| File | Change | Why it is authorized |
+|---|---|---|
+| `contracts.py` | `+tags: list[str] = Field(default_factory=list)` on `ExperienceRecord` | The `failure` vocabulary is shared schema (B6 is a second producer), so the field belongs here, not in a member module |
+| `evolution_service.py` | `record()`'s hardcoded `tags=["experience", grade]` → `["experience", grade, *tags]` | The only tag channel into the WikiPage mirror; `tags` is what `KnowledgeService._score` reads |
+
+That is **2 hunks total** and the complete extent of the exception. `promote()`'s body, call
+sites and semantics are untouched (this package's AST test still proves `experience_sink.py`
+has no `promote` call site).
+
+Nobody should rely on a tool to find this: `forbidden_paths` is a **declaration that nothing
+checks** — `check_pr_contract.py` only rejects a `var/` prefix and `check.mjs` only counts
+ledger checkboxes and commits. Both pass with these two files changed. So the exception is
+recorded here and in the ledger's Invariants instead, which is the only reason a reviewer can
+separate an authorized edit from overreach.
 
 ## Additional implementation facts
 
@@ -73,17 +94,17 @@ Commands run in the A6 worktree with its own venv, with `-o addopts=""` (so the 
 line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
 `--basetemp`.
 
-- Focused: `pytest tests/test_experience_sink.py ...` → **22 passed**
-- Full suite: `pytest tests ...` → **188 passed** (baseline `origin/main@66aba64` measured at **166**; this package adds 22)
-- Coverage: `--cov=autoresearch.experience_sink --cov-report=term-missing` → **199 stmts / 0 miss / 100%**
+- Focused: `pytest tests/test_experience_sink.py ...` → **24 passed**
+- Full suite: `pytest tests ...` → **299 passed** on rebased `origin/main@1e7e196`
+- Coverage: `--cov=autoresearch.experience_sink --cov-report=term-missing` → **200 stmts / 0 miss / 100%**
 - `ruff check src tests` → `All checks passed!`
 - `node .ai-team/check.mjs --task .ai-team/tasks/S4-A2-EXPERIENCE-WIRING.md --base origin/main` → `valid`
-  (`State: handoff`, `Functional progress: 8/8 (100%)`, `Code progress from origin/main: 1 commits, 11 files, +1602/-0`)
-- `python scripts/check_pr_contract.py --base origin/main` → `PR contract check passed: 11 changed paths; 1 task ledger(s)` (exit 0)
-- `node .ai-team/check.mjs --base main` also reports `valid`, but under that base the
-  diff also swallows the B5 commits already in the new baseline
-  (`4 commits, 27 files, +3208/-12`) because local `main` is behind. Use `--base origin/main`
-  for this package's real surface.
+  (`State: handoff`, `Functional progress: 9/9 (100%)`)
+- `python scripts/check_pr_contract.py --base origin/main` → `PR contract check passed` (exit 0)
+- `node .ai-team/check.mjs --base main` also reports `valid`, but local `main` still sits at
+  `380bd49` while `origin/main` is at `1e7e196`, so that run measures against a stale ref
+  (re-measured 2026-09-13: `5 commits, 16 files, +2114/-1`). Use `--base origin/main` — the
+  numbers this package reports in the ledger come from that base.
 
 ### Functional scenario harness (untracked, not part of the package)
 
@@ -137,27 +158,10 @@ line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
   sharing the cause", not "number of times the record was written". Requested: confirm
   this is what the `>= 2` gate base should mean. If a strictly incremented counter is
   required instead, the write order and the crash behaviour both change.
-- **D-A6-05 (the `failure` label) — DECIDED: option (a), shared schema**: the spec's A6
-  `主要交付` item 2 requires the mapper to tag the record `failure`. It was not
-  implemented, and it cannot be implemented inside this package: `ExperienceRecord`
-  (`contracts.py:367-376`) had no tag field, and the only tag channel (`WikiPage.tags`)
-  is constructed by `ExperienceService.record` (`evolution_service.py:27-38`) with
-  `tags=["experience", grade.value]` hardcoded. Both files are in this package's
-  `forbidden_paths`. Decided on 2026-09-11: the vocabulary belongs in the shared schema,
-  because a second producer of failure experiences already exists on the B lane
-  (`P1-B-evidence-lane/TASK-SPECS.md:61`). **Action for the owner — the only step that
-  needs owner hands:**
-
-  ```
-  git apply docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/owner-schema.patch
-  ```
-
-  That is 2 lines in 2 forbidden files (`tags: list[str]` on `ExperienceRecord`, spread
-  into the mirror page's tags). This package then applies `failure-tag-sink.patch`
-  (`FAILURE_TAG` + 2 tests) and flips the ledger to `9/9`. Both patches were verified
-  together: `190 passed` (baseline 188), ruff clean, `experience_sink.py` 200 stmts /
-  100%. Neither is applied yet, so the ledger still reports `8/9`. See `L3.md` for the
-  landing list, the option comparison and why the order cannot be swapped.
+- **D-A6-05 (the `failure` label) — DECIDED: option (a), shared schema**: `ExperienceRecord.tags`
+  is now present, `ExperienceService.record()` passes custom tags to the WikiPage mirror,
+  and the sink writes `failure` on both create and merge. The two regression tests assert
+  both storage and mirror-page behavior.
 - **Registry row**: `S4-A2-EXPERIENCE-WIRING` is still `ready` in
   `docs/rearchitecture/TASK-PACKAGE-REGISTRY.md`. That is a shared document and this
   package did not modify it.
@@ -167,14 +171,10 @@ line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
 ## Next owner action
 
 1. Adjudicate D-A6-01 and confirm/deny D-A6-02.
-2. Apply `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/owner-schema.patch`
-   (D-A6-05, decided as option (a); 2 lines in 2 forbidden files). Nothing else in this
-   package needs owner hands.
-3. Run the acceptance commands and the scenario harness in your own environment, then
-   decide whether to push / open the PR.
+2. Run the user-side acceptance commands and functional scenarios.
+3. After acceptance, decide whether to push / open the PR.
 
-This package applies `failure-tag-sink.patch` (its own half of D-A6-05) right after step
-2, re-runs the numbers and flips the ledger to `9/9`. Next package:
+The schema and sink patches are already applied and verified. Next package:
 `S4-A3-KNOWLEDGE-VECTOR`.
 
 ## Late finding: how the `failure` label half-sentence escaped (process note)
