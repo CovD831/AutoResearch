@@ -101,10 +101,10 @@ line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
 - `node .ai-team/check.mjs --task .ai-team/tasks/S4-A2-EXPERIENCE-WIRING.md --base origin/main` → `valid`
   (`State: handoff`, `Functional progress: 9/9 (100%)`)
 - `python scripts/check_pr_contract.py --base origin/main` → `PR contract check passed` (exit 0)
-- `node .ai-team/check.mjs --base main` also reports `valid`, but local `main` still sits at
-  `380bd49` while `origin/main` is at `1e7e196`, so that run measures against a stale ref
-  (re-measured 2026-09-13: `5 commits, 16 files, +2114/-1`). Use `--base origin/main` — the
-  numbers this package reports in the ledger come from that base.
+- `node .ai-team/check.mjs --base main` reports the same numbers as `--base origin/main` at the
+  close-out commit, because the rebase also fast-forwarded local `main` to `origin/main@1e7e196`.
+  Both bases agree on `8 commits, 16 files, +2135/-1`. Keep using `--base origin/main` in CI,
+  where the local ref may still lag.
 
 ### Functional scenario harness (untracked, not part of the package)
 
