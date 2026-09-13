@@ -3,7 +3,7 @@
 - ID: `S4-A2-EXPERIENCE-WIRING`
 - Title: `S4 失败经验自动沉淀接线（原 Owner O9 接线点①前移成员 A）`
 - Status: `handoff`
-- Status note: 2026-09-12 已 rebase 到最新 `origin/main@1e7e196`，并按裁决顺序应用 `owner-schema.patch` 与 `failure-tag-sink.patch`（两份补丁均已提交，包内保留仅作来源凭证）。事件消费仍是对已落地事件日志的只读消费；同因去重复用 A1/A2 `idempotency` 底座；自动沉淀记录恒为 `E0` 且永不调用 `promote`。当前验证：A6 专项 24 passed、全量 299 passed、`experience_sink.py` 200/200（100%）、ruff 和任务检查通过；上述数字已由 member A 于 2026-09-13 独立复跑复核。验收清单为 `9/9`；D-A6-01/D-A6-02 仍保留为 owner 设计确认项。本包有 **1 处 owner 授权的 `forbidden_paths` 例外**（D-A6-05 (a) 的 schema 半，2 个文件 2 个 hunk，见 Invariants）。**尚未 push、未开 PR**，等待用户侧功能验收。
+- Status note: 2026-09-12 已 rebase 到最新 `origin/main@1e7e196`，并按裁决顺序应用 `owner-schema.patch` 与 `failure-tag-sink.patch`（两份补丁均已提交，包内保留仅作来源凭证）。事件消费仍是对已落地事件日志的只读消费；同因去重复用 A1/A2 `idempotency` 底座；自动沉淀记录恒为 `E0` 且永不调用 `promote`。2026-09-13 复核并修复两项边界缺陷：`recurrence_count` 按项目隔离；消费标记写入失败时降级并保留事件待重试。当前专项验证为 26 passed、全量验证为 301 passed。D-A6-01/D-A6-02 的实现选择已由用户确认采用，仍会在 PR 中向 owner 披露并由 owner 完成最终记录。本包有 **1 处 owner 授权的 `forbidden_paths` 例外**（D-A6-05 (a) 的 schema 半，2 个文件 2 个 hunk，见 Invariants）。**尚未 push、未开 PR**。
 - Owner: `member A`
 - Next owner: `user/team`
 
@@ -38,8 +38,8 @@
 
 ## Decisions
 
-- **D-A6-01（无推送钩子，改为只读消费事件日志）**：规格原文写「订阅 `audit_evidence.*` / fail-closed 拦截事件」。实测：`evidence.candidate_blocked` 的产生点在 `src/autoresearch/audit_evidence.py`（B3 独占 allowed path，属 B 线 evidence 路径），`audit.report_created` 的产生点在 `src/autoresearch/audit.py`（A3 独占）——**产生侧对 A6 是禁止触碰的**，故任何 `subscribe`/`callback` 式推送钩子都无法在不越界的情况下落地。且全仓确无订阅抽象（无 `subscribe/listener/publish/hook` 实现），只有 `RecordStore.events(project_id)` 这一读取口。因此「事件消费钩子」实现为**对已落地事件日志的只读拉取**：既满足「只读消费 / 不改审计链」，又使越界在机制上不可能。此为对规格措辞的偏离，**报 owner 裁决**。
-- **D-A6-02（复用 idempotency 底座做消费标记）**：重放安全不采用「新表 / 游标文件」方案，直接用 A1/A2 既有的 `RecordStore.remember_idempotent(scope, key, result)`（`INSERT OR IGNORE`，返回是否新插入）以 `event_id` 为 key 标记已消费。追加决定：**`recurrence_count` 是派生的，不是自增的** —— `1 + (同因的已消费标记数)`。理由：自增计数器在「写记录成功、写标记前崩溃」时会重复计数；派生使重跑自愈，且标记表不可读时降级为 1（下次健康 settle 自动纠正）。见 `_recurrence_count`。
+- **D-A6-01（无推送钩子，改为只读消费事件日志）**：规格原文写「订阅 `audit_evidence.*` / fail-closed 拦截事件」。实测：`evidence.candidate_blocked` 的产生点在 `src/autoresearch/audit_evidence.py`（B3 独占 allowed path，属 B 线 evidence 路径），`audit.report_created` 的产生点在 `src/autoresearch/audit.py`（A3 独占）——**产生侧对 A6 是禁止触碰的**，故任何 `subscribe`/`callback` 式推送钩子都无法在不越界的情况下落地。且全仓确无订阅抽象（无 `subscribe/listener/publish/hook` 实现），只有 `RecordStore.events(project_id)` 这一读取口。因此「事件消费钩子」实现为**对已落地事件日志的只读拉取**：既满足「只读消费 / 不改审计链」，又使越界在机制上不可能。用户已确认保留该实现；其与任务书“订阅”措辞的差异仍在 PR 中向 owner 披露。
+- **D-A6-02（复用 idempotency 底座做消费标记）**：重放安全不采用「新表 / 游标文件」方案，直接用 A1/A2 既有的 `RecordStore.remember_idempotent(scope, key, result)`（`INSERT OR IGNORE`，返回是否新插入）以 `event_id` 为 key 标记已消费。用户已确认 `recurrence_count` 继续采用派生值：`1 + (同项目同因的已消费标记数)`，而不是记录上的自增计数器。理由：自增计数器在「写记录成功、写标记前崩溃」时会重复计数；派生使重跑自愈。见 `_recurrence_count`。
 - **D-A6-03（自动沉淀永不触及晋级路径）**：写出的记录 `grade` 取 `ExperienceRecord` 默认值 `E0`；重复拦截只递增 `recurrence_count`，不回填 grade；`promoted` 字段在合并时**原样保留**（已晋级记录不被自动合并降级）。`evolution_service.py` 列入 `forbidden_paths`，使「不改 promote 语义」由 diff 机械可证，而非仅靠承诺。
 - **D-A6-05（`failure` 标签 = 共享 schema，已裁决 (a)）**：`ExperienceRecord.tags` 已加入共享 schema，`ExperienceService.record()` 已把自定义标签透传到 WikiPage，sink 已在新建和合并路径写入 `failure`。两条回归测试分别验证记录层字段和镜像页标签；该项现已完成。落地方式：两个 `forbidden` 文件（`contracts.py` / `evolution_service.py`）由 owner 授权修改，**随本包 PR 一起走**，并已在 Invariants 里显式登记为例外；若 owner 决定改走「自己单独提交 / 先落主线」的路线，本包只需 `git checkout -- src/autoresearch/contracts.py src/autoresearch/evolution_service.py` 并等主线带上该字段后 rebase（sink 半在没有字段时会红，这正是不能先合 sink 半的原因）。
 
@@ -54,23 +54,23 @@
 
 ## Pending
 
-- 规格偏离 D-A6-01 待 owner 裁决。
+- 规格偏离 D-A6-01 已按用户确认保留，待在 PR 中由 owner 最终记录。
 - D-A6-05 已裁决并完成，当前验收清单为 `9/9`。
 - registry 行 `S4-A2-EXPERIENCE-WIRING` 状态仍为 `ready`（`docs/rearchitecture/TASK-PACKAGE-REGISTRY.md` 为共享文档，本包未改，报 owner 回写）。
 - 用户侧独立复跑（数值 + 功能场景）未做 —— 本包只完成 AI 侧验收。
-- D-A6-02 的派生式 `recurrence_count` 是对「复现 ≥2」门槛基数的**语义选择**，owner 若要「事件计数与记录计数严格一致」，需复核 `_recurrence_count`。
+- D-A6-02 的派生式 `recurrence_count` 是对「复现 ≥2」门槛基数的**语义选择**，已按用户确认保留；PR 中向 owner 披露其与直接自增的差异。
 
 ## Next step
 
-用户侧复跑验收命令与功能场景 → owner 对 D-A6-01/D-A6-02 作最终裁决 → 通过后决定 push / 开 PR。下一包 `S4-A3-KNOWLEDGE-VECTOR`。
+用户侧复跑验收命令与功能场景 → 在 PR 中向 owner 记录 D-A6-01/D-A6-02 → 通过后决定 push / 开 PR。下一包 `S4-A3-KNOWLEDGE-VECTOR`。
 
 ## Verification
 
 命令均在 `F:\AutoResearch\.worktrees\s4-a2-experience-wiring` 下、以该 worktree 自己的 venv 执行；公共参数 `-o addopts="" -p no:cacheprovider`（前者让 summary 行可见，后者消 Windows `WinError 5`），并显式 `--basetemp="C:/Users/94461/AppData/Local/Temp/a4-verify-basetemp"`。
 
 - [x] Rebase：A6 分支已 rebase 到 `origin/main@1e7e196`。
-- [x] Focused：`pytest tests/test_experience_sink.py ...` → **24 passed**。
-- [x] 全量：`pytest tests ...` → **299 passed**。
+- [x] Focused：`pytest tests/test_experience_sink.py ...` → **26 passed**。
+- [x] 全量：`pytest tests ...` → **301 passed**。
 - [x] 覆盖率：`--cov=autoresearch.experience_sink --cov-report=term-missing` → **200 stmts / 0 miss / 100%**。
 - [x] `.venv/Scripts/python.exe -m ruff check src tests` → `All checks passed!`。
 - [x] `node .ai-team/check.mjs --task .ai-team/tasks/S4-A2-EXPERIENCE-WIRING.md --base origin/main` → `valid`。
@@ -78,9 +78,9 @@
 - [x] D-A6-05：两份补丁已应用，并通过标签专项测试、全量测试和覆盖率检查。
 - [x] **反向验证（补丁的守卫是真的）**：只应用 `failure-tag-sink.patch` 而不应用 `owner-schema.patch` 时，两条新测试**失败**（`AttributeError: 'ExperienceRecord' object has no attribute 'tags'`）——证明它们不是「跟着实现写绿的空断言」。这也是本包不能在 schema 落地前提交自己那半的原因。
 - [x] 功能场景 harness（未跟踪、不进 PR）：`F:\AutoResearch\.workbuddy\a6-scenarios\scenario.py`（12 场景）与 `user-scenario.py`（端到端业务场景）实跑，逐字段输出符合预期，0 异常。
-- [x] **收口复核（2026-09-13，member A 独立复跑，非引用自述数字）**：focused **24 passed**、`experience_sink.py` **200 stmts / 0 miss / 100%**、全量 **299 passed**、`ruff check src tests` → `All checks passed!`、`check.mjs --base origin/main` → `valid` + `Functional progress: 9/9 (100%)`、`check_pr_contract.py --base origin/main` → exit 0。另用 `git apply --check -R` 对两份补丁做**反向校验**，两者均通过 → 证明当前工作区内容确实等于「两份补丁已按序应用」，而不是手改出来的近似物。
+- [x] **收口复核（2026-09-13，member A 独立复跑，非引用自述数字）**：focused **26 passed**、`experience_sink.py` **200 stmts / 0 miss / 100%**、全量 **301 passed**、`ruff check src tests` → `All checks passed!`、`check.mjs --base origin/main` → `valid` + `Functional progress: 9/9 (100%)`、`check_pr_contract.py --base origin/main` → exit 0。另用 `git diff --check` 校验无空白错误。此次增加了跨项目计数隔离与消费标记写入失败降级回归测试。
 - [x] **补丁文件状态**：`owner-schema.patch` / `failure-tag-sink.patch` 已应用，保留在包内仅作**来源凭证**（记录 owner 授权的那一半具体是什么），**不要再 `git apply` 它们**（对当前 HEAD 会报 already applied）。
 
 ## Handoff note
 
-实现完成并已基于最新 `origin/main@1e7e196` 验证，**未 push、未开 PR**。三个触发通路、failure 标签和全部自动检查均已完成；当前只剩用户侧独立功能验收，以及 D-A6-01/D-A6-02 的最终设计确认。详见 `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/HANDOFF.md`。
+实现完成并已基于最新 `origin/main@1e7e196` 验证，**未 push、未开 PR**。三个触发通路、failure 标签、两项边界缺陷修复和全部自动检查均已完成；当前只剩用户侧独立功能验收，以及在 PR 中向 owner 记录 D-A6-01/D-A6-02。详见 `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/HANDOFF.md`。

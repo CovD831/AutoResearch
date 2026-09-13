@@ -16,7 +16,7 @@
 - `src/autoresearch/cli.py` (+23: `settle-experiences` with `--dry-run`)
 - `src/autoresearch/contracts.py` (+1, **owner-authorized**, see the exception note below)
 - `src/autoresearch/evolution_service.py` (1 changed line, **owner-authorized**, see below)
-- `tests/test_experience_sink.py` (new, 24 tests)
+- `tests/test_experience_sink.py` (new, 26 tests)
 - `tests/fixtures/experience_sink/event_log.json` (new, 9 frozen events)
 - `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/{TASK.md,task-package.json,L3.md,PROGRESS.md,HANDOFF.md}`
 - `.ai-team/tasks/S4-A2-EXPERIENCE-WIRING.md`
@@ -68,19 +68,23 @@ separate an authorized edit from overreach.
   `experience_sink`, keyed by `event_id` (`remember_idempotent` → `INSERT OR IGNORE`).
   No new table, no change to `storage.py`.
 - **`recurrence_count` is derived, not incremented**: `1 + (consumed markers sharing
-  the cause)`. The write order is "record first, marker second", so a crash between
+  the cause within the same project)`. The write order is "record first, marker second", so a crash between
   the two is self-healing — the retry recomputes the same count and rewrites the same
   record. If the marker table is unreadable the count degrades to 1 and the next
-  healthy settle corrects it. Registered as D-A6-02.
+  healthy settle corrects it. Registered as D-A6-02 and confirmed by the user for this package.
 - The sink stays below the four promotion gates: created records are always
   `grade=E0` / `promoted=False`; a merge only raises `recurrence_count` and unions
   `evidence_ids`, carrying the existing `grade` and `promoted` over untouched.
   `experience_sink.py` contains no `promote` call site — asserted at AST level, not by
   comment.
 - Degradation is total and non-fatal: unreadable event log, unreadable markers,
-  unreadable single payload, and rejected writes each turn into a diagnostic;
+  unreadable single payload, rejected experience writes, and rejected consumption-marker
+  writes each turn into a diagnostic;
   `settle` never raises. A rejected write deliberately does **not** consume the event,
   so the next settle retries it.
+- Recurrence markers are filtered by `project_id`; identical causes in two projects do
+  not contribute to one another's promotion base. A marker-write failure leaves the
+  deterministic experience record in place but leaves the event unconsumed for retry.
 - Payload reading is defensive: `_string_list` turns a field that changed type
   (bare string / dict / None) into an empty list instead of iterating characters, and a
   non-numeric `unknown_count` degrades to 0 (i.e. not a failure).
@@ -94,8 +98,9 @@ Commands run in the A6 worktree with its own venv, with `-o addopts=""` (so the 
 line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
 `--basetemp`.
 
-- Focused: `pytest tests/test_experience_sink.py ...` → **24 passed**
-- Full suite: `pytest tests ...` → **299 passed** on rebased `origin/main@1e7e196`
+- Focused: `pytest tests/test_experience_sink.py ...` → **26 passed**
+- Full suite: `pytest tests ...` → **301 passed** on rebased `origin/main@1e7e196` (after the
+  project-scope and marker-write regression fixes)
 - Coverage: `--cov=autoresearch.experience_sink --cov-report=term-missing` → **200 stmts / 0 miss / 100%**
 - `ruff check src tests` → `All checks passed!`
 - `node .ai-team/check.mjs --task .ai-team/tasks/S4-A2-EXPERIENCE-WIRING.md --base origin/main` → `valid`
@@ -149,15 +154,15 @@ line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
 
 ## Owner adjudication requests
 
-- **D-A6-01 (spec wording)**: the specification says the package should *subscribe* to
+- **D-A6-01 (spec wording, user-confirmed implementation choice)**: the specification says the package should *subscribe* to
   fail-closed interception events. Implemented as a read-only pull over the persisted
   log, because the producers sit on forbidden paths and no subscribe abstraction exists.
-  Requested: confirm the wording is rewordable, or open a hook point on the producer
-  side (which requires owner action, not this package).
-- **D-A6-02 (`recurrence_count` semantics)**: the count is "number of consumed events
-  sharing the cause", not "number of times the record was written". Requested: confirm
-  this is what the `>= 2` gate base should mean. If a strictly incremented counter is
-  required instead, the write order and the crash behaviour both change.
+  The user confirmed keeping this MVP choice; the PR must disclose the wording gap to
+  the owner. A future real subscription still requires an owner-provided producer hook.
+- **D-A6-02 (`recurrence_count` semantics, user-confirmed implementation choice)**: the
+  count is "number of consumed events sharing the cause within one project", not
+  "number of times the record was written". The user confirmed keeping this crash-safe
+  derived form; the PR must disclose the semantic difference to the owner.
 - **D-A6-05 (the `failure` label) — DECIDED: option (a), shared schema**: `ExperienceRecord.tags`
   is now present, `ExperienceService.record()` passes custom tags to the WikiPage mirror,
   and the sink writes `failure` on both create and merge. The two regression tests assert
@@ -170,7 +175,7 @@ line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
 
 ## Next owner action
 
-1. Adjudicate D-A6-01 and confirm/deny D-A6-02.
+1. Record the user-confirmed D-A6-01/D-A6-02 implementation choices in the PR review trail.
 2. Run the user-side acceptance commands and functional scenarios.
 3. After acceptance, decide whether to push / open the PR.
 

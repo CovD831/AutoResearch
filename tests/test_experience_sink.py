@@ -21,7 +21,7 @@ from typer.testing import CliRunner
 from autoresearch.api import create_api
 from autoresearch.application import AutoResearchApplication
 from autoresearch.cli import app as cli_app
-from autoresearch.contracts import EvidenceGrade, ExperienceRecord
+from autoresearch.contracts import EvidenceGrade, ExperienceRecord, ProjectCreate
 from autoresearch.experience_sink import (
     FAILURE_TAG,
     MAPPING_RULES,
@@ -253,6 +253,32 @@ def test_recurrence_is_derived_from_consumed_events_and_survives_a_fresh_applica
         if raw["problem"] == "candidate lacks evidence classification: evidence_type, grade"
     }
     assert after == before
+
+
+def test_recurrence_count_is_scoped_to_the_project(runtime, project):
+    event = next(
+        event
+        for event in _fixture()["events"]
+        if event["event_type"] == "evidence.candidate_blocked"
+    )
+    runtime.create_project(
+        ProjectCreate(project_id="other", title="Other", idea="Other project")
+    )
+    for project_id in ("demo", "other"):
+        runtime.store.append_event(
+            event["event_type"],
+            event["payload"],
+            project_id=project_id,
+            actor=event["actor"],
+        )
+
+    runtime.settle_failure_experiences("demo")
+    runtime.settle_failure_experiences("other")
+
+    for project_id in ("demo", "other"):
+        records = _experiences(runtime, project_id)
+        assert len(records) == 1
+        assert records[0]["recurrence_count"] == 1
 
 
 # ---------------------------------------------------------------------------
@@ -594,6 +620,39 @@ def test_record_failure_degrades_and_leaves_the_event_for_retry(runtime, project
     retried = runtime.settle_failure_experiences("demo")
     assert retried.recorded == MAPPED_RECORDINGS
     assert len(_experiences(runtime)) == UNIQUE_EXPERIENCES
+
+
+def test_consumption_marker_write_failure_degrades_and_leaves_event_for_retry(
+    runtime, project, monkeypatch
+):
+    event = next(
+        event
+        for event in _fixture()["events"]
+        if event["event_type"] == "evidence.candidate_blocked"
+    )
+    runtime.store.append_event(
+        event["event_type"],
+        event["payload"],
+        project_id="demo",
+        actor=event["actor"],
+    )
+
+    def offline(*_args, **_kwargs):
+        raise RuntimeError("marker store offline")
+
+    monkeypatch.setattr(runtime.store, "remember_idempotent", offline)
+
+    settlement = runtime.settle_failure_experiences("demo")
+
+    assert settlement.degraded is True
+    assert settlement.consumed == 0
+    assert settlement.recorded == 0
+    assert len(_experiences(runtime)) == 1
+    assert any("could not mark event" in message for message in settlement.diagnostics)
+
+    monkeypatch.undo()
+    retried = runtime.settle_failure_experiences("demo")
+    assert (retried.consumed, retried.recorded) == (1, 1)
 
 
 # ---------------------------------------------------------------------------

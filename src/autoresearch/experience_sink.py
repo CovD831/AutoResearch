@@ -358,7 +358,14 @@ class ExperienceSink:
                     f"experience sink degraded: unreadable {event_type} payload "
                     f"{event_id} ({exc})"
                 )
-                self._consume(event_id, event_type, project_id, None)
+                try:
+                    self._consume(event_id, event_type, project_id, None)
+                except Exception as marker_exc:  # noqa: BLE001 - degradation is the contract
+                    diagnostics.append(
+                        "experience sink degraded: could not mark unreadable event "
+                        f"{event_id} as consumed ({marker_exc.__class__.__name__}: {marker_exc})"
+                    )
+                    continue
                 settlement = _replace(
                     settlement,
                     consumed=settlement.consumed + 1,
@@ -366,12 +373,19 @@ class ExperienceSink:
                 )
                 continue
             if match is None:
-                self._consume(event_id, event_type, project_id, None)
+                try:
+                    self._consume(event_id, event_type, project_id, None)
+                except Exception as marker_exc:  # noqa: BLE001 - degradation is the contract
+                    diagnostics.append(
+                        "experience sink degraded: could not mark event "
+                        f"{event_id} as consumed ({marker_exc.__class__.__name__}: {marker_exc})"
+                    )
+                    continue
                 settlement = _replace(settlement, consumed=settlement.consumed + 1)
                 continue
             recurrence_key = _recurrence_key(match.technique, match.problem)
             experience_id = _experience_id(project_id, recurrence_key)
-            recurrence = self._recurrence_count(recurrence_key) + 1
+            recurrence = self._recurrence_count(project_id, recurrence_key) + 1
             record = self._merge_records(
                 project_id=project_id,
                 experience_id=experience_id,
@@ -387,17 +401,24 @@ class ExperienceSink:
                     f"({exc.__class__.__name__}: {exc})"
                 )
                 continue
-            self._consume(
-                event_id,
-                event_type,
-                project_id,
-                {
-                    "recurrence_key": recurrence_key,
-                    "recurrence_count": recurrence,
-                    "technique": match.technique,
-                    "experience_id": experience_id,
-                },
-            )
+            try:
+                self._consume(
+                    event_id,
+                    event_type,
+                    project_id,
+                    {
+                        "recurrence_key": recurrence_key,
+                        "recurrence_count": recurrence,
+                        "technique": match.technique,
+                        "experience_id": experience_id,
+                    },
+                )
+            except Exception as marker_exc:  # noqa: BLE001 - degradation is the contract
+                diagnostics.append(
+                    "experience sink degraded: could not mark event "
+                    f"{event_id} as consumed ({marker_exc.__class__.__name__}: {marker_exc})"
+                )
+                continue
             if experience_id not in recordings:
                 recordings.append(experience_id)
             settlement = _replace(
@@ -447,8 +468,8 @@ class ExperienceSink:
             for entry in self.store.list_idempotent(SINK_SCOPE)
         }
 
-    def _recurrence_count(self, recurrence_key: str) -> int:
-        """Count consumed events sharing this cause.
+    def _recurrence_count(self, project_id: str, recurrence_key: str) -> int:
+        """Count consumed events in this project sharing this cause.
 
         Unreadable markers degrade to 0 (cause treated as a first occurrence)
         instead of aborting the settlement: the count is derived, so the next
@@ -465,6 +486,7 @@ class ExperienceSink:
             if (
                 isinstance(record, Mapping)
                 and record.get("mapped") is True
+                and record.get("project_id") == project_id
                 and record.get("recurrence_key") == recurrence_key
             ):
                 count += 1
