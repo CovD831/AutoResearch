@@ -3,7 +3,7 @@
 - ID: `S4-A4-MAINLINE-ADAPTER`
 - Title: `S4 mainline retrieval switches to the A5 real adapters`
 - Status: `active`
-- Status note: 执行 `D-A5-偏离-1` 选项 (a)。新文件 `src/autoresearch/adapter_search_service.py`（`AdapterBackedPaperSearchService`，满足 `PaperSearchServicePort`）；`_CandidateOnlyAdapter` 新增公开原语 `retrieve()`，限流计数下沉其中，`invoke()` 改为复用；`application.py` 装配切到新服务，`PaperSearchCapabilityAdapter` / `InvocationBoundedSearchPort`（A4 可靠边界）原样保留。基线 `main@04ce9a9` 实测 **509 passed / 2 skipped / 0 error**；本包后 **538 passed / 2 skipped / 0 error**（含两轮对抗审查后的修复判据测试）。ruff clean、compileall OK、`check.mjs` valid。判别力实测：装配未切场景下 **2 判据型 failed / 12 passed**。零回归（既有 509 条逐位不变）。
+- Status note: 执行 `D-A5-偏离-1` 选项 (a)。新文件 `src/autoresearch/adapter_search_service.py`（`AdapterBackedPaperSearchService`，满足 `PaperSearchServicePort`）；`_CandidateOnlyAdapter` 新增公开原语 `retrieve()`，限流计数下沉其中，`invoke()` 改为复用；`application.py` 装配切到新服务，`PaperSearchCapabilityAdapter` / `InvocationBoundedSearchPort`（A4 可靠边界）原样保留。基线 `main@04ce9a9` 实测 **509 passed / 2 skipped / 0 error**；本包后 **546 passed / 2 skipped / 0 error**（含两轮对抗审查及 A10 的修复判据测试）。ruff clean、compileall OK、`check.mjs` valid。判别力实测：装配未切场景下 **2 判据型 failed / 12 passed**。零回归（既有 509 条逐位不变）。
 - Owner: `user/team`
 - Next owner: `user/team`
 
@@ -52,7 +52,7 @@
 | 项 | 命令 | 结果 |
 |---|---|---|
 | 基线（`04ce9a9`，本 worktree 实测） | `pytest -q -o addopts="" -W error` | **509 passed / 2 skipped / 0 error** |
-| 本包全量 | 同上 | **538 passed / 2 skipped / 0 error** |
+| 本包全量 | 同上 | **546 passed / 2 skipped / 0 error** |
 | 聚焦 | `pytest tests/test_adapter_search_service.py` | 20 passed，**全离线** |
 | ruff | `ruff check src tests` | All checks passed |
 | compileall | `compileall -q src` | exit 0 |
