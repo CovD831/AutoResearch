@@ -14,36 +14,37 @@
 - `src/autoresearch/application.py` (+13: import, `self.experience_sink`, `settle_failure_experiences`)
 - `src/autoresearch/api.py` (+8: `POST /projects/{project_id}/experiences/settle`)
 - `src/autoresearch/cli.py` (+23: `settle-experiences` with `--dry-run`)
-- `src/autoresearch/contracts.py` (+1, **owner-authorized**, see the exception note below)
-- `src/autoresearch/evolution_service.py` (1 changed line, **owner-authorized**, see below)
+- `src/autoresearch/contracts.py` (+1; adds the schema field required by the `failure` label)
+- `src/autoresearch/evolution_service.py` (1 changed line; passes custom tags to the WikiPage mirror)
 - `tests/test_experience_sink.py` (new, 26 tests)
 - `tests/fixtures/experience_sink/event_log.json` (new, 9 frozen events)
 - `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/{TASK.md,task-package.json,L3.md,PROGRESS.md,HANDOFF.md}`
 - `.ai-team/tasks/S4-A2-EXPERIENCE-WIRING.md`
-- `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/owner-schema.patch` — **provenance only,
-  already applied** (records exactly what the owner-authorized half changed)
+- `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/experience-schema.patch` — **provenance only,
+  already applied** (records exactly what the schema half changed)
 - `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/failure-tag-sink.patch` — **provenance
   only, already applied**. Do **not** `git apply` either patch again: against the current HEAD
   both report already-applied.
 
-## `forbidden_paths` exception (owner-authorized, D-A6-05 option (a))
+## `forbidden_paths` boundary note
 
-Two files in this package's `forbidden_paths` are changed, both by owner authorization:
+Two files in this package's `forbidden_paths` are changed because the task requires an explicit
+`failure` label on failure experiences. No prior owner authorization was obtained; the PR explains
+the reason for these changes and asks the owner to review them:
 
-| File | Change | Why it is authorized |
+| File | Change | Why it is needed |
 |---|---|---|
 | `contracts.py` | `+tags: list[str] = Field(default_factory=list)` on `ExperienceRecord` | The `failure` vocabulary is shared schema (B6 is a second producer), so the field belongs here, not in a member module |
 | `evolution_service.py` | `record()`'s hardcoded `tags=["experience", grade]` → `["experience", grade, *tags]` | The only tag channel into the WikiPage mirror; `tags` is what `KnowledgeService._score` reads |
 
-That is **2 hunks total** and the complete extent of the exception. `promote()`'s body, call
+That is **2 hunks total** and the complete extent of this boundary change. `promote()`'s body, call
 sites and semantics are untouched (this package's AST test still proves `experience_sink.py`
 has no `promote` call site).
 
 Nobody should rely on a tool to find this: `forbidden_paths` is a **declaration that nothing
 checks** — `check_pr_contract.py` only rejects a `var/` prefix and `check.mjs` only counts
-ledger checkboxes and commits. Both pass with these two files changed. So the exception is
-recorded here and in the ledger's Invariants instead, which is the only reason a reviewer can
-separate an authorized edit from overreach.
+ledger checkboxes and commits. Both pass with these two files changed. The boundary change is
+therefore recorded here and in the ledger's Invariants, with its reason and review request.
 
 ## Additional implementation facts
 
@@ -71,7 +72,8 @@ separate an authorized edit from overreach.
   the cause within the same project)`. The write order is "record first, marker second", so a crash between
   the two is self-healing — the retry recomputes the same count and rewrites the same
   record. If the marker table is unreadable the count degrades to 1 and the next
-  healthy settle corrects it. Registered as D-A6-02 and confirmed by the user for this package.
+  healthy settle corrects it. Registered as D-A6-02; the implementation difference is listed
+  for owner review in the PR.
 - The sink stays below the four promotion gates: created records are always
   `grade=E0` / `promoted=False`; a merge only raises `recurrence_count` and unions
   `evidence_ids`, carrying the existing `grade` and `promoted` over untouched.
@@ -155,16 +157,16 @@ line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
 
 ## Owner adjudication requests
 
-- **D-A6-01 (spec wording, user-confirmed implementation choice)**: the specification says the package should *subscribe* to
+- **D-A6-01 (spec wording, implementation difference for owner review)**: the specification says the package should *subscribe* to
   fail-closed interception events. Implemented as a read-only pull over the persisted
   log, because the producers sit on forbidden paths and no subscribe abstraction exists.
-  The user confirmed keeping this MVP choice; the PR must disclose the wording gap to
-  the owner. A future real subscription still requires an owner-provided producer hook.
-- **D-A6-02 (`recurrence_count` semantics, user-confirmed implementation choice)**: the
+  The PR must disclose this wording gap to the owner and request review. A future real
+  subscription still requires an owner-provided producer hook.
+- **D-A6-02 (`recurrence_count` semantics, implementation difference for owner review)**: the
   count is "number of consumed events sharing the cause within one project", not
-  "number of times the record was written". The user confirmed keeping this crash-safe
-  derived form; the PR must disclose the semantic difference to the owner.
-- **D-A6-05 (the `failure` label) — DECIDED: option (a), shared schema**: `ExperienceRecord.tags`
+  "number of times the record was written". The PR must disclose this crash-safe derived form
+  and its semantic difference to the owner.
+- **D-A6-05 (the `failure` label)**: `ExperienceRecord.tags`
   is now present, `ExperienceService.record()` passes custom tags to the WikiPage mirror,
   and the sink writes `failure` on both create and merge. The two regression tests assert
   both storage and mirror-page behavior.
@@ -176,8 +178,8 @@ line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
 
 ## Next owner action
 
-1. Record the user-confirmed D-A6-01/D-A6-02 implementation choices in the PR review trail.
-2. Review the recorded verification evidence and the owner-authorized path exception.
+1. Record and review the D-A6-01/D-A6-02 implementation differences in the PR review trail.
+2. Review the recorded verification evidence and the two `forbidden_paths` boundary changes.
 3. Merge or request changes through the normal PR review process.
 
 The schema and sink patches are already applied and verified. Next package:
