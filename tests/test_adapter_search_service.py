@@ -1081,3 +1081,109 @@ def test_a_run_without_warnings_reports_an_empty_list(runtime, project):
     )
 
     assert record["warnings"] == []
+
+
+# --------------------------------------------------------------------------- #
+# 12. The warning must be surfaced, not only stored
+# --------------------------------------------------------------------------- #
+
+
+def test_cli_status_surfaces_warnings_on_stderr(runtime, project, monkeypatch):
+    """A non-blocking warning reads as a successful run, so it must be shown.
+
+    stdout stays a parseable JSON document; the human-readable notice goes to
+    stderr.
+    """
+
+    from typer.testing import CliRunner
+
+    from autoresearch import cli as cli_module
+
+    monkeypatch.setattr(cli_module, "AutoResearchApplication", lambda: runtime)
+    runtime._save_run(
+        {
+            "run_id": "run-with-warning",
+            "project_id": "demo",
+            "run_status": "pending",
+            "lifecycle_state": "literature_searched",
+            "warnings": ["Retrieval was incomplete: at least one source failed to answer."],
+        }
+    )
+
+    result = CliRunner().invoke(cli_module.app, ["status", "run-with-warning"])
+
+    assert result.exit_code == 0
+    # Assert on stderr alone. An earlier version of this assertion also accepted
+    # the string appearing in stdout, which made it vacuously true: the JSON
+    # document carries the same sentence as the warning value. Deleting the CLI
+    # notice left this test green -- the classic tautological assertion.
+    assert "warning: Retrieval was incomplete" in result.stderr
+    assert '"warnings"' in result.stdout, "the JSON document must still carry the field"
+
+
+def test_cli_status_is_quiet_when_there_are_no_warnings(runtime, project, monkeypatch):
+    from typer.testing import CliRunner
+
+    from autoresearch import cli as cli_module
+
+    monkeypatch.setattr(cli_module, "AutoResearchApplication", lambda: runtime)
+    runtime._save_run(
+        {
+            "run_id": "run-quiet",
+            "project_id": "demo",
+            "run_status": "pending",
+            "lifecycle_state": "literature_searched",
+        }
+    )
+
+    result = CliRunner().invoke(cli_module.app, ["status", "run-quiet"])
+
+    assert result.exit_code == 0
+    assert "warning:" not in result.stderr
+    assert "warning:" not in result.stdout
+
+
+def test_warning_survives_the_full_production_graph(runtime, project):
+    """The single-node subgraph is not the production graph.
+
+    ``application.py`` builds an 8-node graph, and a warning only reaches the end
+    if every downstream agent preserves the key. That invariant was previously
+    untested: the earlier test used ``single_node_subgraph``, so a downstream
+    agent that rebuilt its state dict would drop the warning with the suite green.
+    """
+
+    from autoresearch.contracts import PaperRecord, RunRequest
+    from autoresearch.search_service import SearchOutcome
+
+    class InjectedPartialFailure:
+        """One source failed; a secondary one still returned a paper."""
+
+        def search(self, project_id, queries, *, seed_papers=None, per_connector_limit=5):
+            return SearchOutcome(
+                papers=[
+                    PaperRecord(
+                        project_id=project_id,
+                        title="From secondary",
+                        abstract="Body text about evidence gates and provenance.",
+                        source="openalex",
+                        source_record_id="s1",
+                    )
+                ],
+                diagnostics=["semantic_scholar failed"],
+                provider_failure=True,
+            )
+
+        def build_request(self, *_args, **_kwargs):
+            return runtime.search_port.build_request(
+                "demo", "q", limit=5, seed_papers=None
+            )
+
+    original = runtime.paper_search_agent.search
+    runtime.paper_search_agent.search = InjectedPartialFailure()
+    try:
+        record = runtime.run(RunRequest(project_id="demo", idea="test idea"))
+    finally:
+        runtime.paper_search_agent.search = original
+
+    assert record["warnings"], "the incomplete retrieval must reach the run record"
+    assert any("incomplete" in w.lower() for w in record["warnings"])
