@@ -181,6 +181,28 @@ CLI 测试第一版写的是 `"..." in result.stderr or "..." in result.output` 
 
 **注意：这个空断言是我在本轮犯的，不在任何审查者的清单里。** 说明假绿风险对"新写的测试"是持续存在的，不只在历史代码里。
 
+## 第六轮独立审查 —— 通过，建议合并
+
+审查 `4edaeee`（含此前的 8 节点图测试）。结论：**两条新测试的判别力经独立验证为真**（移除对应代码即失败）——这是本项目第一次由独立审查确认"判别力不是自证"。
+
+它留下的项与我的处置：
+
+| 审查项 | 处置 |
+|---|---|
+| 运行投影（`sync_run_projection`）不读 `warnings` | **已修**：投影里 `blockers` 有而 `warnings` 没有，属不对称；已补齐 + 判据测试 |
+| `test_the_agent_branches_on_the_flag_not_on_the_wording` 仍是旧绕图测试（低） | **未改**：保留它作为 agent 层单元测试，其数据准确性由穿图测试承接。**已知冗余，如实记录。** |
+
+### 本轮补的两条不变量测试（比修 bug 更有价值）
+
+1. **`test_the_warning_never_disappears_between_nodes`**：用 `graph.stream` **逐节点**断言"warnings 一旦出现就不得在后续节点消失"。它**不依赖具体节点名**，因此自动适应图的演进。
+   **背景**：实测发现四个下游 agent（orchestrator / paper_reader / reviewer / writer）**无一显式保留 `warnings`**，全靠 `model_copy` 的隐式语义。实测确认风险真实：
+   ```
+   model_copy 后          -> 保留 ✓
+   重建构造后              -> [] 静默丢失 ✗
+   ```
+   任何 agent 改成"显式重建"（一个看起来正常的重构）都会重新引入该缺陷。
+2. **`test_run_index_projection_carries_warnings`**：投影层也不得隐藏非阻断告警。
+
 ## Not closed
 
 - **N2**：`_status()` 用诊断关键词（`failed`/`disabled`/`error`…）推断 `UNKNOWN_OUTCOME`（`capability.py:76-81`）。实测当前对零命中不可达（该路径不回显 query），但**未加防回归测试** —— 下一个在零命中诊断里写含关键词文本的人会踩中。

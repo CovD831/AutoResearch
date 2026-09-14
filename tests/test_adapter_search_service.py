@@ -1187,3 +1187,105 @@ def test_warning_survives_the_full_production_graph(runtime, project):
 
     assert record["warnings"], "the incomplete retrieval must reach the run record"
     assert any("incomplete" in w.lower() for w in record["warnings"])
+
+
+def test_the_warning_never_disappears_between_nodes(runtime, project):
+    """A warning must not be dropped by an intermediate node.
+
+    The eight-node graph only preserves ``warnings`` because every agent keeps it
+    implicitly, via ``model_copy(update=...)``. None of them names the field, so a
+    refactor that rebuilds the state explicitly -- a normal-looking change --
+    would silently drop it again. This walks the graph node by node and asserts
+    the field survives from the moment it appears.
+    """
+
+    from autoresearch.contracts import PaperRecord, ResearchState
+    from autoresearch.search_service import SearchOutcome
+
+    class InjectedPartialFailure:
+        def search(self, project_id, queries, *, seed_papers=None, per_connector_limit=5):
+            return SearchOutcome(
+                papers=[
+                    PaperRecord(
+                        project_id=project_id,
+                        title="From secondary",
+                        abstract="Body text about evidence gates and provenance.",
+                        source="openalex",
+                        source_record_id="s1",
+                    )
+                ],
+                provider_failure=True,
+            )
+
+        def build_request(self, *_args, **_kwargs):
+            return runtime.search_port.build_request("demo", "q", limit=5, seed_papers=None)
+
+    original = runtime.paper_search_agent.search
+    runtime.paper_search_agent.search = InjectedPartialFailure()
+    try:
+        state = ResearchState(project_id="demo", idea="test idea")
+        trace: list[tuple[str, list[str]]] = []
+        for chunk in runtime.graph.stream(
+            state.model_dump(mode="json"),
+            config={"configurable": {"thread_id": "warning-trace"}},
+        ):
+            for node, update in chunk.items():
+                if isinstance(update, dict) and "warnings" in update:
+                    trace.append((node, list(update["warnings"])))
+    finally:
+        runtime.paper_search_agent.search = original
+
+    nodes_with_warning = [node for node, warnings in trace if warnings]
+    assert nodes_with_warning, "the injected partial failure never produced a warning"
+
+    # Once the warning appears it must be present in every later node that
+    # reports the key at all.
+    first = next(i for i, (_, w) in enumerate(trace) if w)
+    for node, warnings in trace[first:]:
+        assert warnings, f"node {node!r} dropped the warning it should have carried"
+
+
+def test_run_index_projection_carries_warnings(runtime, project):
+    """The run index is where runs are summarised; it must not hide them.
+
+    It already listed ``blockers``. Listing blocking problems while omitting the
+    non-blocking ones is exactly the asymmetry that made this defect survive.
+    """
+
+    import json
+
+    from autoresearch.contracts import PaperRecord, RunRequest
+    from autoresearch.search_service import SearchOutcome
+
+    class InjectedPartialFailure:
+        def search(self, project_id, queries, *, seed_papers=None, per_connector_limit=5):
+            return SearchOutcome(
+                papers=[
+                    PaperRecord(
+                        project_id=project_id,
+                        title="From secondary",
+                        abstract="Body text about evidence gates and provenance.",
+                        source="openalex",
+                        source_record_id="s1",
+                    )
+                ],
+                provider_failure=True,
+            )
+
+        def build_request(self, *_args, **_kwargs):
+            return runtime.search_port.build_request("demo", "q", limit=5, seed_papers=None)
+
+    original = runtime.paper_search_agent.search
+    runtime.paper_search_agent.search = InjectedPartialFailure()
+    try:
+        runtime.run(RunRequest(project_id="demo", idea="test idea"))
+    finally:
+        runtime.paper_search_agent.search = original
+
+    index_path = runtime.settings.projects_dir / "demo" / "state" / "RUN_INDEX.jsonl"
+    entries = [
+        json.loads(line) for line in index_path.read_text(encoding="utf-8").splitlines() if line
+    ]
+
+    assert entries, "the run index must have an entry"
+    assert entries[-1].get("warnings"), "the projection must not hide a non-blocking warning"

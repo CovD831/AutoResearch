@@ -126,6 +126,11 @@ class ProjectService:
             "manuscript_id": state.get("manuscript_id"),
             "gate_decision_ids": state.get("gate_decision_ids", []),
             "blockers": state.get("blockers", []),
+            # Carried next to ``blockers`` for symmetry: a run that finished with
+            # an incomplete retrieval is summarised here, and without this line
+            # the index would show the blocking problems but hide the
+            # non-blocking ones.
+            "warnings": state.get("warnings", []),
             "interrupts": [
                 {"type": item.get("type"), "risk_level": item.get("risk_level")}
                 for item in run_record.get("interrupts", [])
