@@ -42,6 +42,10 @@
 - **D-A6-02（复用 idempotency 底座做消费标记）**：重放安全不采用「新表 / 游标文件」做法，直接用 A1/A2 既有的 `RecordStore.remember_idempotent(scope, key, result)`（`INSERT OR IGNORE`，返回是否新插入）以 `event_id` 为 key 标记已消费。`recurrence_count` 继续采用派生值：`1 + (同项目同因的已消费标记数)`，而不是记录上的自增计数器。理由：自增计数器在「写记录成功、写标记前崩溃」时会重复计数；派生使重跑自愈。该实现差异将在 PR 中向负责人披露。见 `_recurrence_count`。
 - **D-A6-03（自动沉淀永不触及晋级路径）**：写出的记录 `grade` 取 `ExperienceRecord` 默认值 `E0`；重复拦截只递增 `recurrence_count`，不回填 grade；`promoted` 字段在合并时**原样保留**（已晋级记录不被自动合并降级）。`evolution_service.py` 列入 `forbidden_paths`，使「不改 promote 语义」由 diff 机械可证，而非仅靠承诺。
 - **D-A6-05（`failure` 标签）**：`ExperienceRecord.tags` 已加入共享 schema，`ExperienceService.record()` 已把自定义标签透传到 WikiPage，sink 已在新建和合并路径写入 `failure`。两条回归测试分别验证记录层字段和镜像页标签；该项现已完成。落地方式：实际修改了两个 `forbidden` 文件（`contracts.py` / `evolution_service.py`），因为任务书要求失败经验带有 `failure` 标签；本次没有预先取得负责人授权，PR 中说明修改原因并请负责人审阅。若负责人决定改走「自己单独提交 / 先落主线」的路线，本包只需 `git checkout -- src/autoresearch/contracts.py src/autoresearch/evolution_service.py` 并等主线带上该字段后 rebase（sink 半在没有字段时会红，这正是不能先合 sink 半的原因）。
+- **D-A6-06（owner 代修；标记表读不可用不得重置计数）**：`_recurrence_count` 原在 `list_idempotent` 抛异常时 `return 0`，于是 `settle` 里 `recurrence = 0 + 1 = 1` 对每个事件生效——**同一份 fixture，健康态 `max(count)=2`、达标记录 1 条；读不可用态 `max(count)=1`、达标记录 0 条**。`recurrence_count >= 2` 是四道 promotion gate 之一（D-A6-03），这条路径让它**静默永不通过**，而 `recorded` 与健康态完全相同，结算报告看起来一切正常。修法两层：① 读失败时回退到**已存记录自身的 `recurrence_count`**（`_stored_recurrence`），保持单调；② `settle` 内维护 `settled_in_run` 进程内累积器——因为「同因的第 2 个事件」在同一批里看不到第 1 个的标记（标记只在第 1 个结算后才存在），跨 store 读是不够的。既有测试 `test_unavailable_consumption_markers_degrade_instead_of_crashing` 只断言 `degraded`/`recorded`/diagnostic，**对计数零断言**——有覆盖无判据，已补 `test_degraded_marker_read_still_counts_recurrences` 等两条断言**结论**的测试。
+- **D-A6-07（owner 代修；先占位再写入）**：原顺序是**先 `record` 后 `_consume`**。`record` 成功而标记写失败时事件未消费，下次结算重跑 `record`：`store.put` 是 upsert 所以经验行仍是 1 条，**但 `record` 会追加一个 `knowledge.page_added` 审计事件，而那不是幂等的**——实测 `page_added` 从 6 变 **12**（精确翻倍）。改为**先 claim 再 record**：claim 失败则什么都没发生、干净重试；record 失败则用 `delete_idempotent` **释放 claim**（该方法的 docstring 正是为此场景而设——「能证明无外部副作用的调用方可以回收」），事件回到未消费。既有测试只投放**一条**事件，覆盖不到多事件部分失败，已补 `test_a_retry_after_a_partial_failure_does_not_duplicate_audit_events`。
+- **D-A6-08（owner 代修；读不懂的 payload 不得被消耗）**：`MalformedEventPayload` 分支原先是**先 `_consume` 再 `continue`**，于是坏 payload 的事件被永久标记为已消费，**它代表的失败永远不会沉淀**，也不再重试。这与 `record` 失败路径（`continue` 而不 consume，留给重试）**处置不一致**。sink 的全部职责就是归档失败，静默丢弃一个失败是最坏的降级，故改为**不 consume、只计入 `unreadable` 并留待重试**。既有测试 `test_malformed_payload_degrades_per_event_and_keeps_processing_the_rest` 把 fail-open 写成了期望（断言 `rerun.unreadable == 0`）——**测试名对、断言错**，已改为断言事件未被消耗且下次仍可见。
+- **D-A6-09（owner 代修；`-W error` 下零 error）**：`tests/test_experience_sink.py` 用 `with sqlite3.connect(...)` 读表，但 **`sqlite3.Connection` 的上下文管理器只管事务、不管关闭**——句柄活到 GC，`-W error` 把它变成 `PytestUnraisableExceptionWarning`，且报在**下一条**测试的 setup 上（`main` 基线 275 passed / 0 error，本 PR 变成 300 passed + **1 error**）。改为显式 `try/finally: connection.close()`。
 
 ## Completed
 
@@ -62,7 +66,15 @@
 
 ## Next step
 
-整理 PR 材料并在 PR 中向 owner 记录 D-A6-01/D-A6-02；PR 审核后由 owner 回写共享 registry。下一包 `S4-A3-KNOWLEDGE-VECTOR`。
+**owner 代修已完成（2026-09-14）**，请成员 A 复核 D-A6-06 / 07 / 08 / 09 四条是否彻底。
+
+**请优先攻击这三处**：
+
+1. **先 claim 再 record 的顺序**（D-A6-07）——这是本轮最大的行为变更。claim 成功而 record 失败时靠 `delete_idempotent` 释放；若你认为「释放」这个动作本身可能失败或留下中间态，请指出。
+2. **`_recurrence_count` 的两层修法**（D-A6-06）——回退到已存记录的 count + settle 内累积器。请检查：跨多次结算、跨进程、以及「记录被手工清理」这几种情形下计数是否仍然单调正确。
+3. **M2 改为不 consume 后，坏 payload 事件会在每次结算时重复出现**——这是刻意的（留待重试），但意味着 `unreadable` 会持续计数。若你认为需要退避或上限机制，请给出建议。
+
+PR 审核后由 owner 回写共享 registry。下一包 `S4-A3-KNOWLEDGE-VECTOR`。
 
 ## Verification
 
@@ -82,6 +94,20 @@
 - [x] **收口复核（2026-09-13，member A 独立复跑，非引用自述数字）**：focused **26 passed**、`experience_sink.py` **200 stmts / 0 miss / 100%**、全量 **301 passed**、`ruff check src tests` → `All checks passed!`、`check.mjs --base origin/main` → `valid` + `Functional progress: 9/9 (100%)`、`check_pr_contract.py --base origin/main` → exit 0。另用 `git diff --check` 校验无空白错误。此次增加了跨项目计数隔离与消费标记写入失败降级回归测试。
 - [x] **补丁文件状态**：schema / sink 补丁已应用，保留在包内仅作**来源凭证**（记录两部分具体修改内容），**不要再 `git apply` 它们**（对当前 HEAD 会报 already applied）。
 
+### owner 代修验证（2026-09-14，隔离 worktree `/tmp/pr20fix/wt`，基线 `5df98d1e`）
+
+- [x] 全量：`PYTHONPATH=src pytest -o addopts="" -W error -q` → **306 passed, 0 error**（修复前 **300 passed + 1 error**；`main@1e7e196` 基线为 275 passed / 0 error）。
+- [x] `ruff check src tests` → All checks passed；`compileall -q src` → exit 0。
+- [x] `check.mjs --base origin/main` → valid；`check_pr_contract.py --base origin/main` → passed（16 paths / 1 ledger）。
+- [x] **判别力实测**：改后的 `test_experience_sink.py` 放到**修复前的 `5df98d1e`** 上跑 → **5 failed / 26 passed**；修复后 **31 passed**。五个失败逐条对应：`test_degraded_marker_read_still_counts_recurrences`（H1）、`test_degraded_marker_read_counts_repeats_within_one_settlement`（H1）、`test_a_retry_after_a_partial_failure_does_not_duplicate_audit_events`（M1）、`test_malformed_payload_degrades_per_event_and_keeps_processing_the_rest`（M2）、`test_consumption_marker_write_failure_degrades_and_leaves_event_for_retry`（M1 顺序变更）。L1 不是断言失败而是 `-W error` 下的 error，已单独对照验证（`main` 0 error → 原 PR 1 error → 修复后 0 error）。
+- [x] **行为面实测（同一份 fixture 对照）**：
+  - H1：健康态 counts `[1,1,1,1,2]`、达标 1 条；读不可用态**同样 `[1,1,1,1,2]`**（修复前为 `[1,1,1,1,1]`、达标 0 条）。
+  - M1：`knowledge.page_added` 重试后 = **6**（修复前 **12**）；第三次结算 `consumed=0 recorded=0`、page_added 仍为 6。
+  - M2：损坏 payload 第 2 次结算 `unreadable=1`（修复前 `0`）、marker 数 **0**（未被消耗）。
+  - 回归：`record` 失败时 claim 被释放（markers=0），重试 `consumed=1 recorded=1`。
+
 ## Handoff note
 
-实现完成并已基于最新 `origin/main@1e7e196` 验证，**未 push、未开 PR**。三个触发通路、failure 标签、两项边界缺陷修复、自动检查和用户侧独立验收均已完成；当前只剩整理 PR，并在 PR 中向 owner 记录 D-A6-01/D-A6-02。详见 `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/HANDOFF.md`。
+- From: `user/team`
+- To: `member A`
+- Summary（2026-09-14 owner 代修后更新）: 你对 D-A6-01 / D-A6-02 / D-A6-05 的披露质量很高——**D-A6-01 与 D-A6-05 我审查后均认可，不需要改**（`failure` 标签放共享 schema 正确，我实测旧 schema 记录可正常反序列化、向后兼容无破坏）。深度审查共发现 1 高 / 2 中 / 1 低，已全部代修：**H1** 标记表读不可用致 `recurrence_count` 坍缩（同一 fixture 健康 `max=2` / 退化 `max=1`，`recurrence_count>=2` 门槛静默永不通过）、**M1** 先 record 后 claim 致重试时 `knowledge.page_added` 翻倍（6→12）、**M2** 损坏 payload 被消耗致失败永久丢弃（fail-open）、**L1** `with sqlite3.connect(...)` 不关连接致 `-W error` 下 1 error。全量 306 passed / 0 error；新测试在修复前基线上 5 条失败。**请优先攻击 Next step 里的三点**（claim/record 顺序、两层计数修法、坏 payload 重复出现）。以下为原始交付说明：实现完成并已基于最新 `origin/main@1e7e196` 验证，**未 push、未开 PR**。三个触发通路、failure 标签、两项边界缺陷修复、自动检查和用户侧独立验收均已完成；当前只剩整理 PR，并在 PR 中向 owner 记录 D-A6-01/D-A6-02。详见 `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/HANDOFF.md`。

@@ -342,6 +342,14 @@ class ExperienceSink:
         failure_events = [event for event in events if event["event_type"] in MAPPING_RULES]
         fresh = [event for event in failure_events if event["event_id"] not in consumed]
 
+        # Per-settlement accumulator: how many events this run has already
+        # settled for each cause. Needed because ``recurrence_count`` is derived
+        # from *consumed markers*, and a marker for event N only exists after
+        # event N is settled -- so a second event with the same cause inside one
+        # settlement must see the first one through this counter, not through the
+        # store. Without it the count is wrong whenever two same-cause events land
+        # in the same batch (D-A6-06).
+        settled_in_run: dict[str, int] = {}
         settlement = SinkSettlement(
             project_id=project_id,
             scanned_events=len(events),
@@ -354,23 +362,18 @@ class ExperienceSink:
             try:
                 match = self._match(event)
             except MalformedEventPayload as exc:
+                # A payload we cannot read is *not* a settlement. Leaving the
+                # event unconsumed keeps it for a retry -- the same treatment the
+                # write-failure path below gets. Consuming it here would drop the
+                # failure permanently: the sink's whole job is archiving failures,
+                # so silently discarding one is the worst possible degradation
+                # (D-A6-08). ``unreadable`` still counts it, so the operator sees
+                # that something was skipped rather than settled.
                 diagnostics.append(
                     f"experience sink degraded: unreadable {event_type} payload "
-                    f"{event_id} ({exc})"
+                    f"{event_id} left unconsumed for retry ({exc})"
                 )
-                try:
-                    self._consume(event_id, event_type, project_id, None)
-                except Exception as marker_exc:  # noqa: BLE001 - degradation is the contract
-                    diagnostics.append(
-                        "experience sink degraded: could not mark unreadable event "
-                        f"{event_id} as consumed ({marker_exc.__class__.__name__}: {marker_exc})"
-                    )
-                    continue
-                settlement = _replace(
-                    settlement,
-                    consumed=settlement.consumed + 1,
-                    unreadable=settlement.unreadable + 1,
-                )
+                settlement = _replace(settlement, unreadable=settlement.unreadable + 1)
                 continue
             if match is None:
                 try:
@@ -385,22 +388,23 @@ class ExperienceSink:
                 continue
             recurrence_key = _recurrence_key(match.technique, match.problem)
             experience_id = _experience_id(project_id, recurrence_key)
-            recurrence = self._recurrence_count(project_id, recurrence_key) + 1
-            record = self._merge_records(
-                project_id=project_id,
-                experience_id=experience_id,
-                match=match,
-                recurrence=recurrence,
-            )
-            try:
-                self.experiences.record(record)
-            except Exception as exc:  # noqa: BLE001 - degradation is the contract
-                diagnostics.append(
-                    "experience sink degraded: could not record experience "
-                    f"{experience_id} for {event_type} {event_id} "
-                    f"({exc.__class__.__name__}: {exc})"
+            recurrence = (
+                max(
+                    self._recurrence_count(project_id, recurrence_key),
+                    settled_in_run.get(recurrence_key, 0),
                 )
-                continue
+                + 1
+            )
+            # Order matters (D-A6-07): claim the event *before* recording it.
+            #
+            # Recording first and claiming after meant a claim-write failure left
+            # the event unconsumed *and* the record written, so the retry ran
+            # ``record`` a second time. ``store.put`` is an upsert so the
+            # experience row stayed single, but ``record`` also appends a
+            # ``knowledge.page_added`` audit event, and that is not idempotent --
+            # one failure produced two audit events where a healthy run produces
+            # one. Claiming first turns a failed claim into "nothing happened",
+            # which retries cleanly.
             try:
                 self._consume(
                     event_id,
@@ -415,10 +419,40 @@ class ExperienceSink:
                 )
             except Exception as marker_exc:  # noqa: BLE001 - degradation is the contract
                 diagnostics.append(
-                    "experience sink degraded: could not mark event "
-                    f"{event_id} as consumed ({marker_exc.__class__.__name__}: {marker_exc})"
+                    "experience sink degraded: could not claim event "
+                    f"{event_id} ({marker_exc.__class__.__name__}: {marker_exc})"
                 )
                 continue
+            record = self._merge_records(
+                project_id=project_id,
+                experience_id=experience_id,
+                match=match,
+                recurrence=recurrence,
+            )
+            try:
+                self.experiences.record(record)
+            except Exception as exc:  # noqa: BLE001 - degradation is the contract
+                # The claim has to go back: this event has no side effect yet, so
+                # releasing it lets the next settlement retry instead of losing
+                # the failure. ``delete_idempotent`` is the documented escape
+                # hatch for exactly this -- a record whose side effects provably
+                # did not happen.
+                try:
+                    self.store.delete_idempotent(SINK_SCOPE, event_id)
+                except Exception as release_exc:  # noqa: BLE001 - degradation is the contract
+                    diagnostics.append(
+                        "experience sink degraded: could not release claim on "
+                        f"{event_id} after a failed record "
+                        f"({release_exc.__class__.__name__}: {release_exc}); the "
+                        "event stays claimed and will not be retried"
+                    )
+                diagnostics.append(
+                    "experience sink degraded: could not record experience "
+                    f"{experience_id} for {event_type} {event_id} "
+                    f"({exc.__class__.__name__}: {exc})"
+                )
+                continue
+            settled_in_run[recurrence_key] = recurrence
             if experience_id not in recordings:
                 recordings.append(experience_id)
             settlement = _replace(
@@ -471,15 +505,31 @@ class ExperienceSink:
     def _recurrence_count(self, project_id: str, recurrence_key: str) -> int:
         """Count consumed events in this project sharing this cause.
 
-        Unreadable markers degrade to 0 (cause treated as a first occurrence)
-        instead of aborting the settlement: the count is derived, so the next
-        healthy settlement recomputes the true value.
+        Read from the durable consumption markers, falling back to the count
+        already stored on the experience record when the marker table cannot be
+        read.
+
+        **Why not ``return 0`` on failure.** A first version degraded to 0, which
+        made every record look like a first occurrence. Since ``settle`` computes
+        ``recurrence = count + 1`` and ``recurrence_count >= 2`` is one of the
+        four promotion gates (D-A6-03), an unreadable marker table silently held
+        that gate shut forever -- while ``recorded`` stayed identical to the
+        healthy run, so the settlement report looked normal. Measured on the same
+        fixture: healthy ``max(count) = 2`` with one record at the gate, degraded
+        ``max(count) = 1`` with none (D-A6-06).
+
+        The fallback is the stored record's own ``recurrence_count``, which is a
+        *lower bound* on the true value and is available precisely when the
+        markers are not: it was written by an earlier settlement. Using it keeps
+        the counter monotonic instead of resetting it, and ``_merge_records``
+        already takes ``max(existing, candidate)``, so a later healthy
+        settlement can still raise it to the true value.
         """
 
         try:
             entries = self.store.list_idempotent(SINK_SCOPE)
         except Exception:  # noqa: BLE001 - degradation is the contract
-            return 0
+            return self._stored_recurrence(project_id, recurrence_key)
         count = 0
         for entry in entries:
             record = entry.get("record")
@@ -491,6 +541,27 @@ class ExperienceSink:
             ):
                 count += 1
         return count
+
+    def _stored_recurrence(self, project_id: str, recurrence_key: str) -> int:
+        """Monotonic fallback when the consumption markers are unreadable.
+
+        Returns the ``recurrence_count`` already persisted on this cause's
+        experience record (0 when the record does not exist yet). This is the
+        value the last successful settlement wrote, so a degraded run continues
+        the sequence instead of restarting it.
+        """
+
+        experience_id = _experience_id(project_id, recurrence_key)
+        try:
+            raw = self.store.get("experience", experience_id)
+        except Exception:  # noqa: BLE001 - degradation is the contract
+            return 0
+        if raw is None:
+            return 0
+        try:
+            return max(0, int(ExperienceRecord.model_validate(raw).recurrence_count) - 1)
+        except Exception:  # noqa: BLE001 - degradation is the contract
+            return 0
 
     def _consume(
         self,
