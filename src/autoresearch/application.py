@@ -8,6 +8,7 @@ from typing import Any
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Command
 
+from autoresearch.adapter_search_service import AdapterBackedPaperSearchService
 from autoresearch.agents import (
     OrchestratorAgent,
     PaperReaderAgent,
@@ -58,7 +59,7 @@ from autoresearch.pipeline_contracts import (
 from autoresearch.profile_service import UserProfileService
 from autoresearch.project_service import ProjectService
 from autoresearch.reader_service import PaperReaderService
-from autoresearch.search_service import PaperSearchService, SearchOutcome
+from autoresearch.search_service import SearchOutcome
 from autoresearch.state_machine import StateMachine
 from autoresearch.storage import RecordStore
 from autoresearch.writing_service import WritingService
@@ -147,10 +148,11 @@ class AutoResearchApplication:
             self.settings.template_dir,
             self.store,
         )
-        self.search = PaperSearchService(
+        self.search = AdapterBackedPaperSearchService(
             self.store,
             self.evidence,
             self.knowledge,
+            settings=self.settings,
             network_enabled=self.settings.network_enabled,
         )
         self.search_capability = PaperSearchCapabilityAdapter(self.search, self.store)

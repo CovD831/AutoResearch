@@ -315,6 +315,26 @@ class _CandidateOnlyAdapter:
     def _fetch(self, request: SearchAdapterRequest) -> list[RetrievedPaper]:
         raise NotImplementedError
 
+    def retrieve(self, request: SearchAdapterRequest) -> list[RetrievedPaper]:
+        """Raw provider fetch, with limit accounting. Returns the material itself.
+
+        This is deliberately *not* the candidate-only contract boundary: ``invoke()``
+        must never surface a structured value (a ``CANDIDATE_ONLY`` registration has
+        its ``value`` cleared by the registry), but a mainline assembler that needs
+        the actual record -- including the abstract, which the candidate path
+        reduces to a ``abstract_present`` boolean -- has to call this primitive.
+
+        Limit accounting lives here rather than in ``invoke()`` so both callers
+        share one limit-monitor surface instead of growing a second one.
+        """
+
+        try:
+            return self._fetch(request)
+        except RetrievalRateLimited as exc:
+            self.rate_limit_events += 1
+            self.last_retry_after_seconds = exc.retry_after_seconds
+            raise
+
     def _extra_diagnostics(self) -> list[str]:
         """Optional per-adapter limit-monitor notes for the next receipt."""
 
@@ -334,10 +354,8 @@ class _CandidateOnlyAdapter:
         context: CapabilityExecutionContext,
     ) -> CapabilityAdapterResult:
         try:
-            papers = self._fetch(request)
+            papers = self.retrieve(request)
         except RetrievalRateLimited as exc:
-            self.rate_limit_events += 1
-            self.last_retry_after_seconds = exc.retry_after_seconds
             diagnostics = [f"{self.source}: {exc}"]
             if exc.retry_after_seconds is not None:
                 diagnostics.append(f"{self.source}: retry after {exc.retry_after_seconds:g}s")

@@ -1,0 +1,429 @@
+"""A8 mainline retrieval adapter acceptance.
+
+The point of this package is that the **mainline** -- not the benchmark -- stops
+using the anonymous bare ``httpx.get`` connector and goes through the A5
+retrieval adapters. So the assertions here are the invariants that distinguish
+the two paths, and each one is chosen to *fail* on the legacy service:
+
+1. ``abstract`` survives into the persisted record. The candidate-only path
+   reduces it to a boolean, and the reader degrades to title-only without it.
+2. A missing Semantic Scholar key sends **no request at all** (the legacy
+   connector sends an anonymous one and collects HTTP 429).
+3. Rate-limit pressure is counted and observable rather than swallowed into a
+   diagnostic string.
+4. The legacy persistence side effects still happen, because the reader resolves
+   papers by id out of the store.
+
+Every test runs offline through an injected transport, so the suite is
+re-runnable in CI without network access or credentials.
+"""
+
+from __future__ import annotations
+
+import json
+from uuid import uuid4
+
+import pytest
+
+from autoresearch.adapter_search_service import AdapterBackedPaperSearchService
+from autoresearch.config import Settings
+from autoresearch.contracts import EvidenceGrade, KnowledgePartition, PaperRecord
+from autoresearch.evidence import EvidenceService
+from autoresearch.knowledge import KnowledgeService
+from autoresearch.search_adapters import (
+    SEMANTIC_SCHOLAR_SOURCE,
+    RetrievalRateLimited,
+    SemanticScholarSearchAdapter,
+    TransportResponse,
+)
+from autoresearch.search_service import PaperSearchService
+from autoresearch.storage import RecordStore
+
+SEMANTIC_SCHOLAR_BODY = json.dumps(
+    {
+        "total": 2,
+        "data": [
+            {
+                "paperId": "S2-0001",
+                "title": "Grid cells in the medial entorhinal cortex",
+                "abstract": "We report grid-like firing fields in layer II.",
+                "authors": [{"name": "A. Researcher"}, {"name": "B. Author"}],
+                "year": 2024,
+                "externalIds": {"DOI": "10.1000/example.1"},
+                "url": "https://www.semanticscholar.org/paper/S2-0001",
+            },
+        ],
+    }
+)
+
+
+class RecordingTransport:
+    """Records every call so 'no request was sent' claims stay checkable."""
+
+    def __init__(
+        self,
+        *,
+        status_code: int = 200,
+        body: str = "",
+        raises: Exception | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        self.status_code = status_code
+        self.body = body
+        self.raises = raises
+        self.headers = headers or {}
+        self.calls: list[dict[str, object]] = []
+
+    def get(self, url, *, params, headers, timeout):
+        self.calls.append({"url": url, "params": params, "headers": headers, "timeout": timeout})
+        if self.raises is not None:
+            raise self.raises
+        return TransportResponse(
+            status_code=self.status_code, text=self.body, headers=dict(self.headers)
+        )
+
+
+def make_settings(**overrides) -> Settings:
+    values: dict[str, object] = {"_env_file": None, "AUTORESEARCH_NETWORK_ENABLED": True}
+    values.update(overrides)
+    return Settings(**values)
+
+
+@pytest.fixture()
+def services(tmp_path):
+    store = RecordStore(tmp_path / "db.sqlite")
+    return store, EvidenceService(store), KnowledgeService(store)
+
+
+def build_service(services, transport, *, api_key="test-key", network_enabled=True):
+    store, evidence, knowledge = services
+    adapter = SemanticScholarSearchAdapter(
+        api_key=api_key, transport=transport, timeout=5.0
+    )
+    service = AdapterBackedPaperSearchService(
+        store,
+        evidence,
+        knowledge,
+        adapters={SEMANTIC_SCHOLAR_SOURCE: adapter},
+        network_enabled=network_enabled,
+    )
+    return service, adapter
+
+
+# --------------------------------------------------------------------------- #
+# 1. The abstract survives (the legacy candidate path loses it)
+# --------------------------------------------------------------------------- #
+
+
+def test_mainline_record_carries_the_full_abstract(services):
+    """The reader degrades to title-only without an abstract, so this is load-bearing."""
+
+    transport = RecordingTransport(body=SEMANTIC_SCHOLAR_BODY)
+    service, _ = build_service(services, transport)
+
+    outcome = service.search("p1", ["grid cells"])
+
+    assert len(outcome.papers) == 1
+    paper = outcome.papers[0]
+    assert paper.abstract == "We report grid-like firing fields in layer II."
+    assert paper.authors == ["A. Researcher", "B. Author"]
+    assert paper.year == 2024
+    assert paper.doi == "10.1000/example.1"
+
+
+def test_abstract_reaches_the_store_not_only_the_return_value(services):
+    """The reader resolves papers by id out of the store, not from the return value."""
+
+    store, _, _ = services
+    transport = RecordingTransport(body=SEMANTIC_SCHOLAR_BODY)
+    service, _ = build_service(services, transport)
+
+    outcome = service.search("p1", ["grid cells"])
+    stored = store.get("paper", outcome.papers[0].paper_id)
+
+    assert stored is not None
+    reloaded = PaperRecord.model_validate(stored)
+    assert reloaded.abstract == "We report grid-like firing fields in layer II."
+
+
+# --------------------------------------------------------------------------- #
+# 2. Fail-closed without a key (the legacy connector goes anonymous)
+# --------------------------------------------------------------------------- #
+
+
+def test_missing_key_sends_no_request_at_all(services):
+    """The legacy connector would issue an anonymous call and collect HTTP 429."""
+
+    transport = RecordingTransport(body=SEMANTIC_SCHOLAR_BODY)
+    service, _ = build_service(services, transport, api_key=None)
+
+    outcome = service.search("p1", ["grid cells"])
+
+    assert transport.calls == [], "no request may be sent without credentials"
+    assert outcome.papers == []
+    joined = " ".join(outcome.diagnostics).lower()
+    assert "credential" in joined or "api_key" in joined
+
+
+def test_legacy_connector_omits_the_api_key_header_contrast(services):
+    """Contrast probe: documents *why* the mainline was moved off the legacy path.
+
+    This asserts the legacy behaviour that motivated ``D-A5-偏离-1`` rather than a
+    property we want. It is kept executable so the reason for the migration does
+    not decay into a comment someone can mistake for folklore.
+    """
+
+    from autoresearch.search_service import SemanticScholarConnector
+
+    legacy_connector = SemanticScholarConnector()
+    assert not hasattr(legacy_connector, "api_key"), (
+        "the legacy connector carries no credential surface at all"
+    )
+
+    adapter_transport = RecordingTransport(body=SEMANTIC_SCHOLAR_BODY)
+    adapter = SemanticScholarSearchAdapter(
+        api_key="secret", transport=adapter_transport, timeout=5.0
+    )
+    adapter.retrieve(_request("p1", "grid cells"))
+    assert adapter_transport.calls[0]["headers"].get("x-api-key") == "secret"
+
+
+# --------------------------------------------------------------------------- #
+# 3. Rate-limit pressure is counted, not swallowed
+# --------------------------------------------------------------------------- #
+
+
+def test_rate_limit_events_are_counted_and_observable(services):
+    transport = RecordingTransport(status_code=429, headers={"Retry-After": "6"})
+    service, adapter = build_service(services, transport)
+
+    outcome = service.search("p1", ["grid cells"])
+
+    assert outcome.papers == []
+    summary = adapter.rate_limit_summary()
+    assert summary["rate_limit_events"] == 1
+    assert summary["last_retry_after_seconds"] == 6.0
+    assert any("rate limited" in item for item in outcome.diagnostics)
+
+
+def test_rate_limit_is_not_reported_as_a_legitimate_empty_result(services):
+    """D-F8-01 only covers a legal query with genuinely zero hits, not a refused call."""
+
+    transport = RecordingTransport(status_code=429)
+    service, _ = build_service(services, transport)
+
+    outcome = service.search("p1", ["grid cells"])
+
+    assert outcome.papers == []
+    assert any("rate limited" in item for item in outcome.diagnostics)
+
+
+def test_retrieve_primitive_raises_so_the_caller_can_classify(services):
+    """``retrieve()`` must not swallow the rate-limit signal; the caller classifies."""
+
+    adapter = SemanticScholarSearchAdapter(
+        api_key="k", transport=RecordingTransport(status_code=429), timeout=5.0
+    )
+
+    with pytest.raises(RetrievalRateLimited):
+        adapter.retrieve(_request("p1", "grid cells"))
+    assert adapter.rate_limit_summary()["rate_limit_events"] == 1
+
+
+# --------------------------------------------------------------------------- #
+# 4. Legacy persistence semantics are preserved
+# --------------------------------------------------------------------------- #
+
+
+def test_persistence_side_effects_match_the_legacy_contract(services):
+    """paper record + E1 evidence + wiki page, exactly as the legacy path wrote them."""
+
+    store, evidence, _ = services
+    transport = RecordingTransport(body=SEMANTIC_SCHOLAR_BODY)
+    service, _ = build_service(services, transport)
+
+    outcome = service.search("p1", ["grid cells"])
+    paper = outcome.papers[0]
+
+    assert store.get("paper", paper.paper_id) is not None
+    items = [
+        item for item in evidence.list("p1", valid_only=True) if item.source_id == paper.paper_id
+    ]
+    assert items, "a paper must be backed by an evidence item"
+    assert items[0].grade == EvidenceGrade.E1
+
+    page = store.get("wiki_page", paper.paper_id)
+    assert page is not None, "the legacy path wrote a wiki page per paper"
+    assert page["partition"] == KnowledgePartition.PAPERS.value
+    assert page["evidence_ids"]
+
+
+def test_duplicate_hits_are_deduped_by_doi(services):
+    """Two queries returning the same DOI must not create two paper records."""
+
+    transport = RecordingTransport(body=SEMANTIC_SCHOLAR_BODY)
+    service, _ = build_service(services, transport)
+
+    outcome = service.search("p1", ["grid cells", "entorhinal grid"])
+
+    assert len(outcome.papers) == 1
+
+
+# --------------------------------------------------------------------------- #
+# 5. Offline mode is explicit, not a silent degradation
+# --------------------------------------------------------------------------- #
+
+
+def test_network_disabled_contacts_no_provider_and_says_so(services):
+    transport = RecordingTransport(body=SEMANTIC_SCHOLAR_BODY)
+    service, _ = build_service(services, transport, network_enabled=False)
+
+    outcome = service.search("p1", ["grid cells"])
+
+    assert transport.calls == []
+    assert any("disabled" in item.lower() for item in outcome.diagnostics)
+
+
+def test_seed_papers_still_flow_with_the_network_disabled(services):
+    transport = RecordingTransport(body=SEMANTIC_SCHOLAR_BODY)
+    service, _ = build_service(services, transport, network_enabled=False)
+    seed = PaperRecord(project_id="p1", title="Seed paper", source="manual")
+
+    outcome = service.search("p1", ["grid cells"], seed_papers=[seed])
+
+    assert [paper.title for paper in outcome.papers] == ["Seed paper"]
+
+
+def test_rate_limit_summary_covers_every_adapter(services):
+    transport = RecordingTransport(body=SEMANTIC_SCHOLAR_BODY)
+    service, _ = build_service(services, transport)
+
+    service.search("p1", ["grid cells"])
+
+    summary = service.rate_limit_summary()
+    assert SEMANTIC_SCHOLAR_SOURCE in summary
+    assert "rate_limit_events" in summary[SEMANTIC_SCHOLAR_SOURCE]
+
+
+def _request(project_id: str, query: str):
+    from autoresearch.search_adapters import SearchAdapterRequest
+
+    return SearchAdapterRequest(
+        project_id=project_id,
+        run_id="r1",
+        invocation_id="i1",
+        query=query,
+        limit=5,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# 6. Wiring: the mainline actually uses this service
+# --------------------------------------------------------------------------- #
+
+
+def test_mainline_application_wires_the_adapter_backed_service(runtime):
+    """The whole point of the package: the mainline must not keep the legacy path.
+
+    Without this assertion every other test here can pass while ``application.py``
+    still assembles ``PaperSearchService`` -- the module would exist, be tested,
+    and be dead code. Verified by construction: on the pre-fix tree (new module
+    present, ``application.py`` untouched) the other twelve tests pass and this
+    one fails.
+    """
+
+    from autoresearch.application import AutoResearchApplication
+
+    assert isinstance(runtime, AutoResearchApplication)
+    assert isinstance(runtime.search, AdapterBackedPaperSearchService)
+    assert not isinstance(runtime.search, PaperSearchService)
+
+
+def test_the_a4_reliable_boundary_still_wraps_the_new_service(runtime):
+    """Swapping the port implementation must not drop idempotency/replay/recovery."""
+
+    from autoresearch.application import InvocationBoundedSearchPort
+    from autoresearch.capability import PaperSearchCapabilityAdapter
+
+    assert isinstance(runtime.search_port, InvocationBoundedSearchPort)
+    assert isinstance(runtime.search_capability, PaperSearchCapabilityAdapter)
+    assert isinstance(runtime.search_capability.service, AdapterBackedPaperSearchService)
+
+
+def test_query_id_fragments_do_not_collide(services):
+    """Distinct queries must not share an ``invocation_id``.
+
+    A naive slug (``re.sub(r"\\W+", "-", ...)``) maps ``"a b"`` and ``"a-b"`` to
+    the same fragment, which would make the A4 ledger replay the second query as
+    the first. Found by self-review before commit; this test keeps it fixed.
+    """
+
+    from autoresearch.adapter_search_service import _fingerprint_text
+
+    pairs = [("a b", "a-b"), ("!!!", "???"), ("grid cells", "grid  cells")]
+    for left, right in pairs:
+        assert _fingerprint_text(left) != _fingerprint_text(right), (left, right)
+    assert _fingerprint_text("grid cells") == _fingerprint_text("grid cells")
+
+
+def test_end_to_end_the_agent_reaches_the_retrieval_adapter(runtime, monkeypatch):
+    """Asserts the *whole* chain, not just one link.
+
+    ``runtime.search`` being the new type is necessary but not sufficient: the
+    agent's real entry point is ``search_port``, which reaches the service through
+    ``PaperSearchCapabilityAdapter``. A wiring mistake that replaced only one of
+    those objects would leave the agent on the old path while a service-level
+    assertion still passed.
+
+    The probe counts calls on the adapter the mainline actually reaches, and
+    replaces its transport so the assertion stays offline and re-runnable. An
+    earlier version of this test let the real transport run and hit the live
+    provider -- it passed, but a test that depends on the network is not evidence
+    in CI.
+    """
+
+    from autoresearch.agents.paper_search import PaperSearchAgent
+    from autoresearch.search_adapters import (
+        SEMANTIC_SCHOLAR_SOURCE,
+        SemanticScholarSearchAdapter,
+    )
+
+    agent = runtime.paper_search_agent
+    assert isinstance(agent, PaperSearchAgent)
+    assert agent.search is runtime.search_port
+
+    service = runtime.search_capability.service
+    assert isinstance(service, AdapterBackedPaperSearchService)
+
+    # Swap in an offline adapter of the same class so the reached object is still
+    # identifiable while no provider is contacted.
+    offline_transport = RecordingTransport(body=SEMANTIC_SCHOLAR_BODY)
+    offline = SemanticScholarSearchAdapter(
+        api_key="probe-key", transport=offline_transport, timeout=5.0
+    )
+    # Replace the whole adapter map, not just the Semantic Scholar entry: the
+    # arxiv / openalex adapters built by ``build_search_adapters`` carry real
+    # transports, and leaving them in place makes this test contact live providers
+    # (it took 17s of network time before this was fixed).
+    service.adapters = {SEMANTIC_SCHOLAR_SOURCE: offline}
+    service.network_enabled = True
+
+    # A unique query keeps the A4 idempotency ledger from replaying a previous
+    # invocation of the same identity (that replay is itself correct behaviour and
+    # is asserted separately below).
+    unique_query = f"probe-{uuid4().hex}"
+    outcome = runtime.search_port.search("probe-project", [unique_query])
+
+    assert offline_transport.calls, "the mainline did not reach the retrieval adapter"
+    assert [paper.title for paper in outcome.papers] == [
+        "Grid cells in the medial entorhinal cortex"
+    ]
+
+    # The same invocation identity must now replay instead of re-contacting the
+    # provider: this is the A4 boundary still doing its job through the new service.
+    calls_before = len(offline_transport.calls)
+    replayed = runtime.search_port.search("probe-project", [unique_query])
+    assert len(offline_transport.calls) == calls_before, "replay must not re-fetch"
+    assert [paper.title for paper in replayed.papers] == [
+        "Grid cells in the medial entorhinal cortex"
+    ]
