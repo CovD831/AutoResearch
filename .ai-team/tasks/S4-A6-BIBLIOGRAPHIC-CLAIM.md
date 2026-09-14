@@ -105,6 +105,47 @@
 
 第 3 轮补测试时产生了 3 条与先前重复的用例，已删除（38 → 35 条聚焦测试；全量 554 → 548）。
 
+## 第四轮独立审查 —— 抓出「比'没人读'更严重」的一条
+
+派发独立子代理审查 `81cf131`。回传结论：**`warnings` 不只是没人读，它在运行时根本不存在。**
+
+### 实测确认（两条都复现为真）
+
+| 审查指控 | 实测 |
+|---|---|
+| `warnings` 无任何读取方 | `paper_search.py:76/96` 只写不读；全仓无 `ResearchState.warnings` 的消费者 |
+| **本轮 HEADLINE 无测试守护** | **删掉 `paper_search.py` 的告警段后，548 个测试仍全绿** |
+
+### 【最重的一条，比审查所述更严重】langgraph 静默丢弃未声明的 key
+
+审查说"warnings 未加入 `WorkflowState`，是潜在契约不一致"。**实测证明它远不止"潜在"**：
+
+```python
+def node(state):
+    out = dict(state)
+    out["warnings"] = ["test warning"]
+    out["paper_ids"] = ["p1"]
+    return out
+single_node_subgraph("n", node).invoke({"project_id": "x"})
+# → 返回 keys 只有 ['paper_ids', 'project_id']，warnings 丢失
+```
+
+**langgraph 只保留 `WorkflowState` TypedDict 声明的 key。** 所以 `warnings` 在生产路径（`graph.invoke`）上**从未存活**——不是"没人读"，是**不存在**。
+
+**此前所有测试都直接构造 agent（绕过图），所以看不到这一点。** 我上一轮宣称的 6 条"判据型"证据，测的是"直接调用时行为正确"，**没有一条穿过框架边界**。
+
+### R4 修复
+
+1. `WorkflowState` 声明 `warnings`（并内联写明"这个 key 是承重的，不是装饰"）。
+2. `_save_run` 把 `warnings` **提到 run record 顶层**（与 `status` 并列），使"这次运行完成了、但检索不完整"成为运行记录的一等属性。
+3. **测试改为穿过图**：`test_workflow_state_declares_warnings` + `test_incomplete_retrieval_warning_survives_the_graph`。
+4. **决定性验证**：删掉告警段后，套件**从"548 全绿"变为失败**（此前是假绿）。
+
+### 方法论教训（本包最有价值的一条）
+
+> **不穿过框架边界的覆盖，不是对框架行为的覆盖。**
+> 前几轮的判别力全部在"直接构造 agent"这一层取得，因此无法区分"通道可用"与"通道不存在"。**判别力验证必须覆盖事实实际流经的那条路径**，否则它证明的是别的东西。
+
 ## Not closed
 
 - **N2**：`_status()` 用诊断关键词（`failed`/`disabled`/`error`…）推断 `UNKNOWN_OUTCOME`（`capability.py:76-81`）。实测当前对零命中不可达（该路径不回显 query），但**未加防回归测试** —— 下一个在零命中诊断里写含关键词文本的人会踩中。
