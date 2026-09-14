@@ -3,7 +3,7 @@
 - ID: `S4-A4-MAINLINE-ADAPTER`
 - Title: `S4 mainline retrieval switches to the A5 real adapters`
 - Status: `active`
-- Status note: 执行 `D-A5-偏离-1` 选项 (a)。新文件 `src/autoresearch/adapter_search_service.py`（`AdapterBackedPaperSearchService`，满足 `PaperSearchServicePort`）；`_CandidateOnlyAdapter` 新增公开原语 `retrieve()`，限流计数下沉其中，`invoke()` 改为复用；`application.py` 装配切到新服务，`PaperSearchCapabilityAdapter` / `InvocationBoundedSearchPort`（A4 可靠边界）原样保留。基线 `main@04ce9a9` 实测 **509 passed / 2 skipped / 0 error**；本包后 **536 passed / 2 skipped / 0 error**（新增 27 条；含对抗审查后的 4 条修复判据测试）。ruff clean、compileall OK、`check.mjs` valid。判别力实测：装配未切场景下 **2 判据型 failed / 12 passed**。零回归（既有 509 条逐位不变）。
+- Status note: 执行 `D-A5-偏离-1` 选项 (a)。新文件 `src/autoresearch/adapter_search_service.py`（`AdapterBackedPaperSearchService`，满足 `PaperSearchServicePort`）；`_CandidateOnlyAdapter` 新增公开原语 `retrieve()`，限流计数下沉其中，`invoke()` 改为复用；`application.py` 装配切到新服务，`PaperSearchCapabilityAdapter` / `InvocationBoundedSearchPort`（A4 可靠边界）原样保留。基线 `main@04ce9a9` 实测 **509 passed / 2 skipped / 0 error**；本包后 **538 passed / 2 skipped / 0 error**（含两轮对抗审查后的修复判据测试）。ruff clean、compileall OK、`check.mjs` valid。判别力实测：装配未切场景下 **2 判据型 failed / 12 passed**。零回归（既有 509 条逐位不变）。
 - Owner: `user/team`
 - Next owner: `user/team`
 
@@ -52,7 +52,7 @@
 | 项 | 命令 | 结果 |
 |---|---|---|
 | 基线（`04ce9a9`，本 worktree 实测） | `pytest -q -o addopts="" -W error` | **509 passed / 2 skipped / 0 error** |
-| 本包全量 | 同上 | **536 passed / 2 skipped / 0 error** |
+| 本包全量 | 同上 | **538 passed / 2 skipped / 0 error** |
 | 聚焦 | `pytest tests/test_adapter_search_service.py` | 20 passed，**全离线** |
 | ruff | `ruff check src tests` | All checks passed |
 | compileall | `compileall -q src` | exit 0 |
@@ -124,5 +124,9 @@
 独立子代理盲审（prompt 不含作者推理）回传 4 项发现：F1 凭据落库（高）、F2 致命异常被吞（中）、F3 异常消息边界不稳健（中）、F4 畸形记录铸成 E1（中）。
 
 **F1/F2/F3 与作者侧自查完全重叠且结论一致** —— 两条不知情路径收敛，是修复正确性的最强证据。**F4 为独立新增发现**，见上方裁决项。
+
+**第二轮盲审推翻作者自评**：「修复③（失败 vs 零命中）」原为**表面修复**——只改措辞，而 `paper_search.py:55` 仍只判 `if not outcome.papers`，两情形收敛到同一 blocker；且作者当时的测试**断言字符串**，把表面修复固化成了期望（skill 3.2 同型第三次）。已按盲审建议重做：`SearchOutcome.provider_failure` 结构化字段 + 消费方真正分流 + `InvocationBoundedSearchPort` 从 receipt `outcome_status` 推导，使标志穿过 A4 边界。另修 `_is_fatal` 死代码（`KeyboardInterrupt`/`SystemExit` 非 `Exception` 子类）。**判别力**：字段 shim 后取得**判据型**证据（`assert 'No real paper records...' != 'No real paper records...'`）。
+
+**第二轮另记录两条未修**：N1 部分失败被静默（主源 fail-closed + 次源有产出 → `provider_failure=False`，属 `capability.py:74-76` 既有语义）；N2 `_status()` 用诊断关键词推断状态（实测当前不可达，但**未加防回归测试**）。
 
 报告：`reviews/A8-A9-ADVERSARIAL-REVIEW.md`。
