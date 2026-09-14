@@ -75,6 +75,23 @@ def _event_types(runtime: AutoResearchApplication, project_id: str = "demo") -> 
     return [event["event_type"] for event in runtime.store.events(project_id)]
 
 
+def _sink_fields(marker: dict) -> dict:
+    """The sink's own payload from a marker, wherever the storage layer put it.
+
+    ``reserve_idempotent`` nests its argument under ``request`` and
+    ``finalize_idempotent`` nests its under ``result``, so a marker's sink fields
+    are never at the top level. Reading the top level yields ``KeyError`` or
+    ``None`` and silently makes assertions vacuous.
+    """
+
+    record = marker.get("record") or {}
+    for key in ("result", "request"):
+        nested = record.get(key)
+        if isinstance(nested, dict) and nested:
+            return nested
+    return record
+
+
 def _page_added(runtime: AutoResearchApplication, project_id: str = "demo") -> int:
     """Count knowledge pages mirrored into the audit chain.
 
@@ -389,7 +406,7 @@ def test_replay_is_safe_and_never_double_counts(runtime, project):
 
     markers = runtime.store.list_idempotent(SINK_SCOPE)
     assert len(markers) == MAPPED_FAILURE_EVENTS
-    assert sum(1 for marker in markers if marker["record"]["mapped"]) == MAPPED_RECORDINGS
+    assert sum(1 for marker in markers if _sink_fields(marker)["mapped"]) == MAPPED_RECORDINGS
     snapshot = sorted(
         (raw["experience_id"], raw["recurrence_count"]) for raw in _experiences(runtime)
     )
@@ -414,13 +431,13 @@ def test_non_failure_events_are_consumed_but_never_recorded(runtime, project):
     assert settlement.recorded == MAPPED_RECORDINGS
 
     markers = {
-        marker["idempotency_key"]: marker["record"]
+        marker["idempotency_key"]: _sink_fields(marker)
         for marker in runtime.store.list_idempotent(SINK_SCOPE)
     }
     assert len(markers) == MAPPED_FAILURE_EVENTS
-    unmapped = [record for record in markers.values() if record["mapped"] is False]
+    unmapped = [fields for fields in markers.values() if fields["mapped"] is False]
     assert len(unmapped) == MAPPED_FAILURE_EVENTS - MAPPED_RECORDINGS
-    assert {record["event_type"] for record in unmapped} == {
+    assert {fields["event_type"] for fields in unmapped} == {
         "audit_evidence.report_created",
         "audit.report_created",
     }
@@ -529,59 +546,95 @@ def test_recurrence_counts_are_identical_healthy_and_degraded(runtime, project):
     assert max(healthy) >= 2, "fixture must contain a repeated cause to be meaningful"
 
 
-def test_degraded_recurrence_fallback_is_monotonic(monkeypatch):
-    """D-A6-06: the marker-read fallback must not reset a recorded count.
+def test_recurrence_count_ignores_claims_with_no_record(monkeypatch):
+    """Only markers whose record step happened may contribute to a count.
 
-    ``_recurrence_count`` is reached with a broken marker table only through the
-    direct path now that :meth:`settle` aborts earlier, so this exercises the
-    fallback itself: it must read the count already stored on the experience
-    record rather than returning 0, which would make a repeated cause look like a
-    first occurrence and hold the ``recurrence_count >= 2`` gate shut.
+    A claim with no record behind it is work that has not happened. Counting it
+    would let ``recurrence_count >= 2`` be satisfied by failures that were never
+    archived -- and the promotion gate reads exactly this number.
+
+    The marker shape mirrors what the storage layer actually stores: the sink's
+    fields sit under ``result`` (finalized) or ``request`` (still reserved),
+    never at the top level.
     """
 
-    from autoresearch.experience_sink import SINK_SCOPE as _SCOPE  # noqa: F401
     from autoresearch.experience_sink import ExperienceSink as _Sink
+
+    def archived(key: str) -> dict:
+        return {
+            "idempotency_key": key,
+            "record": {
+                "state": "finalized",
+                "phase": "finalized",
+                "result": {"mapped": True, "project_id": "demo", "recurrence_key": "t|p"},
+            },
+        }
+
+    def recorded_not_finalized(key: str) -> dict:
+        """Record written, finalize pending -- this failure *is* archived."""
+
+        return {
+            "idempotency_key": key,
+            "record": {
+                "state": "pending",
+                "phase": "service_started",
+                "request": {"mapped": True, "project_id": "demo", "recurrence_key": "t|p"},
+            },
+        }
+
+    def claimed_only(key: str) -> dict:
+        """Reserved but never recorded -- this failure is *not* archived."""
+
+        return {
+            "idempotency_key": key,
+            "record": {
+                "state": "pending",
+                "phase": "reserved",
+                "request": {"mapped": True, "project_id": "demo", "recurrence_key": "t|p"},
+            },
+        }
 
     class _Store:
         def list_idempotent(self, _scope=None):
-            raise RuntimeError("markers offline")
-
-        def get(self, kind, record_id):
-            return {
-                "experience_id": record_id,
-                "project_id": "demo",
-                "problem": "p",
-                "technique": "t",
-                "outcome": "o",
-                "grade": "E0",
-                "recurrence_count": 4,
-                "evidence_ids": [],
-                "tags": ["failure"],
-                "promoted": False,
-            }
+            return [
+                archived("e1"),
+                archived("e2"),
+                recorded_not_finalized("e3"),
+                claimed_only("e4"),
+                claimed_only("e5"),
+            ]
 
     sink = _Sink(_Store(), None)  # type: ignore[arg-type]
-    key = "t|p"
-    expected = 4 - 1  # the stored count minus the occurrence this call represents
 
-    assert sink._recurrence_count("demo", key) == expected
+    # e1, e2 finalized and e3 recorded: three archived failures.
+    assert sink._recurrence_count("demo", "t|p") == 3
 
 
-def test_recurrence_fallback_is_zero_when_no_record_exists() -> None:
-    """No stored record yet -- the fallback must not invent a count."""
+def test_recurrence_count_ignores_a_different_project_or_cause(monkeypatch):
+    """The count is scoped to both project and cause."""
 
     from autoresearch.experience_sink import ExperienceSink as _Sink
 
+    def marker(key: str, project: str, cause: str) -> dict:
+        return {
+            "idempotency_key": key,
+            "record": {
+                "state": "finalized",
+                "result": {"mapped": True, "project_id": project, "recurrence_key": cause},
+            },
+        }
+
     class _Store:
         def list_idempotent(self, _scope=None):
-            raise RuntimeError("markers offline")
-
-        def get(self, *_args, **_kwargs):
-            return None
+            return [
+                marker("e1", "demo", "t|p"),
+                marker("e2", "demo", "t|other"),
+                marker("e3", "other", "t|p"),
+            ]
 
     sink = _Sink(_Store(), None)  # type: ignore[arg-type]
 
-    assert sink._recurrence_count("demo", "t|p") == 0
+    assert sink._recurrence_count("demo", "t|p") == 1
 
 
 def test_malformed_payload_degrades_per_event_and_keeps_processing_the_rest(runtime, project):
@@ -773,7 +826,7 @@ def test_record_failure_degrades_and_leaves_the_event_for_retry(runtime, project
     # only the two non-failure decoys were consumed; every mapped event is still pending
     markers = runtime.store.list_idempotent(SINK_SCOPE)
     assert len(markers) == MAPPED_FAILURE_EVENTS - MAPPED_RECORDINGS
-    assert not [marker for marker in markers if marker["record"]["mapped"]]
+    assert not [marker for marker in markers if _sink_fields(marker)["mapped"]]
 
     monkeypatch.undo()
     retried = runtime.settle_failure_experiences("demo")
@@ -799,7 +852,7 @@ def test_consumption_marker_write_failure_degrades_and_leaves_event_for_retry(
     def offline(*_args, **_kwargs):
         raise RuntimeError("marker store offline")
 
-    monkeypatch.setattr(runtime.store, "remember_idempotent", offline)
+    monkeypatch.setattr(runtime.store, "reserve_idempotent", offline)
 
     settlement = runtime.settle_failure_experiences("demo")
 
@@ -861,9 +914,9 @@ def test_release_failure_does_not_lose_the_event(runtime, project, monkeypatch):
     the failure would be lost for good, with the orphan marker also inflating
     ``recurrence_count``.
 
-    Claims are written ``pending`` and promoted to ``settled`` only after the
-    record is durable, so a failed release leaves a pending marker -- which the
-    next settlement picks up again.
+    Claims are written ``pending`` and finalized only after the record is
+    durable, so a failed release leaves a pending marker -- which the next
+    settlement picks up again.
     """
 
     _seed(runtime)
@@ -871,11 +924,11 @@ def test_release_failure_does_not_lose_the_event(runtime, project, monkeypatch):
     def explode_record(*_args, **_kwargs):
         raise RuntimeError("record store offline")
 
-    def explode_delete(*_args, **_kwargs):
+    def explode_release(*_args, **_kwargs):
         raise RuntimeError("release offline too")
 
     monkeypatch.setattr(runtime.experiences, "record", explode_record)
-    monkeypatch.setattr(runtime.store, "delete_idempotent", explode_delete)
+    monkeypatch.setattr(runtime.store, "delete_idempotent", explode_release)
 
     first = runtime.settle_failure_experiences("demo")
 
@@ -886,12 +939,15 @@ def test_release_failure_does_not_lose_the_event(runtime, project, monkeypatch):
     claimed = [
         marker
         for marker in runtime.store.list_idempotent(SINK_SCOPE)
-        if marker["record"]["mapped"] is True
+        if _sink_fields(marker)["mapped"] is True
     ]
     assert claimed, "the claims are still there"
     assert all(
         marker["record"]["state"] == "pending" for marker in claimed
-    ), "an abandoned claim must stay pending, never look settled"
+    ), "an abandoned claim must stay pending, never look finalized"
+    assert all(
+        marker["record"].get("phase") != "service_started" for marker in claimed
+    ), "a claim whose record failed must not claim the record step happened"
 
     monkeypatch.undo()
     retried = runtime.settle_failure_experiences("demo")
@@ -904,45 +960,82 @@ def test_release_failure_does_not_lose_the_event(runtime, project, monkeypatch):
     after = [
         marker
         for marker in runtime.store.list_idempotent(SINK_SCOPE)
-        if marker["record"]["mapped"] is True
+        if _sink_fields(marker)["mapped"] is True
     ]
-    assert all(marker["record"]["state"] == "settled" for marker in after)
+    assert all(marker["record"]["state"] == "finalized" for marker in after)
 
 
-def test_pending_claims_are_not_counted_as_recurrences(
+def test_a_recorded_but_unfinalized_claim_is_retried_without_duplicating(
     runtime, project, monkeypatch
 ):
-    """A pending claim must not inflate the gate count.
+    """D-A6-11: a claim that recorded but never finalized must finish, not redo.
 
-    The orphan marker produced by a failed release used to be indistinguishable
-    from a completed one, so ``_recurrence_count`` counted work that never
-    happened and could satisfy ``recurrence_count >= 2`` on its own.
+    When the finalize step fails, the experience record is already written. The
+    marker stays ``pending`` (so the event is retried) but has reached the
+    ``recorded`` phase (so the retry knows not to write the record again).
+    Without that phase, the retry re-ran ``record`` and appended a second
+    ``knowledge.page_added`` for one failure -- measured at 6 -> 12 pages.
     """
 
     _seed(runtime)
 
-    def explode_record(*_args, **_kwargs):
-        raise RuntimeError("record store offline")
+    def explode_finalize(*_args, **_kwargs):
+        raise RuntimeError("finalize store offline")
 
-    def explode_delete(*_args, **_kwargs):
-        raise RuntimeError("release offline too")
+    monkeypatch.setattr(runtime.store, "finalize_idempotent", explode_finalize)
+    first = runtime.settle_failure_experiences("demo")
+    assert first.recorded == 0, "nothing is finalized on the first pass"
 
-    monkeypatch.setattr(runtime.experiences, "record", explode_record)
-    monkeypatch.setattr(runtime.store, "delete_idempotent", explode_delete)
-    runtime.settle_failure_experiences("demo")
-
-    # Every *mapped* claim is pending, and none of them may contribute to a
-    # count. (Non-mapped decoys are settled on sight: they have no record to
-    # write, so consumption is their terminal state.)
-    claimed = [
+    stranded = [
         marker
         for marker in runtime.store.list_idempotent(SINK_SCOPE)
-        if marker["record"]["mapped"] is True
+        if _sink_fields(marker)["mapped"] is True
     ]
-    assert claimed and all(marker["record"]["state"] == "pending" for marker in claimed)
+    assert stranded, "the claims must survive a failed finalize"
+    assert all(marker["record"]["state"] == "pending" for marker in stranded)
     assert all(
-        marker["record"].get("recurrence_count", 0) < 2 for marker in claimed
-    ), "a pending claim must not be able to satisfy the gate on its own"
+        marker["record"].get("phase") == "service_started" for marker in stranded
+    ), "the record step must be marked so the retry can skip it"
+
+    pages_after_first = _page_added(runtime)
+    assert pages_after_first == MAPPED_RECORDINGS, "the records themselves were written"
+
+    monkeypatch.undo()
+    retried = runtime.settle_failure_experiences("demo")
+
+    assert retried.recorded == MAPPED_RECORDINGS
+    assert len(_experiences(runtime)) == UNIQUE_EXPERIENCES
+    assert sorted(raw["recurrence_count"] for raw in _experiences(runtime)) == _HEALTHY_COUNTS
+    assert _page_added(runtime) == MAPPED_RECORDINGS, (
+        f"the retry duplicated audit pages: {pages_after_first} -> {_page_added(runtime)}"
+    )
+    assert all(
+        marker["record"]["state"] == "finalized"
+        for marker in runtime.store.list_idempotent(SINK_SCOPE)
+        if _sink_fields(marker)["mapped"] is True
+    )
+
+
+def test_a_stranded_record_phase_still_counts_as_a_recurrence(
+    runtime, project, monkeypatch
+):
+    """The gate must not under-count while a claim is stranded.
+
+    A marker that recorded but could not finalize *is* an archived failure: the
+    experience row exists. Excluding it from ``_recurrence_count`` would hold the
+    ``recurrence_count >= 2`` gate shut even though the recurrence happened.
+    """
+
+    _seed(runtime)
+
+    def explode_finalize(*_args, **_kwargs):
+        raise RuntimeError("finalize store offline")
+
+    monkeypatch.setattr(runtime.store, "finalize_idempotent", explode_finalize)
+    runtime.settle_failure_experiences("demo")
+
+    # The records are written even though no marker is finalized.
+    assert sorted(raw["recurrence_count"] for raw in _experiences(runtime)) == _HEALTHY_COUNTS
 
     monkeypatch.undo()
     runtime.settle_failure_experiences("demo")
@@ -969,7 +1062,7 @@ def test_a_retry_after_a_partial_failure_does_not_duplicate_audit_events(
         raise RuntimeError("marker store offline")
 
     # First attempt: every claim fails, so nothing is recorded and no page is added.
-    monkeypatch.setattr(runtime.store, "remember_idempotent", offline)
+    monkeypatch.setattr(runtime.store, "reserve_idempotent", offline)
     runtime.settle_failure_experiences("demo")
     monkeypatch.undo()
     assert _page_added(runtime) == 0
@@ -1063,3 +1156,52 @@ def test_merge_heals_a_record_written_before_the_tag_existed(runtime, project):
 
     page = runtime.store.get("wiki_page", target["experience_id"])
     assert FAILURE_TAG in page["tags"]
+
+
+# ---------------------------------------------------------------------------
+# diagnostics are bounded (D-A6-10)
+# ---------------------------------------------------------------------------
+
+
+def test_diagnostics_are_capped_but_counts_stay_exact(runtime, project):
+    """A large batch of unreadable events must not bury the report.
+
+    One diagnostic per skipped event makes a bad batch produce hundreds of
+    near-identical lines (~32 KB for 200 events, measured), drowning the
+    diagnostics that actually differ. Only the prose is truncated -- the counts
+    stay authoritative.
+    """
+
+    from autoresearch.experience_sink import MAX_DIAGNOSTICS
+
+    for index in range(MAX_DIAGNOSTICS * 4):
+        runtime.store.append_event(
+            "evidence.candidate_blocked",
+            ["not", "an", "object", index],
+            project_id="demo",
+            actor="evidence_service",
+        )
+
+    settlement = runtime.settle_failure_experiences("demo")
+
+    assert settlement.unreadable == MAX_DIAGNOSTICS * 4, "the count must stay exact"
+    assert settlement.consumed == 0
+    assert len(settlement.diagnostics) <= MAX_DIAGNOSTICS + 1, (
+        f"diagnostics must be capped, got {len(settlement.diagnostics)}"
+    )
+    assert any("omitted" in message for message in settlement.diagnostics)
+    # Truncation must not change what a reader can act on.
+    assert settlement.degraded is True
+
+
+def test_diagnostics_below_the_cap_are_not_truncated(runtime, project):
+    """The cap must not alter a normal report."""
+
+    runtime.store.append_event(
+        "evidence.candidate_blocked", ["bad"], project_id="demo", actor="x"
+    )
+
+    settlement = runtime.settle_failure_experiences("demo")
+
+    assert len(settlement.diagnostics) == 1
+    assert not any("omitted" in message for message in settlement.diagnostics)

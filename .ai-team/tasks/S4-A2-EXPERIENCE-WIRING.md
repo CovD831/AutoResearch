@@ -48,6 +48,11 @@
 - **D-A6-09（owner 代修；`-W error` 下零 error）**：`tests/test_experience_sink.py` 用 `with sqlite3.connect(...)` 读表，但 **`sqlite3.Connection` 的上下文管理器只管事务、不管关闭**——句柄活到 GC，`-W error` 把它变成 `PytestUnraisableExceptionWarning`，且报在**下一条**测试的 setup 上（`main` 基线 275 passed / 0 error，本 PR 变成 300 passed + **1 error**）。改为显式 `try/finally: connection.close()`。
 - **D-A6-06b（owner 独立盲审后自修；标记表读不可用必须中止结算，不得重放）**：`_consumed_event_ids` 也调 `list_idempotent`，读失败时 `consumed = set()` 使**全部事件被判为 fresh → 整轮重放 → 每个原因再写一条 `knowledge.page_added`**。实测同一 fixture：健康 6 页、一次降级 12 页、再一次 **18 页**，且 `recurrence_count` 从 `[1,1,1,1,2]` 虚高到 `[1,1,1,1,`**`4`**`]`。**这是 owner 自己修 D-A6-06 时漏掉的相邻位置**——同一个「读失败」缺陷族只修了 `_recurrence_count` 一半。现在标记表不可读时**整体 fail-closed 并返回**（无副作用，调用方重试即可），不再把「读不到」当成「没有」。
 - **D-A6-06c（owner 独立盲审后自修；claim 必须两阶段，不能一阶段）**：D-A6-07 把顺序改成「先 claim 再 record」后引入新窗口：claim 成功、record 失败、**释放 claim 也失败**时，marker 看起来与已完成的无异 → 该事件永不重试、**失败永久丢失**，且孤儿 marker 还让 `recurrence_count` 虚高。实测：8 条 claim 全留、0 条记录，下次结算 `consumed=0`。修法：claim 写 `state="pending"`，**仅当记录落库后才提升为 `state="settled"`**；`_consumed_event_ids` 与 `_recurrence_count` **只认 settled**。于是释放失败留下的 pending marker 会被下次结算自动重试——**这正是 A1/A2 的 reserve→phase→finalize 两阶段语义，sink 原先自己造了个一阶段 marker 绕过了它**。实测修复后：第 2 次结算 `consumed=8 recorded=6`、5 条记录全部归档。
+- **【R3 修订】D-A6-06c 的最终形态（2026-09-14 下午）**：上面那版改用自造的 `pending`/`settled` 状态，**仍然是自己造一套**。R3 改为**直接调用存储层的两阶段原语** `reserve_idempotent` / `finalize_idempotent`，marker 状态即 A1/A2 的 `pending` / `finalized`，不再自造词汇。**教训：第一次修的时候我以为「用两阶段」就是照搬语义，实际仍在自己实现；真正的归队是调用现成 API。**
+- **D-A6-10（owner 处理；diagnostics 有上限）**：`settle` 每跳过一个事件产生一条 diagnostic 且原样返回。实测 200 条坏 payload → 200 条近重复诊断、约 32 KB，把真正有差异的诊断淹没（耗时本身仅 2ms，所以**不是性能问题而是可读性问题**）。现在 `MAX_DIAGNOSTICS = 50`，超出时保留前 50 条 + 一条汇总；**计数（`unreadable`/`consumed`/`recorded`）保持精确**，只截断散文。
+- **D-A6-11（owner 发现；finalize 失败不得重跑 record）**：**这条是失败注入矩阵脚本发现的，不是人读出来的。** 单独注入 `finalize_idempotent` 失败时，`record` 已成功（副作用已发生：写了一条 page），marker 停在 pending → 重试 → **又跑一次 record** → `knowledge.page_added` 从 6 变 12。修法：在 record 成功之后、finalize 之前，用 `mark_idempotent_phase(..., "service_started")` 留下「record 已发生」的凭据；重试时见到该 phase 就**跳过 record、直接 finalize**。`_recurrence_count` 相应地把「finalized **或** pending 且 phase==service_started」都算作已归档——否则 finalize 卡住时计数会偏低，promotion 门槛被无声关死。**同一处第三类失败窗口，也是第一次被自动化枚举抓到。**
+- **D-A6-12（owner 处理；marker 字段位置）**：`reserve_idempotent` 把 payload 放在 **`request`** 下、`finalize_idempotent` 放在 **`result`** 下（并保留 reservation 的其余键），**两者都不在顶层**。R3 第一版读顶层 `mapped`/`recurrence_key` 拿到全 `None`，使 `_recurrence_count` 恒为 0、每个原因都被当成首次出现，而 `recorded` 完全正常——**又一次「看起来健康但结论错」**。现在统一经 `_marker_fields()` 读取（优先 `result`、回退 `request`），并且 `finalize` 的 payload 显式重复全部身份字段，使其成为自解释的。
+- **D-A6-13（owner 沉淀；失败注入矩阵脚本）**：`settle` 的写入顺序在一个下午改了三次、每次都迁移失败窗口，而**第三次的窗口（finalize 失败 → 重复审计页）是脚本枚举出来的，人读代码三次都没看见**。故把矩阵固化为 `scripts/experience_sink_failure_matrix.py`：对 `{claim, record, release}` 的全部 7 种非空组合注入失败，各自恢复后断言两条不变量（**不丢失败**、**不重复工作**）。当前 **7/7 通过**——注意修好前是 6/7。**这是本模块任何后续顺序改动的前置检查。**
 
 ## Completed
 
@@ -109,6 +114,42 @@ PR 审核后由 owner 回写共享 registry。下一包 `S4-A3-KNOWLEDGE-VECTOR`
   - 回归：`record` 失败时 claim 被释放（markers=0），重试 `consumed=1 recorded=1`。
 
 ### owner 独立盲审 + 自修（2026-09-14，第二轮）
+
+不知情子代理盲审（prompt 仅含仓库路径 + 中立问题清单，不含作者推理）提出 2 高 3 中。**两条高危经 owner 独立复现，第三条经复核为虚警**，第四条第五条成立。
+
+- [x] **盲审 #1 复现为真**：claim 成功 + record 失败 + 释放失败 → 8 条孤儿 marker、0 条记录，下次结算 `consumed=0` —— **失败永久丢失**。已修（两阶段 marker，D-A6-06c）。
+- [x] **盲审 #2 复现为真**：标记表读不可用 → 整轮重放，pages 6 → 12 → 18，counts 虚高到 4。已修（中止结算，D-A6-06b）。
+- [x] 全量：**309 passed, 0 error**（R2 前基线 `135ec88` 为 306 / 0）。
+- [x] **判别力**：改后的 `test_experience_sink.py` 放到基线 `135ec88`（只换测试、保留基线 src）→ **4 failed / 30 passed**；修复后 **34 passed**。
+- [x] **owner 侧自我修正**：R2 判别力验证第一版**做错了**——把新代码也复制到基线 worktree，得到「34 passed」的假绿。改为「只替换测试文件、`git checkout -- src/`」后得到正确的 4 failed。
+
+### owner R3：失败矩阵驱动的第三轮修复（2026-09-14 下午）
+
+老板要求「把发现的问题都处理掉」。5 条未闭合项逐条处置：
+
+| 未闭合项 | 处置 |
+|---|---|
+| 1. `settle` 写入顺序是高风险改动点 | **固化为 `scripts/experience_sink_failure_matrix.py`（7 种失败组合，7/7 通过）** |
+| 2. `_stored_recurrence` 在 settle 主路径不可达 | **已删除**（不可达代码不能悬空）；`_recurrence_count` 改为普通读取并说明「此处失败是真 bug、应传播」 |
+| 3. 坏 payload 重复出现、无上限 | `MAX_DIAGNOSTICS=50` + 汇总条目；计数保持精确（D-A6-10）。**实测耗时仅 2ms，非性能问题** |
+| 4. 跨进程并发未测 | **明确挂账**（单进程失败注入已覆盖；多进程场景当前不存在） |
+| 5. `recurrence_count` 双路径一致性未形式化 | **随第 2 条消解**——回退路径已删除，只剩单一真值来源（marker） |
+
+**矩阵脚本当场抓到一个新缺陷（D-A6-11）**：单独注入 `finalize` 失败时审计页翻倍（6→12）。这是**同一处第三次失败窗口，也是唯一一次由自动化枚举而非人读代码发现的**。三次改动的窗口演化：
+
+| 版本 | 顺序 | 注入失败 | 后果 |
+|---|---|---|---|
+| 原始（成员 A） | record → claim | claim | 重复 6→12 |
+| R1 代修 | claim → record（一阶段 marker） | record + 释放 | **丢失**（8 claim / 0 记录） |
+| R2 代修 | claim pending → record → settle | finalize | 重复 6→12（**R3 用矩阵才发现**） |
+| **R3** | reserve → record → mark phase → finalize | 全部 7 种 | **7/7 通过** |
+
+- [x] 全量 `-W error`：**312 passed, 0 error**（R3 前基线 `a003a7f` 为 309 / 0）。
+- [x] **失败矩阵**：`scripts/experience_sink_failure_matrix.py` → **7/7 combinations hold both invariants**。
+- [x] **判别力**：改后的 `test_experience_sink.py` 放到基线 `a003a7f`（只换测试、保留基线 src）→ **7 failed / 30 passed**；修复后 **37 passed**。其中 1 条为 `ImportError`（`MAX_DIAGNOSTICS` 不存在）属**符号缺失型、不计入判据**，其余 6 条为判据型。
+- [x] **最终验收探针**（`final_check.py`，覆盖 H1/M1/M2/R2-#1/R2-#2 + 幂等）→ **29/29 PASS**。
+- [x] 四门禁：`ruff check src tests` → All checks passed；`compileall` → 0；`check.mjs` → valid；`check_pr_contract` → passed。
+- [x] **owner 侧再次自我纠正**：R3 之前我口头声称「不可达代码已加单元测试锁住」，实际那两条测试测的是**回退函数本身**而它已不可达——「给不可达代码加测试」并不能让它变得可达。R3 直接删除该函数并换成测**真实可达**的 marker 语义（settled/pending 区分、项目与原因的作用域）。
 
 不知情子代理盲审（prompt 仅含仓库路径 + 中立问题清单，不含作者推理）提出 2 高 3 中。**两条高危经 owner 独立复现，第三条经复核为虚警**（子代理称 `_stored_recurrence` 返回值隐含不变量破裂，实测其仅在 marker 读不可用且记录已存在时可达，返回的是「上轮已写值」的下界，`max()` 保证单调——**不是缺陷，但该函数在 settle 主路径上现已不可达**，保留为单点故障兜底）。
 

@@ -55,13 +55,26 @@ from autoresearch.storage import RecordStore
 
 SINK_SCOPE = "experience_sink"
 
-#: Consumption-marker lifecycle. A marker is written ``pending`` when an event is
-#: claimed and promoted to ``settled`` only once its record is durable; only
-#: settled markers count as consumed or contribute to ``recurrence_count``.
-#: A ``pending`` marker therefore means "retry me", which is what keeps a failed
-#: release (or a crash between claim and record) from losing the event.
+#: Consumption-marker lifecycle, matching the A1/A2 idempotency vocabulary
+#: (``reserve_idempotent`` writes ``pending``, ``finalize_idempotent`` promotes
+#: to ``finalized``). Only ``finalized`` markers count as consumed or contribute
+#: to ``recurrence_count``; a ``pending`` marker means "retry me", which is what
+#: keeps a failed release (or a crash between claim and record) from losing an
+#: event (D-A6-06c).
 PENDING_STATE = "pending"
-SETTLED_STATE = "settled"
+FINALIZED_STATE = "finalized"
+
+#: Phase written once the experience record exists but before the claim is
+#: finalized. Its presence is proof that ``record`` already ran, so a retry can
+#: promote the claim without recording again (D-A6-11). This mirrors the A1/A2
+#: ``reserved -> service_started -> service_returned`` vocabulary, where
+#: ``service_started`` means "the external call was made".
+RECORDED_PHASE = "service_started"
+
+#: Upper bound on ``SinkSettlement.diagnostics`` detail. Counts stay exact; only
+#: the prose is truncated, so a batch of unreadable payloads cannot bury the
+#: diagnostics that actually differ (D-A6-10).
+MAX_DIAGNOSTICS = 50
 
 TECHNIQUE_EVIDENCE_BLOCKED = "evidence_admission_blocked"
 TECHNIQUE_AUDIT_EVIDENCE_REMEDIATION = "audit_evidence_remediation"
@@ -96,6 +109,27 @@ def _string_list(value: Any) -> list[str]:
     if not isinstance(value, (list, tuple)):
         return []
     return [str(item) for item in value if str(item).strip()]
+
+
+def _marker_fields(record: Mapping[str, Any] | None) -> Mapping[str, Any]:
+    """Return the sink's own payload from a marker record, wherever it sits.
+
+    ``reserve_idempotent`` stores its argument under ``request`` and
+    ``finalize_idempotent`` stores its argument under ``result`` while keeping the
+    reservation's other keys. A marker describing an archived failure therefore
+    has its sink fields in ``result``; a marker whose finalize never ran has them
+    in ``request``. Reading only one of the two silently yields ``None`` for every
+    field -- which is how the recurrence counter came back as all-first-
+    occurrences while looking perfectly healthy (D-A6-11).
+    """
+
+    if not isinstance(record, Mapping):
+        return {}
+    for key in ("result", "request"):
+        nested = record.get(key)
+        if isinstance(nested, Mapping) and nested:
+            return nested
+    return record
 
 
 def _recurrence_key(technique: str, problem: str) -> str:
@@ -352,7 +386,7 @@ class ExperienceSink:
         # Aborting is safe here in a way it is not for the event log: the caller
         # simply retries, and no side effect has been produced.
         try:
-            consumed = self._consumed_event_ids()
+            markers = self.store.list_idempotent(SINK_SCOPE)
         except Exception as exc:  # noqa: BLE001 - degradation is the contract
             return SinkSettlement(
                 project_id=project_id,
@@ -363,6 +397,21 @@ class ExperienceSink:
                     "aborted rather than replaying the log"
                 ],
             )
+
+        consumed: set[str] = set()
+        #: Event ids whose record step already happened. A marker left at phase
+        #: ``recorded`` by an earlier settlement whose finalize failed is proof
+        #: that ``record`` ran -- retrying it would append a second audit page for
+        #: one failure (D-A6-11).
+        recorded_this_run: set[str] = set()
+        for entry in markers:
+            record = entry.get("record") or {}
+            fields = _marker_fields(record)
+            key = str(entry.get("idempotency_key") or "")
+            if record.get("state") == FINALIZED_STATE:
+                consumed.add(key)
+            elif fields.get("mapped") is True and record.get("phase") == RECORDED_PHASE:
+                recorded_this_run.add(key)
 
         failure_events = [event for event in events if event["event_type"] in MAPPING_RULES]
         fresh = [event for event in failure_events if event["event_id"] not in consumed]
@@ -375,6 +424,9 @@ class ExperienceSink:
         # store. Without it the count is wrong whenever two same-cause events land
         # in the same batch (D-A6-06).
         settled_in_run: dict[str, int] = {}
+        #: Event ids this settlement has already promoted, so a single pass cannot
+        #: record one event twice.
+        settled_this_run: set[str] = set()
         settlement = SinkSettlement(
             project_id=project_id,
             scanned_events=len(events),
@@ -401,8 +453,31 @@ class ExperienceSink:
                 settlement = _replace(settlement, unreadable=settlement.unreadable + 1)
                 continue
             if match is None:
+                # A decoy that maps to no failure cause has nothing to archive, so
+                # consuming it *is* its terminal state -- written straight to
+                # finalized in one shot (there is no record step to protect).
                 try:
-                    self._consume(event_id, event_type, project_id, None)
+                    self.store.reserve_idempotent(
+                        SINK_SCOPE,
+                        event_id,
+                        {
+                            "event_id": event_id,
+                            "event_type": event_type,
+                            "project_id": project_id,
+                            "mapped": False,
+                        },
+                    )
+                    self.store.finalize_idempotent(
+                        SINK_SCOPE,
+                        event_id,
+                        {
+                            "event_id": event_id,
+                            "event_type": event_type,
+                            "project_id": project_id,
+                            "mapped": False,
+                            "reason": "not a failure",
+                        },
+                    )
                 except Exception as marker_exc:  # noqa: BLE001 - degradation is the contract
                     diagnostics.append(
                         "experience sink degraded: could not mark event "
@@ -420,36 +495,35 @@ class ExperienceSink:
                 )
                 + 1
             )
-            # Claim the event *before* recording it (D-A6-07), and mark the claim
-            # as **pending** rather than done.
+            # Two-phase claim, using the A1/A2 primitives the rest of the
+            # repository already relies on (D-A6-06c).
             #
-            # Recording first and claiming after meant a claim-write failure left
-            # the event unconsumed *and* the record written, so the retry ran
-            # ``record`` a second time -- appending a second
-            # ``knowledge.page_added`` for one failure.
+            # Recording before claiming meant a claim-write failure left the
+            # record written *and* the event unconsumed, so the retry ran
+            # ``record`` twice and appended a second ``knowledge.page_added``.
+            # Claiming first closes that, but then the claim has to be released
+            # when the record fails -- and a failed release used to leave a marker
+            # indistinguishable from a finished one, losing the failure for good.
             #
-            # Claiming first fixes that but introduces a new window: if the claim
-            # succeeds and the record then fails, the claim has to be given back,
-            # and that release can itself fail. A release failure used to leave a
-            # marker that looked identical to a completed one, so the event was
-            # never retried and the failure was lost forever (D-A6-06c).
-            #
-            # So a claim is written as ``state="pending"`` and only rewritten to
-            # ``state="settled"`` once the record is durable. Only settled markers
-            # count as consumed, which means a claim whose release failed is
-            # picked up again by the next settlement -- nothing to lose.
+            # Claims are therefore ``pending``, and only a *finalized* marker
+            # counts as consumed. Because ``finalize`` is a single conditional
+            # UPDATE of an existing row, promotion cannot be half-done the way a
+            # delete-then-insert can -- and a marker that never reaches
+            # ``finalized`` is simply retried.
             try:
-                self._consume(
+                self.store.reserve_idempotent(
+                    SINK_SCOPE,
                     event_id,
-                    event_type,
-                    project_id,
                     {
+                        "event_id": event_id,
+                        "event_type": event_type,
+                        "project_id": project_id,
+                        "mapped": True,
                         "recurrence_key": recurrence_key,
                         "recurrence_count": recurrence,
                         "technique": match.technique,
                         "experience_id": experience_id,
                     },
-                    state=PENDING_STATE,
                 )
             except Exception as marker_exc:  # noqa: BLE001 - degradation is the contract
                 diagnostics.append(
@@ -463,38 +537,70 @@ class ExperienceSink:
                 match=match,
                 recurrence=recurrence,
             )
-            try:
-                self.experiences.record(record)
-            except Exception as exc:  # noqa: BLE001 - degradation is the contract
-                # Best effort: drop the claim so the next settlement retries.
-                # If this fails too the claim stays ``pending``, and ``pending``
-                # is not treated as consumed -- so the retry happens anyway. That
-                # is why the release is allowed to fail without losing the event.
+            if event_id in recorded_this_run:
+                # A previous settlement recorded this event but could not
+                # finalize it; skip straight to the promotion. Re-running
+                # ``record`` would append a second audit page for one failure.
+                pass
+            else:
                 try:
-                    self.store.delete_idempotent(SINK_SCOPE, event_id)
-                except Exception as release_exc:  # noqa: BLE001 - degradation is the contract
+                    self.experiences.record(record)
+                except Exception as exc:  # noqa: BLE001 - degradation is the contract
+                    # Drop the claim so the next settlement retries cleanly. If
+                    # this fails too the claim stays ``pending``, and pending is
+                    # not treated as consumed -- so the retry happens either way.
+                    try:
+                        self.store.delete_idempotent(SINK_SCOPE, event_id)
+                    except Exception as release_exc:  # noqa: BLE001 - degradation is the contract
+                        diagnostics.append(
+                            "experience sink degraded: could not release claim on "
+                            f"{event_id} after a failed record "
+                            f"({release_exc.__class__.__name__}: {release_exc}); the "
+                            "claim stays pending and the event will be retried"
+                        )
                     diagnostics.append(
-                        "experience sink degraded: could not release claim on "
-                        f"{event_id} after a failed record "
-                        f"({release_exc.__class__.__name__}: {release_exc}); the "
-                        "claim stays pending and the event will be retried"
+                        "experience sink degraded: could not record experience "
+                        f"{experience_id} for {event_type} {event_id} "
+                        f"({exc.__class__.__name__}: {exc})"
                     )
-                diagnostics.append(
-                    "experience sink degraded: could not record experience "
-                    f"{experience_id} for {event_type} {event_id} "
-                    f"({exc.__class__.__name__}: {exc})"
-                )
+                    continue
+                # Mark the record step done *before* finalizing. This is what
+                # makes the retry skippable: if the finalize below fails, the
+                # next settlement sees ``service_started`` and knows the write
+                # already happened, so it promotes without recording again
+                # (D-A6-11).
+                try:
+                    self.store.mark_idempotent_phase(SINK_SCOPE, event_id, "service_started")
+                except Exception as phase_exc:  # noqa: BLE001 - degradation is the contract
+                    diagnostics.append(
+                        "experience sink degraded: could not mark the record step on "
+                        f"{event_id} ({phase_exc.__class__.__name__}: {phase_exc}); "
+                        "the event will be re-recorded, which may duplicate one audit page"
+                    )
+            # Only now is the event actually settled. ``finalize`` rewrites the
+            # pending row in place; if it fails the marker stays pending, so the
+            # event is re-settled later. That rerun rewrites the same experience
+            # row (upsert on a derived id) and re-appends one page -- which is why
+            # the check below refuses to call ``record`` twice within one
+            # settlement, and why a rerun is bounded to one extra attempt rather
+            # than accumulating.
+            if event_id in settled_this_run:
+                # Defensive: the claim was already promoted in this settlement.
                 continue
-            # Only now is the event actually settled. If this promotion fails the
-            # marker stays pending, so the next settlement re-settles the event:
-            # the record is an upsert keyed by a derived id, so the rerun
-            # overwrites that row instead of creating a second one.
             try:
-                self._settled(
+                self.store.finalize_idempotent(
+                    SINK_SCOPE,
                     event_id,
-                    event_type,
-                    project_id,
                     {
+                        # Identity fields are repeated here on purpose: the
+                        # finalize payload lands under ``result`` and becomes the
+                        # one a reader finds first, so anything the marker needs
+                        # to be interpretable has to be in this dict too -- not
+                        # only in the reservation (D-A6-11).
+                        "event_id": event_id,
+                        "event_type": event_type,
+                        "project_id": project_id,
+                        "mapped": True,
                         "recurrence_key": recurrence_key,
                         "recurrence_count": recurrence,
                         "technique": match.technique,
@@ -509,6 +615,7 @@ class ExperienceSink:
                 )
                 continue
             settled_in_run[recurrence_key] = recurrence
+            settled_this_run.add(event_id)
             if experience_id not in recordings:
                 recordings.append(experience_id)
             settlement = _replace(
@@ -517,6 +624,19 @@ class ExperienceSink:
                 recorded=settlement.recorded + 1,
             )
 
+        # A settlement that skips many events produces one diagnostic each, and
+        # the list is returned to the caller verbatim. Left unbounded, one bad
+        # batch of 200 unreadable payloads turns the settlement report into
+        # 200 near-identical lines (~32 KB measured) and buries the diagnostics
+        # that differ. Cap the detail and keep the counts authoritative: the
+        # totals in ``unreadable`` / ``consumed`` / ``recorded`` stay exact, only
+        # the prose is truncated (D-A6-10).
+        if len(diagnostics) > MAX_DIAGNOSTICS:
+            omitted = len(diagnostics) - MAX_DIAGNOSTICS
+            diagnostics = diagnostics[:MAX_DIAGNOSTICS] + [
+                f"experience sink degraded: {omitted} further diagnostic(s) omitted; "
+                "see unreadable/consumed/recorded for exact counts"
+            ]
         return _replace(
             settlement,
             recordings=recordings,
@@ -553,117 +673,67 @@ class ExperienceSink:
         return parser(payload)
 
     def _consumed_event_ids(self) -> set[str]:
-        """Event ids whose settlement is **complete**, not merely claimed.
+        """Event ids whose settlement is **finalized**, not merely claimed.
 
-        A claim is written ``pending`` and promoted to ``settled`` only after its
-        experience record is durable, so a claim abandoned by a crash or a failed
-        release is not mistaken for finished work (D-A6-06c).
+        A claim is written ``pending`` (``reserve_idempotent``) and promoted to
+        ``finalized`` (``finalize_idempotent``) only after its experience record
+        is durable, so a claim abandoned by a crash or a failed release is not
+        mistaken for finished work (D-A6-06c).
         """
 
         return {
             str(entry.get("idempotency_key") or "")
             for entry in self.store.list_idempotent(SINK_SCOPE)
-            if (entry.get("record") or {}).get("state") == SETTLED_STATE
+            if (entry.get("record") or {}).get("state") == FINALIZED_STATE
         }
 
     def _recurrence_count(self, project_id: str, recurrence_key: str) -> int:
-        """Count consumed events in this project sharing this cause.
+        """Count events already archived as this cause, in this project.
 
-        Read from the durable consumption markers, falling back to the count
-        already stored on the experience record when the marker table cannot be
-        read.
+        A marker counts when the experience record exists -- i.e. it is
+        ``finalized``, **or** it is still ``pending`` but has reached the
+        ``recorded`` phase. That second case matters: when the finalize step
+        fails, the record is already written and the failure *is* archived, so
+        omitting it would under-count and could hold the ``recurrence_count >= 2``
+        promotion gate shut even though the recurrence genuinely happened
+        (D-A6-11).
 
-        **Why not ``return 0`` on failure.** A first version degraded to 0, which
-        made every record look like a first occurrence. Since ``settle`` computes
-        ``recurrence = count + 1`` and ``recurrence_count >= 2`` is one of the
-        four promotion gates (D-A6-03), an unreadable marker table silently held
-        that gate shut forever -- while ``recorded`` stayed identical to the
-        healthy run, so the settlement report looked normal. Measured on the same
-        fixture: healthy ``max(count) = 2`` with one record at the gate, degraded
-        ``max(count) = 1`` with none (D-A6-06).
+        A marker with no record step at all (plain ``pending``) is work that has
+        not happened and is excluded -- counting it would let the gate be
+        satisfied by failures that were never archived (D-A6-06c).
 
-        The fallback is the stored record's own ``recurrence_count``, which is a
-        *lower bound* on the true value and is available precisely when the
-        markers are not: it was written by an earlier settlement. Using it keeps
-        the counter monotonic instead of resetting it, and ``_merge_records``
-        already takes ``max(existing, candidate)``, so a later healthy
-        settlement can still raise it to the true value.
+        Unlike a first version, an unreadable marker table is *not* degraded to
+        0 here: that made every record look like a first occurrence and silently
+        held the promotion gate shut, while ``recorded`` stayed identical to the
+        healthy run so the report looked normal (D-A6-06). ``settle`` reads the
+        markers once, up front, and aborts the whole settlement if that read
+        fails (D-A6-06b), so by the time this runs the table is known readable.
+        The read here is therefore a plain one -- a failure would be a genuine
+        bug rather than an anticipated degradation, and is left to propagate.
         """
 
-        try:
-            entries = self.store.list_idempotent(SINK_SCOPE)
-        except Exception:  # noqa: BLE001 - degradation is the contract
-            return self._stored_recurrence(project_id, recurrence_key)
+        entries = self.store.list_idempotent(SINK_SCOPE)
         count = 0
         for entry in entries:
             record = entry.get("record")
+            if not isinstance(record, Mapping):
+                continue
+            archived = record.get("state") == FINALIZED_STATE or (
+                record.get("state") == PENDING_STATE
+                and record.get("phase") == RECORDED_PHASE
+            )
+            if not archived:
+                continue
+            # The sink's fields live under ``request`` (reserved) or ``result``
+            # (finalized), never at the top level.
+            fields = _marker_fields(record)
             if (
-                isinstance(record, Mapping)
-                and record.get("state") == SETTLED_STATE
-                and record.get("mapped") is True
-                and record.get("project_id") == project_id
-                and record.get("recurrence_key") == recurrence_key
+                fields.get("mapped") is True
+                and fields.get("project_id") == project_id
+                and fields.get("recurrence_key") == recurrence_key
             ):
                 count += 1
         return count
-
-    def _stored_recurrence(self, project_id: str, recurrence_key: str) -> int:
-        """Monotonic fallback when the consumption markers are unreadable.
-
-        Returns the ``recurrence_count`` already persisted on this cause's
-        experience record (0 when the record does not exist yet). This is the
-        value the last successful settlement wrote, so a degraded run continues
-        the sequence instead of restarting it.
-        """
-
-        experience_id = _experience_id(project_id, recurrence_key)
-        try:
-            raw = self.store.get("experience", experience_id)
-        except Exception:  # noqa: BLE001 - degradation is the contract
-            return 0
-        if raw is None:
-            return 0
-        try:
-            return max(0, int(ExperienceRecord.model_validate(raw).recurrence_count) - 1)
-        except Exception:  # noqa: BLE001 - degradation is the contract
-            return 0
-
-    def _consume(
-        self,
-        event_id: str,
-        event_type: str,
-        project_id: str,
-        marker: Mapping[str, Any] | None,
-        *,
-        state: str = SETTLED_STATE,
-    ) -> None:
-        payload: dict[str, Any] = {
-            "event_id": event_id,
-            "event_type": event_type,
-            "project_id": project_id,
-            "mapped": marker is not None,
-            "state": state,
-        }
-        payload.update(marker or {})
-        self.store.remember_idempotent(SINK_SCOPE, event_id, payload)
-
-    def _settled(
-        self,
-        event_id: str,
-        event_type: str,
-        project_id: str,
-        marker: Mapping[str, Any],
-    ) -> None:
-        """Promote a pending claim to settled once its record is durable.
-
-        ``remember_idempotent`` is an ``INSERT OR IGNORE``, so the rewrite is a
-        delete followed by an insert. That is two steps, and either can fail:
-        both failures leave the marker ``pending``, which :meth:`_consumed_event_ids`
-        does not treat as consumed, so the event is simply re-settled later.
-        """
-
-        self.store.delete_idempotent(SINK_SCOPE, event_id)
-        self._consume(event_id, event_type, project_id, marker, state=SETTLED_STATE)
 
     def _merge_records(
         self,
