@@ -964,3 +964,120 @@ def test_refused_records_are_counted_and_survive_the_a4_boundary(services):
     )
 
     assert invocation.receipt.refused_records == 1
+
+
+# --------------------------------------------------------------------------- #
+# 11. The warning channel must survive the graph and reach the run record
+# --------------------------------------------------------------------------- #
+
+
+def test_workflow_state_declares_warnings():
+    """langgraph keeps only the keys the state schema declares.
+
+    Without this declaration a node that writes ``warnings`` has its value
+    silently dropped when the graph runs -- the fact is not merely unread, it
+    never exists. The earlier tests drove the agent directly, so they could not
+    observe this.
+    """
+
+    from autoresearch.agents.base import WorkflowState, single_node_subgraph
+
+    assert "warnings" in WorkflowState.__annotations__
+
+    def node(state):
+        out = dict(state)
+        out["warnings"] = ["incomplete retrieval"]
+        return out
+
+    result = single_node_subgraph("n", node).invoke({"project_id": "x"})
+
+    assert result.get("warnings") == ["incomplete retrieval"]
+
+
+def test_incomplete_retrieval_warning_survives_the_graph():
+    """End to end through langgraph, not a direct agent call.
+
+    This is the shape the third review found missing: the headline behaviour was
+    asserted only against a directly-constructed agent, so deleting the warning
+    code left the whole suite green.
+    """
+
+    from autoresearch.agents.base import single_node_subgraph
+    from autoresearch.agents.paper_search import PaperSearchAgent
+    from autoresearch.contracts import PaperRecord
+    from autoresearch.search_service import SearchOutcome
+
+    class StubSearch:
+        def search(self, *_args, **_kwargs):
+            return SearchOutcome(
+                papers=[PaperRecord(project_id="demo", title="From secondary", source="openalex")],
+                provider_failure=True,
+            )
+
+    class StubEvidence:
+        def list(self, *_args, **_kwargs):
+            return []
+
+    class StubHandoffs:
+        def accept(self, *_args, **_kwargs):
+            return None
+
+        def issue(self, envelope):
+            class _Issued:
+                handoff_id = envelope.handoff_id
+
+                def model_dump(self, **_kwargs):
+                    return envelope.model_dump(mode="json")
+
+            return _Issued()
+
+    class Permissive:
+        def transition(self, _current, target):
+            return target
+
+    agent = PaperSearchAgent(
+        search=StubSearch(),
+        evidence=StubEvidence(),
+        handoffs=StubHandoffs(),
+        state_machine=Permissive(),
+    )
+    graph = single_node_subgraph("search", agent.run)
+
+    result = graph.invoke(
+        {"project_id": "demo", "run_id": "r", "idea": "x", "lifecycle_state": "intake"}
+    )
+
+    assert result.get("warnings"), "the incomplete-retrieval fact must survive the graph"
+    assert any("incomplete" in w.lower() for w in result["warnings"])
+
+
+def test_run_record_lifts_warnings_to_the_top_level(runtime, project):
+    """A caller reading a run must see the warning without opening ``state``."""
+
+    record = runtime._save_run(
+        {
+            "run_id": "r1",
+            "project_id": "demo",
+            "run_status": "pending",
+            "lifecycle_state": "literature_searched",
+            "warnings": ["retrieval was incomplete"],
+        }
+    )
+
+    assert record["warnings"] == ["retrieval was incomplete"]
+    assert record["status"] == "pending"
+
+
+def test_a_run_without_warnings_reports_an_empty_list(runtime, project):
+    """The field is always present, so a caller never has to guard for its absence."""
+
+    record = runtime._save_run(
+        {
+            "run_id": "r2",
+            "project_id": "demo",
+            "run_status": "pending",
+            "lifecycle_state": "literature_searched",
+        }
+    )
+
+    assert record["warnings"] == []

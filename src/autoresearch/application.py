@@ -269,6 +269,11 @@ class AutoResearchApplication:
             "run_id": state["run_id"],
             "project_id": state["project_id"],
             "status": status,
+            # Lifted to the top level next to ``status`` on purpose. A warning that
+            # only lives inside ``state`` is one a caller has to know to look for;
+            # promoting it makes "this run completed, but the retrieval was
+            # incomplete" a first-class property of the run record (N1).
+            "warnings": list(state.get("warnings") or []),
             "state": state,
             "interrupts": interrupts or [],
         }
