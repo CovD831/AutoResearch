@@ -191,6 +191,14 @@ def create_api(application: AutoResearchApplication | None = None) -> FastAPI:
         except PermissionError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
+    @app.post("/projects/{project_id}/experiences/settle")
+    def settle_failure_experiences(project_id: str):
+        try:
+            settlement = runtime.settle_failure_experiences(project_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="project not found") from exc
+        return settlement.as_dict()
+
     @app.post("/evolution/proposals", status_code=201)
     def add_evolution_proposal(item: EvolutionProposal):
         return runtime.propose_evolution(item)
