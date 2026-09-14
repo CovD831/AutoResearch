@@ -54,11 +54,11 @@
 
 ## Pending
 
-- 规格偏离 D-A6-01 已按用户确认保留，待在 PR 中由 owner 最终记录。
+- 规格偏离 D-A6-01 待在 PR 中向负责人披露并审阅。
 - D-A6-05 已裁决并完成，当前验收清单为 `9/9`。
 - registry 行 `S4-A2-EXPERIENCE-WIRING` 状态仍为 `ready`（`docs/rearchitecture/TASK-PACKAGE-REGISTRY.md` 为共享文档，本包未改，报 owner 回写）。
 - 用户侧独立复跑已完成：全量 **301 passed in 846.57s**、exit 0；功能场景 1–12 全部执行，未出现 `RAISED` / `Traceback`，场景脚本 exit 0。
-- D-A6-02 的派生式 `recurrence_count` 是对「复现 ≥2」门槛基数的**语义选择**，已按用户确认保留；PR 中向 owner 披露其与直接自增的差异。
+- D-A6-02 的派生式 `recurrence_count` 是对「复现 ≥2」门槛基数的**语义选择**；PR 中向负责人披露其与直接自增的差异并请其审阅。
 
 ## Next step
 
