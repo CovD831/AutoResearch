@@ -16,6 +16,12 @@ from autoresearch.handoffs import HandoffService
 from autoresearch.search_service import PaperSearchService
 from autoresearch.state_machine import StateMachine
 
+#: How many paper records this handoff names explicitly (D-A9-01). The envelope
+#: is a reference list, so this is an ergonomics bound rather than a capacity
+#: limit: ``state.paper_ids`` already carries the full set and the reader resolves
+#: every id from the store. Exceeding it is reported in diagnostics, never silent.
+HANDOFF_REF_LIMIT = 50
+
 
 class PaperSearchAgent:
     agent_id = AgentId.PAPER_SEARCH
@@ -83,14 +89,14 @@ class PaperSearchAgent:
                 to_agent=AgentId.PAPER_READER,
                 objective="Read registered papers, create structured cards, and mine hypotheses.",
                 expected_output="Reading-card IDs and evidence-bounded innovation candidates.",
+                # Reference list, not a payload (D-A9-01). The title used to be
+                # copied into ``summary``, which is capped at 500 characters while
+                # ``PaperRecord.title`` is unbounded -- a long title would have
+                # rejected the envelope for no reason. The reader resolves records
+                # from the store by id anyway.
                 artifact_refs=[
-                    ArtifactRef(
-                        artifact_id=paper.paper_id,
-                        kind="paper_record",
-                        uri=paper.url,
-                        summary=paper.title,
-                    )
-                    for paper in outcome.papers[:20]
+                    ArtifactRef(artifact_id=paper.paper_id, kind="paper_record", uri=paper.url)
+                    for paper in outcome.papers[:HANDOFF_REF_LIMIT]
                 ],
                 evidence_ids=paper_evidence,
                 constraints=[
@@ -98,9 +104,20 @@ class PaperSearchAgent:
                     "Attach locators",
                     "Label innovation as hypothesis, not established novelty",
                 ],
-                bounded_context=f"papers={len(paper_ids)}",
+                bounded_context=(
+                    f"papers={len(paper_ids)}; "
+                    f"refs_attached={min(len(paper_ids), HANDOFF_REF_LIMIT)}"
+                ),
             )
         )
+        # A silent truncation is a fail-open: downstream would believe it received
+        # every record. The state already carries the full ``paper_ids`` list, so
+        # the truncation only affects this reference list, and it must be visible.
+        if len(paper_ids) > HANDOFF_REF_LIMIT:
+            diagnostics.append(
+                f"handoff lists the first {HANDOFF_REF_LIMIT} of {len(paper_ids)} paper "
+                f"records; the reader resolves the full set from state.paper_ids"
+            )
         return state.model_copy(
             update={
                 "lifecycle_state": target,
