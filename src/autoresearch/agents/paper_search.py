@@ -54,17 +54,24 @@ class PaperSearchAgent:
         )
         diagnostics = [*state.diagnostics, *outcome.diagnostics]
         if not outcome.papers:
+            # A retrieval where every provider failed is not the same fact as a
+            # query that legitimately returned nothing, and the two call for
+            # different actions: the first is an operational failure to surface,
+            # the second is "go find evidence". Branch on the flag, never on the
+            # wording of a diagnostic -- a reworded message changes no decision.
             target = self.state_machine.transition(
                 state.lifecycle_state, LifecycleState.WAITING_EVIDENCE
+            )
+            blocker = (
+                "Retrieval failed across every source; the literature search did not run."
+                if outcome.provider_failure
+                else "No real paper records are available for reading."
             )
             return state.model_copy(
                 update={
                     "lifecycle_state": target,
                     "run_status": RunStatus.BLOCKED,
-                    "blockers": [
-                        *state.blockers,
-                        "No real paper records are available for reading.",
-                    ],
+                    "blockers": [*state.blockers, blocker],
                     "diagnostics": diagnostics,
                     "handoff": None,
                     "last_agent": self.agent_id,

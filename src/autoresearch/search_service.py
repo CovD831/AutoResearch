@@ -23,6 +23,12 @@ from autoresearch.storage import RecordStore
 class SearchOutcome:
     papers: list[PaperRecord] = field(default_factory=list)
     diagnostics: list[str] = field(default_factory=list)
+    #: True when at least one retrieval source failed to answer. Callers must not
+    #: infer this from ``diagnostics``: prose is not a contract, and the previous
+    #: revision "fixed" a failure/zero-hit confusion by rewording a message that
+    #: no consumer read. A caller that treats "no papers" as "go find evidence"
+    #: has to branch on this flag, not on text.
+    provider_failure: bool = False
 
 
 class ScholarlyConnector(Protocol):

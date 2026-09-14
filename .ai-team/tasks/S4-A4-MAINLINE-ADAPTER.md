@@ -3,7 +3,7 @@
 - ID: `S4-A4-MAINLINE-ADAPTER`
 - Title: `S4 mainline retrieval switches to the A5 real adapters`
 - Status: `active`
-- Status note: 执行 `D-A5-偏离-1` 选项 (a)。新文件 `src/autoresearch/adapter_search_service.py`（`AdapterBackedPaperSearchService`，满足 `PaperSearchServicePort`）；`_CandidateOnlyAdapter` 新增公开原语 `retrieve()`，限流计数下沉其中，`invoke()` 改为复用；`application.py` 装配切到新服务，`PaperSearchCapabilityAdapter` / `InvocationBoundedSearchPort`（A4 可靠边界）原样保留。基线 `main@04ce9a9` 实测 **509 passed / 2 skipped / 0 error**；本包后 **525 passed / 2 skipped / 0 error**（新增 16 条）。ruff clean、compileall OK、`check.mjs` valid。判别力实测：装配未切场景下 **2 判据型 failed / 12 passed**。零回归（既有 509 条逐位不变）。
+- Status note: 执行 `D-A5-偏离-1` 选项 (a)。新文件 `src/autoresearch/adapter_search_service.py`（`AdapterBackedPaperSearchService`，满足 `PaperSearchServicePort`）；`_CandidateOnlyAdapter` 新增公开原语 `retrieve()`，限流计数下沉其中，`invoke()` 改为复用；`application.py` 装配切到新服务，`PaperSearchCapabilityAdapter` / `InvocationBoundedSearchPort`（A4 可靠边界）原样保留。基线 `main@04ce9a9` 实测 **509 passed / 2 skipped / 0 error**；本包后 **536 passed / 2 skipped / 0 error**（新增 27 条；含对抗审查后的 4 条修复判据测试）。ruff clean、compileall OK、`check.mjs` valid。判别力实测：装配未切场景下 **2 判据型 failed / 12 passed**。零回归（既有 509 条逐位不变）。
 - Owner: `user/team`
 - Next owner: `user/team`
 
@@ -52,8 +52,8 @@
 | 项 | 命令 | 结果 |
 |---|---|---|
 | 基线（`04ce9a9`，本 worktree 实测） | `pytest -q -o addopts="" -W error` | **509 passed / 2 skipped / 0 error** |
-| 本包全量 | 同上 | **525 passed / 2 skipped / 0 error** |
-| 聚焦 | `pytest tests/test_adapter_search_service.py` | 16 passed，**0.19s（全离线）** |
+| 本包全量 | 同上 | **536 passed / 2 skipped / 0 error** |
+| 聚焦 | `pytest tests/test_adapter_search_service.py` | 20 passed，**全离线** |
 | ruff | `ruff check src tests` | All checks passed |
 | compileall | `compileall -q src` | exit 0 |
 | check.mjs | `node .ai-team/check.mjs --base main` | valid |
@@ -93,8 +93,36 @@
 - 接手者注意：`search_service.py` 虽已不被主链路调用，但**仍在库内且仍被测试使用**，不要顺手删除。
 - 下一位 owner 若要验证真实检索，需 `SEMANTIC_SCHOLAR_API_KEY`；无 key 时新路径会 **fail-closed 且不发请求**（这是期望行为，不是故障）。
 
+## Adversarial review（机制二：作者侧探针，2026-09-14）
+
+**发现 3 个真实缺陷，全部由本分支引入**，且**全部未被测试套件、判别力检查或门禁拦住**：
+
+| # | 缺陷 | 级别 | 修复 |
+|---|---|---|---|
+| 1 | 异常消息 `{exc}` 被写入 diagnostics 并**持久化进 `audit_events.payload_json`**（实测凭据串落库）。老 connector 刻意只记 `type(exc).__name__`，本分支丢失了该保护 | **高** | `_safe_exc()` 只回类型名；判据测试直接回读数据库 |
+| 2 | `MemoryError` 被 `except Exception` 吞成"provider 失败"，运行以看似正常的空结果结束 | 中 | `_is_fatal()` 重抛 |
+| 3 | 检索全失败与真实零命中**用同一句话报告**，下游无法区分（`WAITING_EVIDENCE` 只对后者正确） | 中 | 分两句 |
+
+另修：**源的组成**写进 run diagnostics（老路径 openalex+crossref+semantic_scholar → 新路径 semantic_scholar+arxiv+openalex，是行为变更，此前只在 diff 里可见）。
+
+判别力：本轮 4 条新测试在 `b7635d7` 上 **4 failed，全部判据型**。
+
+**同族横扫（机械枚举 8 处 `ArtifactRef(` 构造点）新发现第 4 处：`writing_service.py:207`**（`summary=card.findings[0][:300]`，每卡一条 + 嵌正文，与已修的 `paper_reader.py:84` 完全同型）。**本包未修**：该字段（`pipeline_contracts.py:81`）无长度上限故不产生故障，且**无任何读取方**；修它需越过本包 `allowed_paths`。已留痕交下一包。
+
 ## Not closed
 
 - 跨进程并发未测（沿用 A5/O12 挂账口径）。
 - 真实网络端到端需本机配置 `SEMANTIC_SCHOLAR_API_KEY`；本包证据全部来自注入 transport 的离线矩阵。
 - `OpenAlex` 的 `HTTP 200 + error body` 限流形态在主链路下的处置未单独验证（adapter 层已在 A5 处理，本包只消费）。
+- **`writing_service.py:207` 同族缺陷未修**（见上）。字段无读取方，属语义污染而非故障。
+- **`_persist` 的部分完成窗口**：paper 已落库、evidence 已落库、`add_page` 失败 → 异常逃逸，留下不一致状态。**实测老服务行为相同**，属继承而非本包引入；本包未修。
+- **凭据泄露缺陷曾在 `386e7f8` 起存在两轮，所有门禁均未拦住** → 现行验证手段对"异常消息内容"这一类缺陷无覆盖。
+- **【需 owner 裁决】F4（独立盲审发现，本包未修）**：畸形/缺失命中被铸成受信任的 E1 证据。实测两个矛盾：① `RetrievedPaper(title="Real paper", abstract="")` 落库 claim 声称 "its supplied abstract exist"，而同一论文的 `WikiPage.body` 写 "No abstract was supplied"；② `title="Untitled", doi/url/source_record_id 全 None` 的命中仍被铸成 E1，`independent_source` 退化为 `"<source>:None"`。**实测老服务 `search_service.py:175` 行为逐位相同**，且 claim 文案被 **A1 parity 契约**（`docs/rearchitecture/worktrees/A-runtime-recovery/parity-report.json` 的 `evidence_equal: true` / `wiki_equal: true`）锁定。→ 修它需同时改两处实现并更新 A1 契约，**属 owner 层设计决策**。
+
+## Independent review（机制一，2026-09-14）
+
+独立子代理盲审（prompt 不含作者推理）回传 4 项发现：F1 凭据落库（高）、F2 致命异常被吞（中）、F3 异常消息边界不稳健（中）、F4 畸形记录铸成 E1（中）。
+
+**F1/F2/F3 与作者侧自查完全重叠且结论一致** —— 两条不知情路径收敛，是修复正确性的最强证据。**F4 为独立新增发现**，见上方裁决项。
+
+报告：`reviews/A8-A9-ADVERSARIAL-REVIEW.md`。

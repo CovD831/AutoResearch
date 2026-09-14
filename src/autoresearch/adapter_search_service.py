@@ -247,13 +247,13 @@ class AdapterBackedPaperSearchService:
             outcome.papers.append(persisted)
 
         if not outcome.papers:
-            # Two different situations must not be reported with one sentence. A
-            # caller that reads only "no papers" cannot tell a genuine zero-hit
-            # query from a provider that never answered -- and the downstream
-            # decision (WAITING_EVIDENCE, "go find evidence") is only correct for
-            # the first. The distinct wording is the contract; see
-            # ``test_zero_hits_and_provider_failure_are_reported_differently``.
+            # Two different situations must not collapse into one decision. The
+            # flag is what a caller branches on; the wording is for humans. An
+            # earlier revision changed only the wording and asserted on it, which
+            # left the actual decision unaffected -- see
+            # ``test_provider_failure_flag_drives_the_agent_decision``.
             if failed:
+                outcome.provider_failure = True
                 outcome.diagnostics.append(
                     "No papers were registered because every provider call failed; "
                     "this is not a zero-hit result."
@@ -263,6 +263,8 @@ class AdapterBackedPaperSearchService:
                     "No papers were found; downstream reading is blocked instead of inventing "
                     "records."
                 )
+        else:
+            outcome.provider_failure = failed
         self.store.append_event(
             "papers.search_completed",
             {
@@ -301,9 +303,14 @@ def _is_fatal(exc: BaseException) -> bool:
     ``MemoryError`` and ``RecursionError`` mean the process is in a state where
     the remaining work is not trustworthy; recording them as "the provider
     failed" would let a broken run finish as a plausible empty result.
+
+    ``KeyboardInterrupt`` / ``SystemExit`` are deliberately **not** listed: they
+    derive from ``BaseException``, not ``Exception``, so the ``except Exception``
+    clause that calls this can never receive one. Listing them was dead code that
+    read as protection without being any.
     """
 
-    return isinstance(exc, (MemoryError, RecursionError, KeyboardInterrupt, SystemExit))
+    return isinstance(exc, (MemoryError, RecursionError))
 
 
 def _fingerprint_text(query: str) -> str:

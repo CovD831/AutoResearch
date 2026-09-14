@@ -47,6 +47,7 @@ from autoresearch.gates import GateService
 from autoresearch.graph import build_research_graph
 from autoresearch.handoffs import HandoffService
 from autoresearch.invocation_contracts import (
+    InvocationStatus,
     PaperSearchRequest,
     request_fingerprint,
 )
@@ -109,6 +110,7 @@ class InvocationBoundedSearchPort:
         papers = []
         seen: set[str] = set()
         diagnostics: list[str] = []
+        provider_failure = False
         for query in queries:
             request = self.build_request(
                 project_id,
@@ -129,7 +131,18 @@ class InvocationBoundedSearchPort:
                     seen.add(paper_record.paper_id)
                     papers.append(paper_record)
             diagnostics.extend(invocation.diagnostics)
-        return SearchOutcome(papers=papers, diagnostics=diagnostics)
+            # A failed or unknown invocation is carried upward as a fact, not as
+            # diagnostic text: the downstream decision (surface the failure vs go
+            # find evidence) must not depend on how a message is worded.
+            outcome_status = invocation.receipt.outcome_status or invocation.receipt.status
+            if outcome_status in (
+                InvocationStatus.FAILED,
+                InvocationStatus.UNKNOWN_OUTCOME,
+            ):
+                provider_failure = True
+        return SearchOutcome(
+            papers=papers, diagnostics=diagnostics, provider_failure=provider_failure
+        )
 
 
 class AutoResearchApplication:

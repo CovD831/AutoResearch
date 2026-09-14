@@ -488,12 +488,14 @@ def test_provider_exception_messages_never_reach_the_audit_trail(services, tmp_p
     )
 
 
-def test_zero_hits_and_provider_failure_are_reported_differently(services):
-    """The downstream decision is only correct for one of the two.
+def test_zero_hits_and_provider_failure_are_distinguishable_by_the_caller(services):
+    """The distinction must be machine-readable, not a matter of wording.
 
-    "No papers were found" tells the caller to go find evidence; a provider that
-    never answered is a different fact and must not be phrased as a zero-hit
-    result.
+    An earlier revision "fixed" this by rewording a diagnostic and asserting on
+    the text. That left the actual decision untouched: ``paper_search.py`` only
+    branches on ``if not outcome.papers``, so both cases still landed in
+    ``WAITING_EVIDENCE`` with the same blocker. A reworded message changes no
+    decision. Independent review caught that; this test pins the flag instead.
     """
 
     class Empty:
@@ -512,9 +514,8 @@ def test_zero_hits_and_provider_failure_are_reported_differently(services):
     healthy_outcome = healthy.search("p1", ["q"])
     failing_outcome = failing.search("p1", ["q"])
 
-    assert "No papers were found" in healthy_outcome.diagnostics[-1]
-    assert "No papers were found" not in failing_outcome.diagnostics[-1]
-    assert "not a zero-hit result" in failing_outcome.diagnostics[-1]
+    assert healthy_outcome.provider_failure is False
+    assert failing_outcome.provider_failure is True
 
 
 def test_fatal_errors_are_not_absorbed_as_provider_failures(services):
@@ -524,6 +525,79 @@ def test_fatal_errors_are_not_absorbed_as_provider_failures(services):
 
     with pytest.raises(MemoryError):
         service.search("p1", ["q"])
+
+
+def test_keyboard_interrupt_is_not_listed_as_a_caught_fatal_error():
+    """It cannot be: it derives from BaseException, not Exception.
+
+    Listing it inside a guard called from ``except Exception`` reads like
+    protection that does not exist -- dead code pretending to be a safety net.
+    """
+
+    assert not issubclass(KeyboardInterrupt, Exception)
+    assert not issubclass(SystemExit, Exception)
+
+    from autoresearch.adapter_search_service import _is_fatal
+
+    assert _is_fatal(MemoryError()) is True
+    assert _is_fatal(RuntimeError()) is False
+
+
+def test_the_agent_branches_on_the_flag_not_on_the_wording(runtime):
+    """End-to-end: the two outcomes must produce different blockers."""
+
+    from autoresearch.agents.paper_search import PaperSearchAgent
+    from autoresearch.search_service import SearchOutcome
+
+    class _StubSearch:
+        def __init__(self, outcome):
+            self._outcome = outcome
+
+        def search(self, *_args, **_kwargs):
+            return self._outcome
+
+    class _StubHandoffs:
+        def accept(self, *_args, **_kwargs):
+            return None
+
+    class _Permissive:
+        def transition(self, _current, target):
+            return target
+
+    base_state = {
+        "project_id": "demo",
+        "run_id": "run-1",
+        "idea": "x",
+        "evidence_ids": [],
+        "diagnostics": [],
+        "lifecycle_state": "intake",
+        "seed_papers": [],
+        "search_queries": ["q"],
+        "handoff": None,
+        "last_agent": None,
+    }
+
+    zero_hits = PaperSearchAgent(
+        search=_StubSearch(SearchOutcome(diagnostics=["No papers were found."])),
+        evidence=None,
+        handoffs=_StubHandoffs(),
+        state_machine=_Permissive(),
+    )
+    failed = PaperSearchAgent(
+        search=_StubSearch(
+            SearchOutcome(diagnostics=["... failed"], provider_failure=True)
+        ),
+        evidence=None,
+        handoffs=_StubHandoffs(),
+        state_machine=_Permissive(),
+    )
+
+    zero_blocker = zero_hits.run(dict(base_state))["blockers"][-1]
+    failed_blocker = failed.run(dict(base_state))["blockers"][-1]
+
+    assert zero_blocker != failed_blocker
+    assert "Retrieval failed" in failed_blocker
+    assert "Retrieval failed" not in zero_blocker
 
 
 def test_source_composition_is_reported_in_the_run(services):
