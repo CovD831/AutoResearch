@@ -29,6 +29,16 @@
 - [x] 离线模式**显式**：`network_enabled=False` 时不触网并写出 "disabled" 诊断；seed papers 仍被处理。
 - [x] 测试全离线可复现（无网络、无凭据）。
 
+## Invariants
+
+- 不修改 `contracts.py`、`invocation_contracts.py`、`capability.py`、`capability_registry.py`、`evidence.py`、`gates.py`、`storage.py` 或 `.ai-team/TASK.md`。
+- **不删除 `search_service.py`**：它是 A1 accepted 的 S1 路径，被 A1/A2 recovery contract 测试直接构造。
+- 主选检索源不得由本包单方面更换（ADR-01 §1）；本包只换**装配目标**，providers 集合与优先级不变。
+- 凭据只从 `Settings` 读，永不进入 request、fingerprint、receipt、日志或仓库。
+- 主链路不得经候选通道取数（`CANDIDATE_ONLY` 的 `value` 被 registry 清空，且候选不带 abstract 正文）。
+- 失败路径不得被写成通过；空结果按 D-F8-01 记为确定性成功，限流（查询未执行）**不得**被写成"零命中"。
+- 不新增业务 Agent；本包是 Runtime 装配改动。
+
 ## Decisions
 
 - **D-A8-01 新增公开原语 `retrieve()`，而不是让主链路经候选通道**：`CANDIDATE_ONLY` 注册的 `value` 会被 registry 强制清空（`capability_registry.py:645-648`，D-F8-01 相关，有意设计），且 `_candidate()` 只带 `abstract_present` 布尔。主链路若走候选路径，44 篇论文会全部退化成"只有标题"（`reader_service.py:69-71` 的 `source_text = full_text or paper.abstract` 兜底到 `paper.title`）。这属于本项目反复出现的「退化路径把缺失输入记成正常值」缺陷族，必须在设计阶段挡掉。`invoke()` 的候选语义不变。
@@ -55,6 +65,33 @@
 2. **端到端测试第一版依赖真实网络**：它替换了 `service.adapters` 里 semantic_scholar 一项，但 `build_search_adapters` 造的 arxiv/openalex adapter 仍带真 transport，测试实际访问了 live provider（耗时 17.3s 且返回 5 篇真实论文）。→ 改为整体替换 `service.adapters` 后耗时降到 0.17s。**一个依赖网络、耗时 17s 的测试在 CI 里不是证据。**
 3. **第一版测试里还混入了空洞断言与死代码**（`assert not any(... if False)`、未被使用的 `legacy_transport`）→ 已删除或改为可证伪的断言。
 4. **query → invocation_id 派生有碰撞（自审实测抓出）**：原先用 `re.sub(r"\W+", "-", query)`，实测 `"a b"` 与 `"a-b"` 折叠成同一串，`"!!!"` 与 `"???"` 亦然。碰撞意味着两个不同 query 共用 `invocation_id`，会让 A4 账本把第二个 query 重放成第一个的结果。→ 改为 slug + `sha256` 前 12 位，并补 `test_query_id_fragments_do_not_collide` 锁住不变式。
+
+## Completed
+
+- 新增公开原语 `_CandidateOnlyAdapter.retrieve(request) -> list[RetrievedPaper]`，含限流计数；`invoke()` 改为复用（候选语义不变）。
+- 新增 `src/autoresearch/adapter_search_service.py`：`AdapterBackedPaperSearchService`，满足 `PaperSearchServicePort`；经 A5 adapters 取数、`RetrievedPaper`→`PaperRecord`、复刻落库副作用（paper + E1 evidence + wiki page）、DOI 去重、按异常类型分流 diagnostics、`network_enabled=False` 显式离线模式、`rate_limit_summary()` 聚合。
+- `application.py` 装配切到新服务；`PaperSearchCapabilityAdapter` / `InvocationBoundedSearchPort` 原样保留。
+- 测试 `tests/test_adapter_search_service.py` 16 条，全部离线可复现。
+- 账本回写：`A5-benchmark-runtime/L3.md` 的 `D-A5-偏离-1` 由「待裁决」改为「已裁决 → 已解决 (a)」；`TASK-QUEUE.md` 增 A8/A9 两行；`TASK-PACKAGE-REGISTRY.md` 登记两包。
+- 本包 `task-package.json` 与 `L3.md` 设计记录。
+
+## Pending
+
+- 真实网络端到端（需本机 `SEMANTIC_SCHOLAR_API_KEY`）。
+- 跨进程并发（沿用挂账口径）。
+- OpenAlex `HTTP 200 + error body` 限流在主链路下的行为未单独验证。
+
+## Next step
+
+- 开 PR（`owner/a8-mainline-adapter` → main），走保护窗口合并。
+- 合并后启动 **A9 / S4-A5-HANDOFF-BY-REFERENCE**（交接单只传引用），它依赖本包先拿到真实检索量级。
+
+## Handoff note
+
+- 本包为 **owner 线**（触及主链路装配与 A4 可靠边界，同 O12/O13 先例），不派成员。
+- A9 可派成员，但**必须在本包合并后**开：`paper_search.py` 是两包的唯一交叠文件，且 A9 的契约上限需要本包提供的真实量级作依据。
+- 接手者注意：`search_service.py` 虽已不被主链路调用，但**仍在库内且仍被测试使用**，不要顺手删除。
+- 下一位 owner 若要验证真实检索，需 `SEMANTIC_SCHOLAR_API_KEY`；无 key 时新路径会 **fail-closed 且不发请求**（这是期望行为，不是故障）。
 
 ## Not closed
 
