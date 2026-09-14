@@ -53,6 +53,8 @@
 - D-O13-07 **偏离登记**：PLAN §D1-2 第 2 条原写「schema ref 必须可解析（在已知 contract 名字表内）」。实现改为**只校验形状**。理由见 Invariants 第 6 条。需 owner 知悉：如需深度解析，应放在 S3-A3/O14 选择层而非注册边界。
 - D-O13-08 **偏离登记**：PLAN §A6 原写「`deprecated` 注册成功且 diagnostics 非空」。`register()` 无 diagnostics 通道，实现改为独立的 `warnings` 字段。语义等价，落点更清晰（且保证告警不能拒绝）。
 - D-O13-09 判据力口径固化为全包要求（owner 裁决 §0.1 第 7 条）：**判据型失败计入，符号缺失型失败不计入**。见 Verification。
+- D-O13-10（owner 独立盲审后自修；契约必备字段必须真的必填）：L2 合同明文列 `name` / `kind` / `version` / `entrypoint` / `inputs` / `outputs` / `permissions` / `evidence_mode` / `network_required` / `allowed_network_domains` 为**必备字段**，而 `validate_manifest()` 只覆盖了其中一部分：**`entrypoint` 与 `evidence_mode` 从未被检查**，且两者默认值都是 `None`。实测：`CapabilityManifest(name='x', manifest_id='x', input_schema_ref='A', output_schema_ref='B')` → `validate_manifest()` 返回 `[]`（放行）。更糟的是**仓库自己的三个 built-in 适配器全部没有声明 `entrypoint`**，且被既有测试背书通过——即「冻结契约声称必备、实现既不校验、自家数据也不填」。修法：补上两个必备字段的校验；三个 built-in 通过新的 `capability_entrypoint` 属性声明入口（默认 `module:ClassName`）。
+- D-O13-11（owner 独立盲审后判定为**虚警**；空候选是成功不是失败）：盲审提出 `candidate_only` 适配器返回 `value=None + candidates=[]` 时仍记为 `COMPLETED`，属 fail-soft，建议判 `FAILED`。**复核判定不成立**：`D-F8-01` 是早已确立的设计决策——「合法查询返回零命中是**确定性终态成功**」，适配器会在 diagnostics 里显式标记该情形；把空候选一律判失败会**摧毁这条语义**（实测按盲审意见修改后 44 个测试失败，含 `test_deterministic_empty_result_is_a_success_not_an_unknown`）。**已回退该修改，逻辑保持原样**，仅在注释中写明「空候选不是失败」的理由与 D-F8-01 的出处，避免下一轮审查者重复提出。**教训：审查发现必须先用仓库既有的设计决策校验，否则会把有意语义当缺陷「修掉」。**
 
 ## Completed
 
@@ -68,6 +70,7 @@
 
 - S3-A3/O14（注册目录 + 内置多选，含 §2.8 可插拔判据 P1–P5）未开工——依赖本包落地。
 - D-O13-07 / D-O13-08 两处偏离待 owner 确认。
+- **owner 独立盲审已完成（2026-09-14）**：2 高 3 中 2 低，逐条独立复现。**已修 1 条高危（D-O13-10）**，**1 条判定为虚警并回退（D-O13-11）**，其余为「校验分支实为死代码」「关键失败路径零覆盖」「外部旧 manifest 无迁移说明」——**登记为已知，不在本包修**（理由见下）。
 - `manifest_id` 与 `name` 目前在三处构造点取值相同；**「同一能力的多版本是否共享 manifest_id」的语义仅由文档约束、无测试强制**（见 Known limits）。
 - 未与 O12/#15 分支交叉验证：该分支若引入 manifest 形状，须纳入未来穷举验收。
 - `docs/ARCHITECTURE.md` 仍未补 capability 章节（`docs/CONTRACTS.md` 已补）。
@@ -81,12 +84,21 @@ owner 复核 D-O13-07 / D-O13-08 两处偏离与 Known limits 后决定合并；
 ```
 python -m ruff check src tests            -> All checks passed!
 python -m compileall -q src
-python -m pytest -o addopts="" -q         -> 299 passed
-node .ai-team/check.mjs --task .ai-team/tasks/O13-CAPABILITY-MANIFEST.md --base main
-python scripts/check_pr_contract.py --base main
+python -m pytest -o addopts="" -W error -q
+node .ai-team/check.mjs --base origin/main
+python scripts/check_pr_contract.py --base origin/main
 ```
 
-**基线（本 commit 实测，勿跨 worktree 搬运）**：`main@1e7e196` 全量 **275 passed / 0 skipped**、ruff clean。改动后 **299 passed**（+24）。
+**基线与现状（均在本 worktree 实测，勿跨 worktree 搬运）**：
+
+| 场景 | 结果 |
+|---|---|
+| `main@1e7e196`（O13 开发期基线） | 275 passed / 0 skipped |
+| `1e7e196` + O13 原始改动 | 299 passed |
+| `main@60a9ea4`（合并 O12 + A6 后） | 481 passed / 2 skipped |
+| **`60a9ea4` + O13 + 本轮盲审修复** | **509 passed / 2 skipped / 0 error** |
+
+O13 与最新 main 的合并冲突仅 `capability_registry.py` 一处（两处冲突区块均为「双方各自新增字段」，逐块合并即可），`contracts` 侧的 `tags` 与 `TokenUsage`/`InvocationCost` 分别落在不同区域，自动合并。
 
 ### 判别力（owner 裁决 §0.1 第 7 条口径：两类分开写）
 
@@ -107,6 +119,20 @@ python scripts/check_pr_contract.py --base main
 
 - 「网络能力 + 空白名单」在 `1e7e196` 上**注册成功**且 `view.allowed_network_domains == ()`——即声明出网却无白名单被静默接受。
 - 「未传 `allowed_network_domains`」在 `1e7e196` 上把存储值覆盖为 `()`，与 manifest 自述的 `["api.example"]` 不符——**manifest 不是真值源**。
+
+### 判别力 · 第二轮（D-O13-10 的必备字段校验）
+
+**测量方法**：在**修复前**的合并态 `d4a629f` 建 detached worktree，**只替换测试文件**（`git checkout -- src/` 保持基线），确认 `src` 未含修复后运行。
+
+**结果：3 failed / 25 passed（修复前）→ 28 passed（修复后）**，全部为判据型：
+
+| 失败测试 | 失败信息 |
+|---|---|
+| `test_missing_entrypoint_is_rejected_at_registration` | `validate_manifest` 未报 entrypoint 问题 |
+| `test_missing_evidence_mode_is_rejected_at_registration` | 同上 |
+| `test_every_builtin_adapter_declares_a_resolvable_entrypoint` | **`AssertionError: ('semantic_scholar_search', None)`** |
+
+最后一条是最直接的证据：**built-in 适配器的 `entrypoint` 实际就是 `None`**。
 
 ### Known limits
 

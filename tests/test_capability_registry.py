@@ -181,6 +181,7 @@ def manifest(
         manifest_id=f"{name}-manifest",
         kind=kind,
         version=version,
+        entrypoint=f"tests.test_capability_registry:{name}",
         evidence_mode="compliant_structured",
         input_schema_ref="RegistryTestRequest",
         output_schema_ref="RegistryTestResult",

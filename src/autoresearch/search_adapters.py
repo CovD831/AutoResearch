@@ -289,6 +289,11 @@ class _CandidateOnlyAdapter:
     capability_name: str = ""
     capability_version: str = "1"
     source: str = ""
+    #: Dotted ``module:Class`` path the contract calls a required field. A native
+    #: adapter is dispatched through this class, so the entry point is the class
+    #: itself; declaring it keeps native options comparable with the plugin kinds
+    #: (MCP / Skill / Plugin) that genuinely need a resolvable path (D-O13-09).
+    capability_entrypoint: str = ""
     network_required: bool = True
     allowed_network_domains: tuple[str, ...] = ()
     manifest_permissions: tuple[str, ...] = ("network:read",)
@@ -407,6 +412,7 @@ class _CandidateOnlyAdapter:
             outputs=["evidence_candidate"],
             input_schema_ref="SearchAdapterRequest",
             output_schema_ref="RetrievedPaper",
+            entrypoint=self.capability_entrypoint or f"{__name__}:{type(self).__name__}",
             evidence_mode="candidate_only",
             network_required=True,
             allowed_network_domains=list(self.allowed_network_domains),

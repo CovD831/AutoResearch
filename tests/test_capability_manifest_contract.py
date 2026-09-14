@@ -17,6 +17,7 @@ Discriminating power is labelled per test, because the two kinds are not equal:
 
 from __future__ import annotations
 
+import importlib
 import json
 from pathlib import Path
 
@@ -82,6 +83,8 @@ def base_manifest(name: str = "probe", *, version: str = "1", **overrides) -> Ca
         "name": name,
         "manifest_id": name,
         "version": version,
+        "entrypoint": f"tests.test_capability_manifest_contract:{name}",
+        "evidence_mode": "candidate_only",
         "input_schema_ref": "SearchAdapterRequest",
         "output_schema_ref": "RetrievedPaper",
         "conformance_fixture": "tests/fixtures/capabilities/probe.json",
@@ -383,3 +386,80 @@ def test_trust_class_never_grants_an_effective_tier():
     )
     assert view.manifest.trust_class is CapabilityTrustClass.REVIEWED_EXTERNAL
     assert view.trust_tier is CapabilityTrustTier.CANDIDATE_ONLY
+
+
+# ---------------------------------------------------------------------------
+# D-O13-09: the contract's required fields are actually required
+# ---------------------------------------------------------------------------
+
+
+def test_missing_entrypoint_is_rejected_at_registration():
+    """The contract lists ``entrypoint`` as required; registration must enforce it.
+
+    It did not: ``entrypoint`` defaulted to ``None`` and ``validate_manifest``
+    never looked at it, so every built-in adapter -- none of which declared one --
+    registered cleanly. This is the check that closes that gap; it is the
+    registration-time counterpart of the field being called "required".
+    """
+
+    from autoresearch.capability_registry import validate_manifest
+
+    problems = validate_manifest(base_manifest(entrypoint=None))
+    assert any("entrypoint" in problem for problem in problems), problems
+
+    registry = CapabilityRegistry(allow_network=True)
+    with pytest.raises(CapabilityManifestInvalidError):
+        register(registry, base_manifest(entrypoint=None))
+
+
+def test_missing_evidence_mode_is_rejected_at_registration():
+    """``evidence_mode`` is a required contract field, not an optional nicety."""
+
+    from autoresearch.capability_registry import validate_manifest
+
+    problems = validate_manifest(base_manifest(evidence_mode=None))
+    assert any("evidence_mode" in problem for problem in problems), problems
+
+
+def test_a_manifest_satisfying_the_contract_registers():
+    """The inverse: a manifest with every required field is admissible.
+
+    Without this the rejection tests above could pass on a validator that
+    rejects everything.
+    """
+
+    from autoresearch.capability_registry import validate_manifest
+
+    manifest = base_manifest()
+    assert validate_manifest(manifest) == []
+
+    registry = CapabilityRegistry(allow_network=True)
+    view = register(registry, manifest)
+    assert view.manifest.entrypoint == manifest.entrypoint
+    assert view.manifest.evidence_mode == "candidate_only"
+
+
+def test_every_builtin_adapter_declares_a_resolvable_entrypoint():
+    """Every shipped adapter must satisfy the contract it is registered under."""
+
+    from autoresearch.capability_registry import (
+        CapabilityRegistry,
+        validate_manifest,
+    )
+    from autoresearch.search_adapters import register_search_adapters
+
+    registry = CapabilityRegistry(allow_network=True)
+    register_search_adapters(registry)
+
+    views = registry.list()
+    assert views, "the built-ins must actually register"
+    for view in views:
+        assert validate_manifest(view.manifest) == [], view.manifest.name
+        entrypoint = view.manifest.entrypoint
+        assert entrypoint and ":" in entrypoint, (view.manifest.name, entrypoint)
+        module_name, _, attribute = entrypoint.partition(":")
+        module = importlib.import_module(module_name)
+        assert hasattr(module, attribute), (
+            f"{view.manifest.name} declares entrypoint {entrypoint!r}, "
+            "which does not resolve"
+        )

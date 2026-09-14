@@ -712,6 +712,7 @@ class StubAdapter:
             manifest_id="stub_search",
             kind="native",
             version="1.0",
+            entrypoint="tests.test_benchmark_runtime:StubRegistryProvider",
             inputs=["query"],
             outputs=["evidence_candidate"],
             input_schema_ref="SearchAdapterRequest",

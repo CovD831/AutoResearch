@@ -105,6 +105,22 @@ def validate_manifest(manifest: CapabilityManifest) -> list[str]:
     if not manifest.contract_version:
         problems.append("manifest.contract_version is required")
 
+    # The L2 contract lists ``entrypoint`` and ``evidence_mode`` among the required
+    # fields. Both were silently optional: ``entrypoint`` defaulted to ``None`` and
+    # ``evidence_mode`` too, and neither was checked here, so a manifest with no
+    # declared entry point registered cleanly -- which is how every built-in
+    # adapter shipped. Required means required (D-O13-09).
+    if not manifest.entrypoint:
+        problems.append(
+            "manifest.entrypoint is required (the contract names it a required field; "
+            "a capability with no declared entry point cannot be dispatched)"
+        )
+    if not manifest.evidence_mode:
+        problems.append(
+            "manifest.evidence_mode is required (the contract names the self-described "
+            "evidence mode a required field)"
+        )
+
     for field_name, ref in (
         ("input_schema_ref", manifest.input_schema_ref),
         ("output_schema_ref", manifest.output_schema_ref),
@@ -617,6 +633,13 @@ class CapabilityRegistry:
                     "authoritative"
                 )
             if registration.trust_tier == CapabilityTrustTier.CANDIDATE_ONLY:
+                # A legal query with zero hits is a **deterministic terminal
+                # success** (D-F8-01), so an empty candidate list is not by itself
+                # a failure: the adapter marks that case explicitly in its
+                # diagnostics, and a downstream gate must not read "no candidates"
+                # as "nothing to check". The failure here is a candidate_only
+                # adapter returning a structured value, which only
+                # compliant_structured adapters may produce.
                 if value is not None and not candidates:
                     diagnostics.append("candidate_only adapter returned no EvidenceCandidate")
                     status = CapabilityReceiptStatus.FAILED
