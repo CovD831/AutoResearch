@@ -174,11 +174,25 @@ class AdapterBackedPaperSearchService:
         candidates: list[tuple[str, Any]] = [
             (paper.source, paper) for paper in (seed_papers or [])
         ]
+        #: Any provider call that did not complete. Tracked separately from "no
+        #: hits" because reporting a failed retrieval as an empty result makes the
+        #: downstream WAITING_EVIDENCE decision indistinguishable from a genuine
+        #: zero-hit outcome (the "unknown recorded as a normal value" family).
+        failed = False
         if not self.network_enabled:
             outcome.diagnostics.append(
                 "Network search is disabled; only user-supplied seed papers were processed."
             )
         else:
+            # The source set is a behaviour, not an implementation detail: the
+            # legacy path queried openalex + crossref + semantic_scholar while the
+            # adapter path queries semantic_scholar + arxiv + openalex (ADR-01
+            # slot 2, A5's D-A5-03). Crossref is no longer queried. Recording the
+            # set makes a silent composition change visible in the run's own
+            # diagnostics instead of only in a diff.
+            outcome.diagnostics.append(
+                f"Retrieval sources for this run: {', '.join(sorted(self.adapters))}"
+            )
             for query in queries:
                 for source, adapter in self.adapters.items():
                     request = SearchAdapterRequest(
@@ -192,18 +206,29 @@ class AdapterBackedPaperSearchService:
                         for hit in adapter.retrieve(request):
                             candidates.append((source, hit))
                     except RetrievalRateLimited as exc:
+                        failed = True
                         outcome.diagnostics.append(
-                            f"{source} rate limited for query {query!r}: {exc}"
+                            f"{source} rate limited for query {query!r}: {_safe_exc(exc)}"
                         )
                     except RetrievalUnavailable as exc:
+                        failed = True
                         outcome.diagnostics.append(
-                            f"{source} outcome unknown for query {query!r}: {exc}"
+                            f"{source} outcome unknown for query {query!r}: {_safe_exc(exc)}"
                         )
                     except RetrievalError as exc:
-                        outcome.diagnostics.append(f"{source} failed for query {query!r}: {exc}")
-                    except Exception as exc:
+                        failed = True
                         outcome.diagnostics.append(
-                            f"{source} failed for query {query!r}: {type(exc).__name__}: {exc}"
+                            f"{source} failed for query {query!r}: {_safe_exc(exc)}"
+                        )
+                    except Exception as exc:
+                        # Only non-fatal exceptions are absorbed. A MemoryError or a
+                        # KeyboardInterrupt-shaped control-flow error is not a
+                        # provider failure and must not be recorded as one.
+                        if _is_fatal(exc):
+                            raise
+                        failed = True
+                        outcome.diagnostics.append(
+                            f"{source} failed for query {query!r}: {_safe_exc(exc)}"
                         )
 
         seen: set[str] = set()
@@ -222,9 +247,22 @@ class AdapterBackedPaperSearchService:
             outcome.papers.append(persisted)
 
         if not outcome.papers:
-            outcome.diagnostics.append(
-                "No papers were found; downstream reading is blocked instead of inventing records."
-            )
+            # Two different situations must not be reported with one sentence. A
+            # caller that reads only "no papers" cannot tell a genuine zero-hit
+            # query from a provider that never answered -- and the downstream
+            # decision (WAITING_EVIDENCE, "go find evidence") is only correct for
+            # the first. The distinct wording is the contract; see
+            # ``test_zero_hits_and_provider_failure_are_reported_differently``.
+            if failed:
+                outcome.diagnostics.append(
+                    "No papers were registered because every provider call failed; "
+                    "this is not a zero-hit result."
+                )
+            else:
+                outcome.diagnostics.append(
+                    "No papers were found; downstream reading is blocked instead of inventing "
+                    "records."
+                )
         self.store.append_event(
             "papers.search_completed",
             {
@@ -241,6 +279,31 @@ class AdapterBackedPaperSearchService:
         """Per-source limit monitor across every adapter the mainline used."""
 
         return {source: adapter.rate_limit_summary() for source, adapter in self.adapters.items()}
+
+
+def _safe_exc(exc: BaseException) -> str:
+    """Exception summary safe to persist into the audit trail.
+
+    Only the type name travels. The legacy connector did exactly this and the
+    reason is worth keeping: an exception message is attacker-influenced text
+    that routinely carries an echoed request -- API keys in a header, tokens in a
+    URL -- and diagnostics are written to ``audit_events.payload_json``, which is
+    durable. An earlier revision of this module interpolated ``{exc}`` and a probe
+    showed a credential string reaching the database.
+    """
+
+    return type(exc).__name__
+
+
+def _is_fatal(exc: BaseException) -> bool:
+    """Errors that must never be absorbed as a provider failure.
+
+    ``MemoryError`` and ``RecursionError`` mean the process is in a state where
+    the remaining work is not trustworthy; recording them as "the provider
+    failed" would let a broken run finish as a plausible empty result.
+    """
+
+    return isinstance(exc, (MemoryError, RecursionError, KeyboardInterrupt, SystemExit))
 
 
 def _fingerprint_text(query: str) -> str:

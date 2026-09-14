@@ -321,7 +321,6 @@ def _request(project_id: str, query: str):
 # 6. Wiring: the mainline actually uses this service
 # --------------------------------------------------------------------------- #
 
-
 def test_mainline_application_wires_the_adapter_backed_service(runtime):
     """The whole point of the package: the mainline must not keep the legacy path.
 
@@ -427,3 +426,133 @@ def test_end_to_end_the_agent_reaches_the_retrieval_adapter(runtime, monkeypatch
     assert [paper.title for paper in replayed.papers] == [
         "Grid cells in the medial entorhinal cortex"
     ]
+
+
+# --------------------------------------------------------------------------- #
+# 7. Failure reporting: unknown must not be recorded as a normal value
+# --------------------------------------------------------------------------- #
+
+
+class _BoomAdapter:
+    """Fails every call with the exception it was handed."""
+
+    def __init__(self, exc: BaseException) -> None:
+        self.exc = exc
+
+    def retrieve(self, request):
+        raise self.exc
+
+    def rate_limit_summary(self) -> dict:
+        return {"source": "boom"}
+
+
+def _fail_service(services, exc):
+    store, evidence, knowledge = services
+    service = AdapterBackedPaperSearchService(
+        store,
+        evidence,
+        knowledge,
+        adapters={"boom": _BoomAdapter(exc)},
+        network_enabled=True,
+    )
+    return store, service
+
+
+def test_provider_exception_messages_never_reach_the_audit_trail(services, tmp_path):
+    """A diagnostic is durable, and an exception message is attacker-influenced.
+
+    Found by an author-side probe: an earlier revision interpolated ``{exc}``, and
+    a simulated provider error carrying a credential string was found verbatim in
+    ``audit_events.payload_json``. Only the type name may be recorded.
+    """
+
+    import json
+    import sqlite3
+
+    secret = "SECRET-KEY-abcdef123456"
+    _, service = _fail_service(services, RuntimeError(f"{secret} rejected by provider"))
+
+    outcome = service.search("p1", ["q"])
+
+    assert secret not in " ".join(outcome.diagnostics)
+    assert "RuntimeError" in " ".join(outcome.diagnostics)
+
+    connection = sqlite3.connect(tmp_path / "db.sqlite")
+    try:
+        rows = [row[0] for row in connection.execute("select payload_json from audit_events")]
+    finally:
+        connection.close()
+    assert rows, "the run must have been audited"
+    assert not any(secret in json.dumps(row) for row in rows), (
+        "a provider exception message reached the durable audit trail"
+    )
+
+
+def test_zero_hits_and_provider_failure_are_reported_differently(services):
+    """The downstream decision is only correct for one of the two.
+
+    "No papers were found" tells the caller to go find evidence; a provider that
+    never answered is a different fact and must not be phrased as a zero-hit
+    result.
+    """
+
+    class Empty:
+        def retrieve(self, request):
+            return []
+
+        def rate_limit_summary(self):
+            return {}
+
+    store, evidence, knowledge = services
+    healthy = AdapterBackedPaperSearchService(
+        store, evidence, knowledge, adapters={"e": Empty()}, network_enabled=True
+    )
+    _, failing = _fail_service(services, RuntimeError("down"))
+
+    healthy_outcome = healthy.search("p1", ["q"])
+    failing_outcome = failing.search("p1", ["q"])
+
+    assert "No papers were found" in healthy_outcome.diagnostics[-1]
+    assert "No papers were found" not in failing_outcome.diagnostics[-1]
+    assert "not a zero-hit result" in failing_outcome.diagnostics[-1]
+
+
+def test_fatal_errors_are_not_absorbed_as_provider_failures(services):
+    """MemoryError means the run is untrustworthy, not that the provider failed."""
+
+    _, service = _fail_service(services, MemoryError("out of memory"))
+
+    with pytest.raises(MemoryError):
+        service.search("p1", ["q"])
+
+
+def test_source_composition_is_reported_in_the_run(services):
+    """Switching the wiring changed which providers are queried.
+
+    The legacy path queried openalex + crossref + semantic_scholar; the adapter
+    path queries semantic_scholar + arxiv + openalex. A composition change is a
+    behaviour change, so it must be visible in the run rather than only in a diff.
+    """
+
+    class Empty:
+        def retrieve(self, request):
+            return []
+
+        def rate_limit_summary(self):
+            return {}
+
+    store, evidence, knowledge = services
+    service = AdapterBackedPaperSearchService(
+        store,
+        evidence,
+        knowledge,
+        adapters={"semantic_scholar": Empty(), "arxiv": Empty(), "openalex": Empty()},
+        network_enabled=True,
+    )
+
+    outcome = service.search("p1", ["q"])
+
+    joined = " ".join(outcome.diagnostics)
+    assert "Retrieval sources for this run" in joined
+    assert "semantic_scholar" in joined and "arxiv" in joined and "openalex" in joined
+    assert "crossref" not in joined
