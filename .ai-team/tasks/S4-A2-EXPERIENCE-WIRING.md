@@ -46,6 +46,8 @@
 - **D-A6-07（owner 代修；先占位再写入）**：原顺序是**先 `record` 后 `_consume`**。`record` 成功而标记写失败时事件未消费，下次结算重跑 `record`：`store.put` 是 upsert 所以经验行仍是 1 条，**但 `record` 会追加一个 `knowledge.page_added` 审计事件，而那不是幂等的**——实测 `page_added` 从 6 变 **12**（精确翻倍）。改为**先 claim 再 record**：claim 失败则什么都没发生、干净重试；record 失败则用 `delete_idempotent` **释放 claim**（该方法的 docstring 正是为此场景而设——「能证明无外部副作用的调用方可以回收」），事件回到未消费。既有测试只投放**一条**事件，覆盖不到多事件部分失败，已补 `test_a_retry_after_a_partial_failure_does_not_duplicate_audit_events`。
 - **D-A6-08（owner 代修；读不懂的 payload 不得被消耗）**：`MalformedEventPayload` 分支原先是**先 `_consume` 再 `continue`**，于是坏 payload 的事件被永久标记为已消费，**它代表的失败永远不会沉淀**，也不再重试。这与 `record` 失败路径（`continue` 而不 consume，留给重试）**处置不一致**。sink 的全部职责就是归档失败，静默丢弃一个失败是最坏的降级，故改为**不 consume、只计入 `unreadable` 并留待重试**。既有测试 `test_malformed_payload_degrades_per_event_and_keeps_processing_the_rest` 把 fail-open 写成了期望（断言 `rerun.unreadable == 0`）——**测试名对、断言错**，已改为断言事件未被消耗且下次仍可见。
 - **D-A6-09（owner 代修；`-W error` 下零 error）**：`tests/test_experience_sink.py` 用 `with sqlite3.connect(...)` 读表，但 **`sqlite3.Connection` 的上下文管理器只管事务、不管关闭**——句柄活到 GC，`-W error` 把它变成 `PytestUnraisableExceptionWarning`，且报在**下一条**测试的 setup 上（`main` 基线 275 passed / 0 error，本 PR 变成 300 passed + **1 error**）。改为显式 `try/finally: connection.close()`。
+- **D-A6-06b（owner 独立盲审后自修；标记表读不可用必须中止结算，不得重放）**：`_consumed_event_ids` 也调 `list_idempotent`，读失败时 `consumed = set()` 使**全部事件被判为 fresh → 整轮重放 → 每个原因再写一条 `knowledge.page_added`**。实测同一 fixture：健康 6 页、一次降级 12 页、再一次 **18 页**，且 `recurrence_count` 从 `[1,1,1,1,2]` 虚高到 `[1,1,1,1,`**`4`**`]`。**这是 owner 自己修 D-A6-06 时漏掉的相邻位置**——同一个「读失败」缺陷族只修了 `_recurrence_count` 一半。现在标记表不可读时**整体 fail-closed 并返回**（无副作用，调用方重试即可），不再把「读不到」当成「没有」。
+- **D-A6-06c（owner 独立盲审后自修；claim 必须两阶段，不能一阶段）**：D-A6-07 把顺序改成「先 claim 再 record」后引入新窗口：claim 成功、record 失败、**释放 claim 也失败**时，marker 看起来与已完成的无异 → 该事件永不重试、**失败永久丢失**，且孤儿 marker 还让 `recurrence_count` 虚高。实测：8 条 claim 全留、0 条记录，下次结算 `consumed=0`。修法：claim 写 `state="pending"`，**仅当记录落库后才提升为 `state="settled"`**；`_consumed_event_ids` 与 `_recurrence_count` **只认 settled**。于是释放失败留下的 pending marker 会被下次结算自动重试——**这正是 A1/A2 的 reserve→phase→finalize 两阶段语义，sink 原先自己造了个一阶段 marker 绕过了它**。实测修复后：第 2 次结算 `consumed=8 recorded=6`、5 条记录全部归档。
 
 ## Completed
 
@@ -105,6 +107,17 @@ PR 审核后由 owner 回写共享 registry。下一包 `S4-A3-KNOWLEDGE-VECTOR`
   - M1：`knowledge.page_added` 重试后 = **6**（修复前 **12**）；第三次结算 `consumed=0 recorded=0`、page_added 仍为 6。
   - M2：损坏 payload 第 2 次结算 `unreadable=1`（修复前 `0`）、marker 数 **0**（未被消耗）。
   - 回归：`record` 失败时 claim 被释放（markers=0），重试 `consumed=1 recorded=1`。
+
+### owner 独立盲审 + 自修（2026-09-14，第二轮）
+
+不知情子代理盲审（prompt 仅含仓库路径 + 中立问题清单，不含作者推理）提出 2 高 3 中。**两条高危经 owner 独立复现，第三条经复核为虚警**（子代理称 `_stored_recurrence` 返回值隐含不变量破裂，实测其仅在 marker 读不可用且记录已存在时可达，返回的是「上轮已写值」的下界，`max()` 保证单调——**不是缺陷，但该函数在 settle 主路径上现已不可达**，保留为单点故障兜底）。
+
+- [x] **盲审 #1 复现为真**：claim 成功 + record 失败 + 释放失败 → 8 条孤儿 marker、0 条记录，下次结算 `consumed=0` —— **失败永久丢失**。已修（两阶段 marker，D-A6-06c）。
+- [x] **盲审 #2 复现为真**：标记表读不可用 → 整轮重放，pages 6 → 12 → 18，counts 虚高到 4。已修（中止结算，D-A6-06b）。
+- [x] 全量：**309 passed, 0 error**（本轮修复前基线 `135ec88` 为 306 passed / 0 error）。
+- [x] **判别力实测**：改后的 `test_experience_sink.py` 放到**基线 `135ec88`**（只换测试、保留基线 src）→ **4 failed / 30 passed**；修复后 **34 passed**。四个失败逐条对应：`test_unavailable_consumption_markers_abort_rather_than_replay`、`test_repeated_degraded_settlements_never_duplicate_audit_events`（#2）、`test_release_failure_does_not_lose_the_event`、`test_pending_claims_are_not_counted_as_recurrences`（#1）。
+- [x] 四门禁：`ruff check src tests` → All checks passed；`compileall` → 0；`check.mjs` → valid；`check_pr_contract` → passed（16 paths / 1 ledger）。
+- [x] **owner 侧探针的自我修正**：本轮判别力验证第一版**做错了**——我把新代码也复制到基线 worktree，导致「34 passed」的假绿。改为「只替换测试文件、`git checkout -- src/`」后得到正确的 4 failed。**这是验证动作本身出错，不是代码问题。**
 
 ## Handoff note
 

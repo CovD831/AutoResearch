@@ -446,39 +446,19 @@ def test_unavailable_event_log_degrades_instead_of_raising(runtime, project, mon
     assert any("unavailable" in message for message in settlement.diagnostics)
 
 
-def test_unavailable_consumption_markers_degrade_instead_of_crashing(
+def test_unavailable_consumption_markers_abort_rather_than_replay(
     runtime, project, monkeypatch
 ):
-    _seed(runtime)
+    """D-A6-06b: unreadable markers must abort the settlement, not replay the log.
 
-    def offline(_self, _scope=None):
-        raise RuntimeError("idempotency table offline")
+    Degrading an unreadable marker table to "nothing was consumed" made every
+    event look fresh, so the whole log was re-settled and ``record`` appended a
+    second ``knowledge.page_added`` per cause. Measured on the fixture: 6 pages
+    healthy, 12 after one degraded settlement, 18 after the next -- the
+    degradation itself duplicated the audit chain, which is the failure this
+    module exists to prevent.
 
-    monkeypatch.setattr(RecordStore, "list_idempotent", offline)
-
-    settlement = runtime.settle_failure_experiences("demo")
-
-    assert settlement.degraded is True
-    assert settlement.recorded == MAPPED_RECORDINGS
-    assert any("markers unavailable" in message for message in settlement.diagnostics)
-
-
-def test_degraded_marker_read_still_counts_recurrences(runtime, project, monkeypatch):
-    """D-A6-06: an unreadable marker table must not reset the recurrence count.
-
-    ``recurrence_count >= 2`` is one of the four promotion gates, so a degraded
-    read that returned 0 made every record look like a first occurrence and held
-    that gate shut forever -- while ``recorded`` stayed identical to a healthy
-    run, so the settlement report looked normal.
-
-    This asserts the *conclusion* (whether the gate is reached), not the
-    degradation flag. The previous version asserted only
-    ``degraded``/``recorded``/diagnostics, none of which involve the count -- it
-    exercised the degraded path and proved nothing about it.
-
-    The degradation has to happen on the *first* settlement: once a healthy run
-    has consumed the events there is nothing left to settle, and the count is
-    carried by the stored record rather than recomputed.
+    Aborting is safe because no side effect has been produced; the caller retries.
     """
 
     _seed(runtime)
@@ -491,15 +471,46 @@ def test_degraded_marker_read_still_counts_recurrences(runtime, project, monkeyp
     settlement = runtime.settle_failure_experiences("demo")
 
     assert settlement.degraded is True
-    assert settlement.recorded == MAPPED_RECORDINGS
+    assert settlement.consumed == 0, "an aborted settlement must not consume anything"
+    assert settlement.recorded == 0
+    assert _experiences(runtime) == []
+    assert _page_added(runtime) == 0
+    assert any("markers unavailable" in message for message in settlement.diagnostics)
 
-    counts = sorted(raw["recurrence_count"] for raw in _experiences(runtime))
-    assert counts == _HEALTHY_COUNTS, (
-        f"degraded marker read changed the counts: {counts} != {_HEALTHY_COUNTS}"
+    # The log is untouched, so a healthy retry settles it exactly once.
+    monkeypatch.undo()
+    retried = runtime.settle_failure_experiences("demo")
+    assert retried.recorded == MAPPED_RECORDINGS
+    assert sorted(raw["recurrence_count"] for raw in _experiences(runtime)) == _HEALTHY_COUNTS
+    assert _page_added(runtime) == MAPPED_RECORDINGS, (
+        "replaying the log duplicated audit events: "
+        f"expected {MAPPED_RECORDINGS}, got {_page_added(runtime)}"
     )
-    assert sum(1 for count in counts if count >= 2) == 1, (
-        "the promotion gate must still be reachable under degradation"
+
+
+def test_repeated_degraded_settlements_never_duplicate_audit_events(
+    runtime, project, monkeypatch
+):
+    """Three degraded settlements in a row must leave the audit chain alone."""
+
+    _seed(runtime)
+    healthy = runtime.settle_failure_experiences("demo")
+    assert healthy.recorded == MAPPED_RECORDINGS
+    baseline = _page_added(runtime)
+
+    def offline(_self, _scope=None):
+        raise RuntimeError("idempotency table offline")
+
+    monkeypatch.setattr(RecordStore, "list_idempotent", offline)
+
+    for _ in range(3):
+        degraded = runtime.settle_failure_experiences("demo")
+        assert degraded.consumed == 0 and degraded.recorded == 0
+
+    assert _page_added(runtime) == baseline, (
+        f"degraded settlements duplicated audit events: {baseline} -> {_page_added(runtime)}"
     )
+    assert sorted(raw["recurrence_count"] for raw in _experiences(runtime)) == _HEALTHY_COUNTS
 
 
 def test_recurrence_counts_are_identical_healthy_and_degraded(runtime, project):
@@ -518,32 +529,59 @@ def test_recurrence_counts_are_identical_healthy_and_degraded(runtime, project):
     assert max(healthy) >= 2, "fixture must contain a repeated cause to be meaningful"
 
 
-def test_degraded_marker_read_counts_repeats_within_one_settlement(
-    runtime, project, monkeypatch
-):
-    """D-A6-06: two same-cause events in one batch must still reach count 2.
+def test_degraded_recurrence_fallback_is_monotonic(monkeypatch):
+    """D-A6-06: the marker-read fallback must not reset a recorded count.
 
-    The count is derived from consumed markers, and a marker for event N only
-    exists after event N is settled -- so a batch has to carry its own running
-    tally. The fixture puts two ``evidence.candidate_blocked`` events with the
-    same cause in one batch, which is exactly this case.
+    ``_recurrence_count`` is reached with a broken marker table only through the
+    direct path now that :meth:`settle` aborts earlier, so this exercises the
+    fallback itself: it must read the count already stored on the experience
+    record rather than returning 0, which would make a repeated cause look like a
+    first occurrence and hold the ``recurrence_count >= 2`` gate shut.
     """
 
-    _seed(runtime)
+    from autoresearch.experience_sink import SINK_SCOPE as _SCOPE  # noqa: F401
+    from autoresearch.experience_sink import ExperienceSink as _Sink
 
-    def offline(_self, _scope=None):
-        raise RuntimeError("idempotency table offline")
+    class _Store:
+        def list_idempotent(self, _scope=None):
+            raise RuntimeError("markers offline")
 
-    monkeypatch.setattr(RecordStore, "list_idempotent", offline)
+        def get(self, kind, record_id):
+            return {
+                "experience_id": record_id,
+                "project_id": "demo",
+                "problem": "p",
+                "technique": "t",
+                "outcome": "o",
+                "grade": "E0",
+                "recurrence_count": 4,
+                "evidence_ids": [],
+                "tags": ["failure"],
+                "promoted": False,
+            }
 
-    structural = runtime.experience_sink.failure_causes("demo", unconsumed_only=False)
-    unique_causes = {cause.recurrence_key for cause in structural}
-    assert len(unique_causes) < len(structural), "fixture must contain a repeated cause"
+    sink = _Sink(_Store(), None)  # type: ignore[arg-type]
+    key = "t|p"
+    expected = 4 - 1  # the stored count minus the occurrence this call represents
 
-    runtime.settle_failure_experiences("demo")
+    assert sink._recurrence_count("demo", key) == expected
 
-    counts = [raw["recurrence_count"] for raw in _experiences(runtime)]
-    assert max(counts) >= 2, f"a repeated cause must reach the gate; got {sorted(counts)}"
+
+def test_recurrence_fallback_is_zero_when_no_record_exists() -> None:
+    """No stored record yet -- the fallback must not invent a count."""
+
+    from autoresearch.experience_sink import ExperienceSink as _Sink
+
+    class _Store:
+        def list_idempotent(self, _scope=None):
+            raise RuntimeError("markers offline")
+
+        def get(self, *_args, **_kwargs):
+            return None
+
+    sink = _Sink(_Store(), None)  # type: ignore[arg-type]
+
+    assert sink._recurrence_count("demo", "t|p") == 0
 
 
 def test_malformed_payload_degrades_per_event_and_keeps_processing_the_rest(runtime, project):
@@ -812,6 +850,105 @@ def test_failed_record_releases_the_claim_so_the_event_is_retried(
     retried = runtime.settle_failure_experiences("demo")
     assert (retried.consumed, retried.recorded) == (1, 1)
     assert len(_experiences(runtime)) == 1
+
+
+def test_release_failure_does_not_lose_the_event(runtime, project, monkeypatch):
+    """D-A6-06c: when the record *and* the release both fail, the event survives.
+
+    Releasing the claim is the recovery path for a failed record -- but the
+    release can fail too. A marker written as "done" at claim time would then
+    look identical to a completed one, so the event would never be retried and
+    the failure would be lost for good, with the orphan marker also inflating
+    ``recurrence_count``.
+
+    Claims are written ``pending`` and promoted to ``settled`` only after the
+    record is durable, so a failed release leaves a pending marker -- which the
+    next settlement picks up again.
+    """
+
+    _seed(runtime)
+
+    def explode_record(*_args, **_kwargs):
+        raise RuntimeError("record store offline")
+
+    def explode_delete(*_args, **_kwargs):
+        raise RuntimeError("release offline too")
+
+    monkeypatch.setattr(runtime.experiences, "record", explode_record)
+    monkeypatch.setattr(runtime.store, "delete_idempotent", explode_delete)
+
+    first = runtime.settle_failure_experiences("demo")
+
+    # The mapped events all fail; only the unmapped decoys settle (they have no
+    # record to write, so consuming them is complete).
+    assert first.recorded == 0
+    assert _experiences(runtime) == []
+    claimed = [
+        marker
+        for marker in runtime.store.list_idempotent(SINK_SCOPE)
+        if marker["record"]["mapped"] is True
+    ]
+    assert claimed, "the claims are still there"
+    assert all(
+        marker["record"]["state"] == "pending" for marker in claimed
+    ), "an abandoned claim must stay pending, never look settled"
+
+    monkeypatch.undo()
+    retried = runtime.settle_failure_experiences("demo")
+
+    assert retried.recorded == MAPPED_RECORDINGS, "the failures must not be lost"
+    assert len(_experiences(runtime)) == UNIQUE_EXPERIENCES
+    assert sorted(raw["recurrence_count"] for raw in _experiences(runtime)) == _HEALTHY_COUNTS
+    # ...and the retry settled the previously pending claims rather than leaving
+    # orphans behind.
+    after = [
+        marker
+        for marker in runtime.store.list_idempotent(SINK_SCOPE)
+        if marker["record"]["mapped"] is True
+    ]
+    assert all(marker["record"]["state"] == "settled" for marker in after)
+
+
+def test_pending_claims_are_not_counted_as_recurrences(
+    runtime, project, monkeypatch
+):
+    """A pending claim must not inflate the gate count.
+
+    The orphan marker produced by a failed release used to be indistinguishable
+    from a completed one, so ``_recurrence_count`` counted work that never
+    happened and could satisfy ``recurrence_count >= 2`` on its own.
+    """
+
+    _seed(runtime)
+
+    def explode_record(*_args, **_kwargs):
+        raise RuntimeError("record store offline")
+
+    def explode_delete(*_args, **_kwargs):
+        raise RuntimeError("release offline too")
+
+    monkeypatch.setattr(runtime.experiences, "record", explode_record)
+    monkeypatch.setattr(runtime.store, "delete_idempotent", explode_delete)
+    runtime.settle_failure_experiences("demo")
+
+    # Every *mapped* claim is pending, and none of them may contribute to a
+    # count. (Non-mapped decoys are settled on sight: they have no record to
+    # write, so consumption is their terminal state.)
+    claimed = [
+        marker
+        for marker in runtime.store.list_idempotent(SINK_SCOPE)
+        if marker["record"]["mapped"] is True
+    ]
+    assert claimed and all(marker["record"]["state"] == "pending" for marker in claimed)
+    assert all(
+        marker["record"].get("recurrence_count", 0) < 2 for marker in claimed
+    ), "a pending claim must not be able to satisfy the gate on its own"
+
+    monkeypatch.undo()
+    runtime.settle_failure_experiences("demo")
+    runtime.settle_failure_experiences("demo")
+
+    assert sorted(raw["recurrence_count"] for raw in _experiences(runtime)) == _HEALTHY_COUNTS
 
 
 def test_a_retry_after_a_partial_failure_does_not_duplicate_audit_events(
