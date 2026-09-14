@@ -863,3 +863,104 @@ def test_a_healthy_run_does_not_claim_a_failure(services):
     outcome = service.search("p1", ["q"])
 
     assert outcome.provider_failure is False
+
+
+# --------------------------------------------------------------------------- #
+# 10. N1 (decision level): the fact must reach a consumer, not just the receipt
+# --------------------------------------------------------------------------- #
+
+
+def _agent_with_outcome(outcome):
+    from autoresearch.agents.paper_search import PaperSearchAgent
+
+    class StubSearch:
+        def search(self, *_args, **_kwargs):
+            return outcome
+
+    class StubEvidence:
+        def list(self, *_args, **_kwargs):
+            return []
+
+    class StubHandoffs:
+        def accept(self, *_args, **_kwargs):
+            return None
+
+        def issue(self, envelope):
+            class Issued:
+                handoff_id = envelope.handoff_id
+
+                def model_dump(self, **_kwargs):
+                    return envelope.model_dump(mode="json")
+
+            return Issued()
+
+    class Permissive:
+        def transition(self, _current, target):
+            return target
+
+    return PaperSearchAgent(
+        search=StubSearch(),
+        evidence=StubEvidence(),
+        handoffs=StubHandoffs(),
+        state_machine=Permissive(),
+    )
+
+
+_BASE_STATE = {
+    "project_id": "demo",
+    "run_id": "r",
+    "idea": "x",
+    "evidence_ids": [],
+    "diagnostics": [],
+    "warnings": [],
+    "lifecycle_state": "intake",
+    "seed_papers": [],
+    "search_queries": ["q"],
+    "handoff": None,
+    "last_agent": None,
+}
+
+
+def test_refused_records_reach_the_agent_as_a_warning():
+    """A silently shrinking paper set must be visible, not just logged."""
+
+    from autoresearch.contracts import PaperRecord
+    from autoresearch.search_service import SearchOutcome
+
+    outcome = SearchOutcome(
+        papers=[PaperRecord(project_id="demo", title="Kept", source="openalex")],
+        refused_records=3,
+    )
+
+    result = _agent_with_outcome(outcome).run(dict(_BASE_STATE))
+
+    assert any("3 retrieved record" in w for w in result["warnings"])
+
+
+def test_refused_records_are_counted_and_survive_the_a4_boundary(services):
+    from autoresearch.capability import PaperSearchCapabilityAdapter
+    from autoresearch.invocation_contracts import PaperSearchRequest
+    from autoresearch.search_adapters import RetrievedPaper
+
+    store, evidence, knowledge = services
+
+    class Mixed:
+        def retrieve(self, request):
+            return [
+                RetrievedPaper(title="Kept", source_record_id="s1"),
+                RetrievedPaper(title="No identifiers"),
+            ]
+
+        def rate_limit_summary(self):
+            return {}
+
+    service = AdapterBackedPaperSearchService(
+        store, evidence, knowledge, adapters={"s": Mixed()}, network_enabled=True
+    )
+    adapter = PaperSearchCapabilityAdapter(service, store)
+
+    invocation = adapter.invoke(
+        PaperSearchRequest(project_id="p1", run_id="r", invocation_id="i", query="q", limit=5)
+    )
+
+    assert invocation.receipt.refused_records == 1

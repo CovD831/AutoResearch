@@ -29,6 +29,11 @@ class SearchOutcome:
     #: no consumer read. A caller that treats "no papers" as "go find evidence"
     #: has to branch on this flag, not on text.
     provider_failure: bool = False
+    #: How many retrieved records were refused for having no DOI, URL or provider
+    #: id (F4). A count rather than a sentence, for the same reason as above: a
+    #: record silently disappearing from the run must be visible to the operator,
+    #: and a diagnostic string is not a decision input.
+    refused_records: int = 0
 
 
 # --------------------------------------------------------------------------- #
@@ -307,6 +312,11 @@ class PaperSearchService:
         per_connector_limit: int = 5,
     ) -> SearchOutcome:
         outcome = SearchOutcome()
+        #: Mirrors the adapter path: any connector that did not answer is a fact
+        #: the caller must be able to see, whether or not other connectors
+        #: returned results (N1). Without this the legacy path recorded failures
+        #: only as diagnostic text while the adapter path carried them as data.
+        failed = False
         #: (record, user_supplied). A user seed's provenance is the user's own
         #: file, so a missing DOI must not disqualify it -- only retrieved hits
         #: have to be attributable to a source.
@@ -331,6 +341,7 @@ class PaperSearchService:
                                 )
                             )
                     except Exception as exc:
+                        failed = True
                         outcome.diagnostics.append(
                             f"{connector.name} failed for query {query!r}: {type(exc).__name__}"
                         )
@@ -347,6 +358,7 @@ class PaperSearchService:
             # not inside _persist, so A2's crash-injection override keeps its
             # ``_persist(self, paper)`` signature and stays live.
             if not user_supplied and independent_source_for(paper) is None:
+                outcome.refused_records += 1
                 outcome.diagnostics.append(
                     f"record {paper.title!r} was refused: it carries no DOI, URL or "
                     "provider id, so no bibliographic claim can be made about it"
@@ -354,6 +366,7 @@ class PaperSearchService:
                 continue
             persisted = self._persist(paper)
             if persisted is None:
+                outcome.refused_records += 1
                 outcome.diagnostics.append(
                     f"record {paper.title!r} was refused by the persistence writer"
                 )
@@ -364,6 +377,7 @@ class PaperSearchService:
             outcome.diagnostics.append(
                 "No papers were found; downstream reading is blocked instead of inventing records."
             )
+        outcome.provider_failure = failed
         self.store.append_event(
             "papers.search_completed",
             {

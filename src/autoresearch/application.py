@@ -111,6 +111,7 @@ class InvocationBoundedSearchPort:
         seen: set[str] = set()
         diagnostics: list[str] = []
         provider_failure = False
+        refused_records = 0
         for query in queries:
             request = self.build_request(
                 project_id,
@@ -142,8 +143,12 @@ class InvocationBoundedSearchPort:
                 InvocationStatus.UNKNOWN_OUTCOME,
             ):
                 provider_failure = True
+            refused_records += invocation.receipt.refused_records
         return SearchOutcome(
-            papers=papers, diagnostics=diagnostics, provider_failure=provider_failure
+            papers=papers,
+            diagnostics=diagnostics,
+            provider_failure=provider_failure,
+            refused_records=refused_records,
         )
 
 

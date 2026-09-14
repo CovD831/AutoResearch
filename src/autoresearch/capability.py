@@ -62,12 +62,13 @@ class PaperSearchCapabilityAdapter:
         return f"{request.run_id}:{request.invocation_id}"
 
     @staticmethod
-    def _outcome_parts(outcome: Any) -> tuple[list[PaperRecord], list[str], bool]:
-        """Split a service outcome into papers, diagnostics and the failure flag.
+    def _outcome_parts(outcome: Any) -> tuple[list[PaperRecord], list[str], bool, int]:
+        """Split a service outcome into papers, diagnostics, failure flag, refusals.
 
-        ``provider_failure`` is carried as a fact rather than re-derived from the
-        diagnostic text: a partially failed retrieval has papers, so the status
-        alone would record it as COMPLETED and the fact would be lost.
+        ``provider_failure`` and ``refused_records`` are carried as facts rather
+        than re-derived from diagnostic text: a partially failed retrieval has
+        papers, so the status alone would record it as COMPLETED and both facts
+        would be lost.
         """
 
         papers = [
@@ -76,7 +77,8 @@ class PaperSearchCapabilityAdapter:
         ]
         diagnostics = [str(item) for item in getattr(outcome, "diagnostics", [])]
         provider_failure = bool(getattr(outcome, "provider_failure", False))
-        return papers, diagnostics, provider_failure
+        refused_records = int(getattr(outcome, "refused_records", 0) or 0)
+        return papers, diagnostics, provider_failure, refused_records
 
     @staticmethod
     def _status(papers: list[PaperRecord], diagnostics: list[str]) -> InvocationStatus:
@@ -130,6 +132,7 @@ class PaperSearchCapabilityAdapter:
         papers: list[PaperRecord],
         diagnostics: list[str],
         provider_failure: bool = False,
+        refused_records: int = 0,
     ) -> PaperSearchInvocation:
         receipt = InvocationReceipt(
             invocation_id=request.invocation_id,
@@ -141,6 +144,7 @@ class PaperSearchCapabilityAdapter:
             paper_ids=[paper.paper_id for paper in papers],
             diagnostics=diagnostics,
             provider_failure=provider_failure,
+            refused_records=refused_records,
         )
         return PaperSearchInvocation(
             request=request,
@@ -239,16 +243,17 @@ class PaperSearchCapabilityAdapter:
                 seed_papers=request.seed_papers,
                 per_connector_limit=request.limit,
             )
-            papers, diagnostics, provider_failure = self._outcome_parts(outcome)
+            papers, diagnostics, provider_failure, refused_records = self._outcome_parts(outcome)
             status = self._status(papers, diagnostics)
         except Exception as exc:
             papers = []
             diagnostics = [self._exception_diagnostic(exc)]
             status = self._exception_status(exc)
             provider_failure = True
+            refused_records = 0
 
         invocation = self._build_result(
-            request, fingerprint, status, papers, diagnostics, provider_failure
+            request, fingerprint, status, papers, diagnostics, provider_failure, refused_records
         )
         self.store.mark_idempotent_phase(
             self.scope,

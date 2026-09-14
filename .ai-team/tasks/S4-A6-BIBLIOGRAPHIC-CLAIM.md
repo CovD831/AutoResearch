@@ -3,7 +3,7 @@
 - ID: `S4-A6-BIBLIOGRAPHIC-CLAIM`
 - Title: `S4 evidence claims describe the actual material; partial provider failure is visible`
 - Status: `active`
-- Status note: 处置第二轮独立盲审提出的 **F4**（畸形/缺失命中铸成受信任 E1，且 claim 与 wiki 正文自相矛盾）与 **N1**（部分 provider 失败被静默：有 papers 即 COMPLETED）。两项均实测复现为真。修法：提取**共享书目写入函数**（A1 parity 由"两个编辑者记得同步"改为**结构性**保证）+ claim 按实际材料书写 + 不可归属的**检索命中**拒绝铸 E1（用户 seed 不受限）+ `InvocationReceipt.provider_failure` 把部分失败作为**事实**穿过 A4 边界（**不改 `_status()` 既有语义**）。基线 `1488cdd` 538 passed → **546 passed / 2 skipped / 0 error**。**判别力 5 failed，全部判据型**。
+- Status note: 处置第二轮独立盲审提出的 **F4**（畸形/缺失命中铸成受信任 E1，且 claim 与 wiki 正文自相矛盾）与 **N1**（部分 provider 失败被静默：有 papers 即 COMPLETED）。两项均实测复现为真。修法：提取**共享书目写入函数**（A1 parity 由"两个编辑者记得同步"改为**结构性**保证）+ claim 按实际材料书写 + 不可归属的**检索命中**拒绝铸 E1（用户 seed 不受限）+ `InvocationReceipt.provider_failure` 把部分失败作为**事实**穿过 A4 边界（**不改 `_status()` 既有语义**）。基线 `1488cdd` 538 passed → **548 passed / 2 skipped / 0 error**（两轮：546 后经第 3 轮独立审查再修）。**判别力两轮合计 11 failed，全部判据型**（5 + 6）。
 - Owner: `user/team`
 - Next owner: `user/team`
 
@@ -76,7 +76,38 @@
 - **改动 `_persist` 签名会打断 A2 注入**：接手者若要在 `_persist` 上加参数，必须先跑 `tests/test_runtime_hardening.py`。
 - `parity-report.json` 的 claim 文案与当前实现不一致，**属有意为之**，不要"顺手修正"。
 
+## 第三轮独立审查（审本包修复本身）—— 抓出 3 条，全部为真
+
+派发独立子代理审查 `764cab1`（skill M6：修完的改动本身要再过一遍独立审查）。回传 3 条，**逐条实测复现为真**：
+
+| # | 级别 | 发现 | 实测证据 |
+|---|---|---|---|
+| **R3-1** | **高** | **N1 的决策级可见性未生效**：`provider_failure` 只在 `if not outcome.papers:` 分支内被读取（`paper_search.py:56`），而 **N1 的目标场景恰恰是「有论文 + 部分失败」** → 代码跳过整个分支，`lifecycle_state=literature_searched`、`blockers=[]`、照常发 handoff，**事实在决策点被丢弃** | 复现：stub 返回 `papers=[...], provider_failure=True` → `blockers=[]`、发 handoff |
+| **R3-2** | 中 | **修复不对称**：legacy `PaperSearchService` 从不设 `provider_failure`（失败只写诊断文本），经 `PaperSearchCapabilityAdapter` 走 legacy 时部分失败永远不可见 | `legacy outcome.provider_failure = False` 即使有 connector 失败 |
+| **R3-3** | 中 | **F4 在 legacy 路径过度收紧**：`CrossrefConnector` 的 `source_record_id = work.get("DOI")`，无 DOI 的记录两个标识都是 None → **被静默拒绝**（仅留文本诊断，下游不知情） | 静态确认 + 与 adapter 路径不一致 |
+
+**审查者还指出我的测试给了假安全感**：`test_the_agent_branches_on_the_flag_not_on_the_wording` 的 stub 用 `papers` 默认空，**只覆盖零论文分支，从未覆盖 N1 的「有论文 + 部分失败」场景** —— 属「覆盖了但没锁住结论」。
+
+> **这是我第三次犯"改了传递层、没改消费点"的错**（前两次：diagnostics 措辞、`_persist` 签名）。三次都是同一个形状：**事实被送到了某个地方，但没有任何决策读它**。
+
+### R3 修复
+
+1. **`ResearchState.warnings`**（非阻断告警通道，与 `blockers` 语义分离）：有论文但检索不完整时写入告警，**流程继续**（有论文就该继续读），但事实进入机器可读通道。
+2. **`paper_search` 在成功路径消费该事实**：不再只在空结果分支里读。
+3. **legacy 路径也置 `provider_failure`**：两个 connector 失败处置位，结尾写入 outcome。
+4. **`SearchOutcome.refused_records` / `InvocationReceipt.refused_records`**：被拒记录**计数结构化**，穿过 A4 边界，agent 层进 warnings。
+
+### R3 判别力
+
+基线 `764cab1` + 符号 shim（补 `ResearchState.warnings` / `SearchOutcome.refused_records` / `InvocationReceipt.refused_records`，**均不改行为**）→ **6 failed，全部判据型**。裸跑为 8 failed 但全 `AttributeError`（符号缺失型，按口径不计入证据）。
+
+### 去重
+
+第 3 轮补测试时产生了 3 条与先前重复的用例，已删除（38 → 35 条聚焦测试；全量 554 → 548）。
+
 ## Not closed
 
 - **N2**：`_status()` 用诊断关键词（`failed`/`disabled`/`error`…）推断 `UNKNOWN_OUTCOME`（`capability.py:76-81`）。实测当前对零命中不可达（该路径不回显 query），但**未加防回归测试** —— 下一个在零命中诊断里写含关键词文本的人会踩中。
-- 本包改动触及 `capability.py` / `invocation_contracts.py`（A8/A9 的禁区），故独立成包并显式声明 `allowed_paths`。
+- 本包改动触及 `capability.py` / `invocation_contracts.py` / `contracts.py`（A8/A9 的禁区），故独立成包并显式声明 `allowed_paths`。
+- **R3-3 的实质**：legacy `CrossrefConnector` 对无 DOI 记录的拒绝**已有诊断**（非完全静默），且 Crossref 作为 DOI 注册机构其记录恒有 DOI，故实际触发面很窄；但**"记录消失"现在至少有 `refused_records` 计数**（本轮已加）。未进一步改 Crossref 的标识选取。
+- **收敛性未证明**：本包已历三轮审查，每轮都有实质发现（R1 凭据泄露 → R2 表面修复 → R3 消费点缺失）。**第四个轮次是否还有发现，我不知道。**

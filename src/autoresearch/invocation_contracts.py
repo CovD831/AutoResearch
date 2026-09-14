@@ -186,6 +186,14 @@ class InvocationReceipt(BaseModel):
             "never answered looks identical to a fully healthy one (N1)."
         ),
     )
+    refused_records: int = Field(
+        default=0,
+        description=(
+            "How many retrieved records were refused for carrying no DOI, URL or "
+            "provider id. A count so the shrinking of the paper set is a fact a "
+            "caller can act on, not a line of prose (F4)."
+        ),
+    )
     tokens: TokenUsage | None = Field(
         default=None,
         description="O12 provider usage. None when the invocation made no LLM call.",

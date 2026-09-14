@@ -452,6 +452,13 @@ class ResearchState(BaseModel):
     gate_decision_ids: list[str] = Field(default_factory=list)
     handoff: dict[str, Any] | None = None
     diagnostics: list[str] = Field(default_factory=list)
+    #: Non-blocking warnings. Distinct from ``blockers`` on purpose: a blocker
+    #: stops the run, a warning means the run continues but something the
+    #: operator must know happened. A partially failed retrieval belongs here --
+    #: there are papers to read, so the run proceeds, but "the primary source
+    #: never answered" has to reach a decision point rather than living only in
+    #: free-form diagnostics text (N1).
+    warnings: list[str] = Field(default_factory=list)
     blockers: list[str] = Field(default_factory=list)
     last_agent: AgentId | None = None
     updated_at: datetime = Field(default_factory=utc_now)

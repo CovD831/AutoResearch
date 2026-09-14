@@ -222,6 +222,7 @@ class AdapterBackedPaperSearchService:
             seen.add(key)
             # Only retrieved hits must be attributable to a source (F4).
             if not user_supplied and independent_source_for(paper) is None:
+                outcome.refused_records += 1
                 outcome.diagnostics.append(
                     f"record {paper.title!r} was refused: it carries no DOI, URL or "
                     "provider id, so no bibliographic claim can be made about it"
@@ -229,6 +230,7 @@ class AdapterBackedPaperSearchService:
                 continue
             persisted = self._persist(paper)
             if persisted is None:
+                outcome.refused_records += 1
                 outcome.diagnostics.append(
                     f"record {paper.title!r} was refused by the persistence writer"
                 )

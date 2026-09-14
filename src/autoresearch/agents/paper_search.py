@@ -73,6 +73,7 @@ class PaperSearchAgent:
                     "run_status": RunStatus.BLOCKED,
                     "blockers": [*state.blockers, blocker],
                     "diagnostics": diagnostics,
+                    "warnings": list(state.warnings),
                     "handoff": None,
                     "last_agent": self.agent_id,
                     "updated_at": utc_now(),
@@ -85,6 +86,25 @@ class PaperSearchAgent:
             for item in self.evidence.list(state.project_id, valid_only=True)
             if item.source_id in paper_ids
         ]
+        # A partially failed retrieval must reach a decision point, not only a
+        # diagnostic string. Papers exist, so the run continues -- but "the
+        # primary source never answered" has to survive past this agent.
+        # Previously the flag was read only in the ``not outcome.papers`` branch,
+        # which is precisely the case N1 is NOT about: a retrieval that loses its
+        # primary source but still gets results from a secondary one went through
+        # here and the fact was dropped.
+        warnings = list(state.warnings)
+        if outcome.provider_failure:
+            warnings.append(
+                "Retrieval was incomplete: at least one source failed to answer. "
+                "The registered papers come only from the sources that responded."
+            )
+        if getattr(outcome, "refused_records", 0):
+            warnings.append(
+                f"{outcome.refused_records} retrieved record(s) were refused for carrying "
+                "no DOI, URL or provider id; the paper set is smaller than the provider "
+                "returned."
+            )
         target = self.state_machine.transition(
             state.lifecycle_state, LifecycleState.LITERATURE_SEARCHED
         )
@@ -132,6 +152,7 @@ class PaperSearchAgent:
                 "evidence_ids": list(dict.fromkeys([*state.evidence_ids, *paper_evidence])),
                 "handoff": handoff.model_dump(mode="json"),
                 "diagnostics": diagnostics,
+                "warnings": warnings,
                 "last_agent": self.agent_id,
                 "updated_at": utc_now(),
             }
