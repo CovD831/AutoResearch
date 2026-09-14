@@ -1,0 +1,26 @@
+{
+  "manifest_id": "openalex_search",
+  "contract_version": "l2",
+  "version": "1",
+  "kind": "native",
+  "input_schema_ref": "SearchAdapterRequest",
+  "output_schema_ref": "RetrievedPaper",
+  "evidence_mode": "candidate_only",
+  "network_required": true,
+  "allowed_network_domains": [
+    "api.openalex.org"
+  ],
+  "license_spdx": "MIT",
+  "requires_credentials": [
+    "openalex_api_key"
+  ],
+  "supports_offline": false,
+  "selection_tags": [
+    "degraded_track",
+    "metered",
+    "opt_in_only"
+  ],
+  "trust_class": "local",
+  "lifecycle_status": "active",
+  "conformance_fixture": "tests/fixtures/capabilities/openalex_search.json"
+}

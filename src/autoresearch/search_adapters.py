@@ -292,6 +292,14 @@ class _CandidateOnlyAdapter:
     network_required: bool = True
     allowed_network_domains: tuple[str, ...] = ()
     manifest_permissions: tuple[str, ...] = ("network:read",)
+    # --- catalog metadata (S3-A2). These are what a selection layer shows the
+    # user so two options can actually be compared: what it costs, what it needs,
+    # whether it works offline, and under which license it ships.
+    license_spdx: str = "MIT"
+    requires_credentials: tuple[str, ...] = ()
+    supports_offline: bool = False
+    selection_tags: tuple[str, ...] = ()
+    selection_note: str = ""
 
     def __init__(self) -> None:
         self.rate_limit_events = 0
@@ -389,14 +397,24 @@ class _CandidateOnlyAdapter:
     def manifest(self) -> CapabilityManifest:
         return CapabilityManifest(
             name=self.capability_name,
+            #: stable across versions: the catalog keys options by manifest_id so a
+            #: version bump is a new revision of the same option, not a new option.
+            manifest_id=self.capability_name,
             kind=CapabilityKind.NATIVE.value,
             version=self.capability_version,
             permissions=list(self.manifest_permissions),
             inputs=["query", "limit"],
             outputs=["evidence_candidate"],
+            input_schema_ref="SearchAdapterRequest",
+            output_schema_ref="RetrievedPaper",
             evidence_mode="candidate_only",
             network_required=True,
             allowed_network_domains=list(self.allowed_network_domains),
+            license_spdx=self.license_spdx,
+            requires_credentials=list(self.requires_credentials),
+            supports_offline=self.supports_offline,
+            selection_tags=list(self.selection_tags),
+            conformance_fixture=f"tests/fixtures/capabilities/{self.capability_name}.json",
         )
 
 
@@ -419,6 +437,13 @@ class SemanticScholarSearchAdapter(_CandidateOnlyAdapter):
     capability_name = "semantic_scholar_search"
     source = SEMANTIC_SCHOLAR_SOURCE
     allowed_network_domains = ("api.semanticscholar.org",)
+    requires_credentials = ("semantic_scholar_api_key",)
+    supports_offline = False
+    selection_tags = ("citation_context", "largest_corpus", "primary")
+    selection_note = (
+        "ADR-01 slot 2 primary. 5000 req/5min on a free key; only source exposing "
+        "citation context. Requires a registered key, so it cannot serve offline."
+    )
     endpoint = "https://api.semanticscholar.org/graph/v1/paper/search"
     fields = "title,abstract,authors,year,externalIds,url"
 
@@ -524,6 +549,13 @@ class ArxivSearchAdapter(_CandidateOnlyAdapter):
     capability_name = "arxiv_search"
     source = ARXIV_SOURCE
     allowed_network_domains = ("export.arxiv.org",)
+    requires_credentials = ()
+    supports_offline = False
+    selection_tags = ("no_key_required", "preprints_only", "supplement")
+    selection_note = (
+        "ADR-01 slot 2 supplement. Keyless, so it works with zero setup, but it "
+        "only sees arXiv preprints and returns no citation graph."
+    )
     endpoint = "https://export.arxiv.org/api/query"
 
     def __init__(
@@ -610,6 +642,14 @@ class OpenAlexSearchAdapter(_CandidateOnlyAdapter):
     capability_name = "openalex_search"
     source = OPENALEX_SOURCE
     allowed_network_domains = ("api.openalex.org",)
+    requires_credentials = ("openalex_api_key",)
+    supports_offline = False
+    selection_tags = ("degraded_track", "metered", "opt_in_only")
+    selection_note = (
+        "ADR-01 slot 2 optional degraded track, handed to A5. Since 2026-02 it "
+        "requires a key and bills per search, so the ADR keeps it off the critical "
+        "path: opt in only, never the default primary."
+    )
     endpoint = "https://api.openalex.org/works"
 
     def __init__(

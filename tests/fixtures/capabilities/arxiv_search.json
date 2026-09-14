@@ -1,0 +1,24 @@
+{
+  "manifest_id": "arxiv_search",
+  "contract_version": "l2",
+  "version": "1",
+  "kind": "native",
+  "input_schema_ref": "SearchAdapterRequest",
+  "output_schema_ref": "RetrievedPaper",
+  "evidence_mode": "candidate_only",
+  "network_required": true,
+  "allowed_network_domains": [
+    "export.arxiv.org"
+  ],
+  "license_spdx": "MIT",
+  "requires_credentials": [],
+  "supports_offline": false,
+  "selection_tags": [
+    "no_key_required",
+    "preprints_only",
+    "supplement"
+  ],
+  "trust_class": "local",
+  "lifecycle_status": "active",
+  "conformance_fixture": "tests/fixtures/capabilities/arxiv_search.json"
+}
