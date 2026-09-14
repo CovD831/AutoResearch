@@ -7,7 +7,7 @@
 - [x] `src/autoresearch/experience_sink.py`：`MAPPING_RULES` 三条映射规则；`FailureCause` / `SinkSettlement` / `MalformedEventPayload`；`failure_causes`（只读观测）与 `settle`（消费 + 去重合并 + 写入）。
 - [x] 三条生产触发通路：`Application.settle_failure_experiences` / `POST /projects/{project_id}/experiences/settle` / `cli settle-experiences [--dry-run]`。
 - [x] `tests/fixtures/experience_sink/event_log.json`：9 条冻结事件（3 类拦截 × 多条 + 2 条诱饵 + 1 条无关事件），payload 形状对齐产生侧 dump。
-- [x] `tests/test_experience_sink.py`：24 个测试，逐条对应 9 条验收场景，包含 `failure` 标签记录层和 WikiPage 镜像层断言。
+- [x] `tests/test_experience_sink.py`：26 个测试，逐条对应 9 条验收场景，包含 `failure` 标签记录层和 WikiPage 镜像层断言，以及跨项目计数隔离、消费标记写入失败降级回归。
 - [x] **owner 授权的 schema 半（D-A6-05 (a)）**：`src/autoresearch/contracts.py`（`ExperienceRecord` 加 `tags` 字段位）与 `src/autoresearch/evolution_service.py`（`record()` 的 tags 由硬编码改为透传）—— 两文件均在本包 `forbidden_paths` 上，由 owner 按其裁决修改，共 2 个 hunk，是本包唯一越界改动（已在账本 Invariants 显式登记为例外）。
 
 ## 实现期发现并修掉的两个设计坑
@@ -18,19 +18,20 @@
 
 ## 验证
 
-- [x] Focused：`pytest tests/test_experience_sink.py -o addopts="" -q -p no:cacheprovider --basetemp=...` → **24 passed**。
-- [x] 全量：`pytest tests -o addopts="" -q -p no:cacheprovider --basetemp=...` → **299 passed**。
+- [x] Focused：`pytest tests/test_experience_sink.py -o addopts="" -q -p no:cacheprovider --basetemp=...` → **26 passed**。
+- [x] 全量：`pytest tests -o addopts="" -q -p no:cacheprovider --basetemp=...` → **301 passed**。
 - [x] 覆盖率：`--cov=autoresearch.experience_sink --cov-report=term-missing` → **200 stmts / 0 miss / 100%**。
 - [x] `ruff check src tests` → `All checks passed!`。
 - [x] `node .ai-team/check.mjs --task .ai-team/tasks/S4-A2-EXPERIENCE-WIRING.md --base origin/main` → `valid`。
 - [x] `python scripts/check_pr_contract.py --base origin/main` → `PR contract check passed`（exit 0）。
 - [x] 功能场景 harness（`F:\AutoResearch\.workbuddy\a6-scenarios\`，未跟踪、不进 PR）：`scenario.py` 12 个字段级场景 + `user-scenario.py` 端到端业务场景（`proj_llm_eval`），全部实跑并逐字段核对，0 异常、0 拒绝写入。场景 2/6/7/8/10/12 是判据最硬的几条（同因合并计数、门槛仍关、晋级不被降级、降级不抛、写失败可重试、AST 结构证明）。
+- [x] 用户侧独立验收（2026-09-13）：全量 **301 passed in 846.57s**、exit 0；场景 1–12 一次性运行完成，未出现 `RAISED` / `Traceback`、exit 0。日志保存在 workspace 外，不进入 PR。
 - [x] 冒烟脚本（`.workbuddy` 外、临时目录，非交付物）实跑复核了 10 个行为：首拦截 → 建记录、重跑 → 零写入、同因第二次 → 计数 2、pass/clean 诱饵不产出、fail/unknown/audit unknown 各产出、人工升过级的记录合并后 `grade`/`promoted` 保持、事件日志不可读 → 降级不抛、dry-run 零写入。
 
 ## 边界与非目标
 
 - 未 push、未开 PR（用户明令）。
-- 未做用户侧独立复跑（数值 + 功能场景），这是 owner/用户侧的验收动作。
+- 用户侧独立复跑已经完成；当前等待整理并提交 PR。
 - 未改任何共享文档：registry 行状态、`TASK-SPECS.md` 的 A6 措辞、`TASK-QUEUE.md` 的落后项都只上报不改。
 - **唯一的 `forbidden_paths` 例外**：`contracts.py` / `evolution_service.py` 两文件由 owner 授权改动（D-A6-05 (a)）。注意 `forbidden_paths` 清单没有任何工具在机械校验——`check_pr_contract.py` 只拦 `var/` 前缀，`check.mjs` 只看勾选与提交数——所以这条例外是靠文字登记而不是靠检查发现的。
 - 两份 `.patch` 文件已应用，保留在包内只作来源凭证，**不要重复 `git apply`**。

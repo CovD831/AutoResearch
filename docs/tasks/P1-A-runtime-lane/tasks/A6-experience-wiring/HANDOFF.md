@@ -149,8 +149,9 @@ line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
 - `events(project_id)` returns the whole project log with no type filter, so every
   settle scans everything and then filters. At 10^5 events this needs pagination or a
   time lower bound; not done here.
-- No user-side independent reproduction has been run yet — that is the owner/user-side
-  acceptance step.
+- User-side independent acceptance completed on 2026-09-13: the full suite reported
+  **301 passed in 846.57s** with exit 0; scenarios 1–12 completed in one run with no
+  `RAISED` / `Traceback` and exit 0. The raw logs remain outside the repository.
 
 ## Owner adjudication requests
 
@@ -176,8 +177,8 @@ line is visible), `-p no:cacheprovider` (Windows `WinError 5`), and an explicit
 ## Next owner action
 
 1. Record the user-confirmed D-A6-01/D-A6-02 implementation choices in the PR review trail.
-2. Run the user-side acceptance commands and functional scenarios.
-3. After acceptance, decide whether to push / open the PR.
+2. Review the recorded verification evidence and the owner-authorized path exception.
+3. Merge or request changes through the normal PR review process.
 
 The schema and sink patches are already applied and verified. Next package:
 `S4-A3-KNOWLEDGE-VECTOR`.

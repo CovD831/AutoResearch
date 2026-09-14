@@ -23,7 +23,7 @@
 - [x] 静默降级：事件源不可用或单条 payload 畸形时返回诊断、不抛异常，主管线行为不变。
 - [x] 生产可达：`Application` 方法 + HTTP 端点 + CLI 子命令三条真实触发通路（避免「接线了但生产上永不触发」）。
 - [x] fixture 与离线测试：全部离线可重跑。
-- [x] **失败经验的 `failure` 标签**（规格 `主要交付` 第 2 条原文的一半）：按已裁决的方案 (a) 落地。`ExperienceRecord.tags` 由 schema 补丁提供，`ExperienceService.record()` 透传到 WikiPage，sink 新建和合并记录均写入 `failure`。两条标签回归测试已加入；A6 专项 24 passed、全量 299 passed、`experience_sink.py` 200/200（100%）。
+- [x] **失败经验的 `failure` 标签**（规格 `主要交付` 第 2 条原文的一半）：按已裁决的方案 (a) 落地。`ExperienceRecord.tags` 由 schema 补丁提供，`ExperienceService.record()` 透传到 WikiPage，sink 新建和合并记录均写入 `failure`。两条标签回归测试已加入；A6 专项 26 passed、全量 301 passed、`experience_sink.py` 200/200（100%）。
 
 ## Invariants
 
@@ -57,12 +57,12 @@
 - 规格偏离 D-A6-01 已按用户确认保留，待在 PR 中由 owner 最终记录。
 - D-A6-05 已裁决并完成，当前验收清单为 `9/9`。
 - registry 行 `S4-A2-EXPERIENCE-WIRING` 状态仍为 `ready`（`docs/rearchitecture/TASK-PACKAGE-REGISTRY.md` 为共享文档，本包未改，报 owner 回写）。
-- 用户侧独立复跑（数值 + 功能场景）未做 —— 本包只完成 AI 侧验收。
+- 用户侧独立复跑已完成：全量 **301 passed in 846.57s**、exit 0；功能场景 1–12 全部执行，未出现 `RAISED` / `Traceback`，场景脚本 exit 0。
 - D-A6-02 的派生式 `recurrence_count` 是对「复现 ≥2」门槛基数的**语义选择**，已按用户确认保留；PR 中向 owner 披露其与直接自增的差异。
 
 ## Next step
 
-用户侧复跑验收命令与功能场景 → 在 PR 中向 owner 记录 D-A6-01/D-A6-02 → 通过后决定 push / 开 PR。下一包 `S4-A3-KNOWLEDGE-VECTOR`。
+整理 PR 材料并在 PR 中向 owner 记录 D-A6-01/D-A6-02；PR 审核后由 owner 回写共享 registry。下一包 `S4-A3-KNOWLEDGE-VECTOR`。
 
 ## Verification
 
@@ -78,9 +78,10 @@
 - [x] D-A6-05：两份补丁已应用，并通过标签专项测试、全量测试和覆盖率检查。
 - [x] **反向验证（补丁的守卫是真的）**：只应用 `failure-tag-sink.patch` 而不应用 `owner-schema.patch` 时，两条新测试**失败**（`AttributeError: 'ExperienceRecord' object has no attribute 'tags'`）——证明它们不是「跟着实现写绿的空断言」。这也是本包不能在 schema 落地前提交自己那半的原因。
 - [x] 功能场景 harness（未跟踪、不进 PR）：`F:\AutoResearch\.workbuddy\a6-scenarios\scenario.py`（12 场景）与 `user-scenario.py`（端到端业务场景）实跑，逐字段输出符合预期，0 异常。
+- [x] **用户侧独立验收（2026-09-13）**：全量 `pytest tests` → **301 passed in 846.57s**、exit 0，日志保存在 workspace 外的 `F:\AutoResearch.workbuddy\a6-user-full-20260913-225909.log`；场景 1–12 一次性运行完成，未出现 `RAISED` / `Traceback`、exit 0，日志保存在 `F:\AutoResearch.workbuddy\a6-user-scenarios-20260913-230226.log`。日志不进入 PR。
 - [x] **收口复核（2026-09-13，member A 独立复跑，非引用自述数字）**：focused **26 passed**、`experience_sink.py` **200 stmts / 0 miss / 100%**、全量 **301 passed**、`ruff check src tests` → `All checks passed!`、`check.mjs --base origin/main` → `valid` + `Functional progress: 9/9 (100%)`、`check_pr_contract.py --base origin/main` → exit 0。另用 `git diff --check` 校验无空白错误。此次增加了跨项目计数隔离与消费标记写入失败降级回归测试。
 - [x] **补丁文件状态**：`owner-schema.patch` / `failure-tag-sink.patch` 已应用，保留在包内仅作**来源凭证**（记录 owner 授权的那一半具体是什么），**不要再 `git apply` 它们**（对当前 HEAD 会报 already applied）。
 
 ## Handoff note
 
-实现完成并已基于最新 `origin/main@1e7e196` 验证，**未 push、未开 PR**。三个触发通路、failure 标签、两项边界缺陷修复和全部自动检查均已完成；当前只剩用户侧独立功能验收，以及在 PR 中向 owner 记录 D-A6-01/D-A6-02。详见 `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/HANDOFF.md`。
+实现完成并已基于最新 `origin/main@1e7e196` 验证，**未 push、未开 PR**。三个触发通路、failure 标签、两项边界缺陷修复、自动检查和用户侧独立验收均已完成；当前只剩整理 PR，并在 PR 中向 owner 记录 D-A6-01/D-A6-02。详见 `docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/HANDOFF.md`。
