@@ -146,6 +146,41 @@ single_node_subgraph("n", node).invoke({"project_id": "x"})
 > **不穿过框架边界的覆盖，不是对框架行为的覆盖。**
 > 前几轮的判别力全部在"直接构造 agent"这一层取得，因此无法区分"通道可用"与"通道不存在"。**判别力验证必须覆盖事实实际流经的那条路径**，否则它证明的是别的东西。
 
+## 第五轮独立审查 —— 承认「只闭合了一半」
+
+审查 `cdc77d4` 回传：**R4 真修好了"被图丢弃"这一支**（有判别力证据），但**原始缺陷"没人读这条 warning"并未闭合** —— 我只是把事实从"没人读的 state 字段"搬到了"没人读的顶层字段"。
+
+### 实测确认
+
+| 审查指控 | 实测 |
+|---|---|
+| 生产图是 8 节点，我的测试只走单节点 subgraph | `graph.py:188-196` 确为 8 节点；此前测试用 `single_node_subgraph` |
+| `warnings` 无消费方 | 全仓确认：写入方仅 `paper_search` + `_save_run` 搬运，**零读取方** |
+| commit 称"first-class"夸大 | `_save_run` 写入后，`sync_run_projection` / `api.get_run` / `cli status` 均不基于它做任何事 |
+
+### 但有一条是我自己验证出的**正向**结果
+
+审查担心"warnings 穿过 8 节点靠未测试的不变量"。**实测注入部分失败跑完整图，warnings 确实存活到终点**并出现在 run record 顶层：
+
+```
+run record 顶层 keys: ['interrupts','project_id','run_id','state','status','warnings']
+rec['warnings']: ['Retrieval was incomplete: ...']
+```
+
+→ **不变量实际成立，但确实未被测试守护**。审查说得对：任一 agent 改为重建 dict 就会静默失效。
+
+### R5 修复
+
+1. **`cli status` 把每条 warning 打到 stderr**（stdout 保持可解析 JSON）。这是**第一个真正的消费方**——operator 不再需要手动翻 raw record。
+2. **测试改为穿 8 节点生产图**（`test_warning_survives_the_full_production_graph`），而非单节点 subgraph。
+3. 补 `test_cli_status_is_quiet_when_there_are_no_warnings`。
+
+### 【自查发现的又一个空断言】
+
+CLI 测试第一版写的是 `"..." in result.stderr or "..." in result.output` —— **`or` 兜底让它恒真**（JSON 文档里含同一句话）。**删掉 CLI 告警后测试仍绿**。改为只断言 `result.stderr` 后，判别力成立（删告警 → 1 failed）。
+
+**注意：这个空断言是我在本轮犯的，不在任何审查者的清单里。** 说明假绿风险对"新写的测试"是持续存在的，不只在历史代码里。
+
 ## Not closed
 
 - **N2**：`_status()` 用诊断关键词（`failed`/`disabled`/`error`…）推断 `UNKNOWN_OUTCOME`（`capability.py:76-81`）。实测当前对零命中不可达（该路径不回显 query），但**未加防回归测试** —— 下一个在零命中诊断里写含关键词文本的人会踩中。
