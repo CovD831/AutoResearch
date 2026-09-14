@@ -109,6 +109,15 @@
 
 **同族横扫（机械枚举 8 处 `ArtifactRef(` 构造点）新发现第 4 处：`writing_service.py:207`**（`summary=card.findings[0][:300]`，每卡一条 + 嵌正文，与已修的 `paper_reader.py:84` 完全同型）。**本包未修**：该字段（`pipeline_contracts.py:81`）无长度上限故不产生故障，且**无任何读取方**；修它需越过本包 `allowed_paths`。已留痕交下一包。
 
+## Follow-up：A10 / S4-A6（2026-09-14）
+
+本包审查提出的 **F4**（畸形/缺失命中铸成受信任 E1，claim 与 wiki 正文矛盾）与 **N1**（部分 provider 失败被静默）已由 **A10 / S4-A6-BIBLIOGRAPHIC-CLAIM** 处置（老板 2026-09-14 裁决「修复 F4 和 N1」）。
+
+要点：
+- **复核修正**：本包先前判定 F4「被 A1 parity 契约锁定」**过重**。`tests/test_recovery_contract.py:193` 比对的是老服务 vs 老服务（同源），且**全仓无测试断言 claim 字符串**；`parity-report.json` 是 A1 历史验收证据。→ 两处同步修改即可。
+- 修复方式：提取**共享书目写入函数**，使 A1 parity 由"人工同步"变为**结构性**保证。
+- 判别力：5 failed，全部判据型（需符号 shim，见 A10 ledger）。
+
 ## Not closed
 
 - 跨进程并发未测（沿用 A5/O12 挂账口径）。
@@ -117,7 +126,7 @@
 - **`writing_service.py:207` 同族缺陷未修**（见上）。字段无读取方，属语义污染而非故障。
 - **`_persist` 的部分完成窗口**：paper 已落库、evidence 已落库、`add_page` 失败 → 异常逃逸，留下不一致状态。**实测老服务行为相同**，属继承而非本包引入；本包未修。
 - **凭据泄露缺陷曾在 `386e7f8` 起存在两轮，所有门禁均未拦住** → 现行验证手段对"异常消息内容"这一类缺陷无覆盖。
-- **【需 owner 裁决】F4（独立盲审发现，本包未修）**：畸形/缺失命中被铸成受信任的 E1 证据。实测两个矛盾：① `RetrievedPaper(title="Real paper", abstract="")` 落库 claim 声称 "its supplied abstract exist"，而同一论文的 `WikiPage.body` 写 "No abstract was supplied"；② `title="Untitled", doi/url/source_record_id 全 None` 的命中仍被铸成 E1，`independent_source` 退化为 `"<source>:None"`。**实测老服务 `search_service.py:175` 行为逐位相同**，且 claim 文案被 **A1 parity 契约**（`docs/rearchitecture/worktrees/A-runtime-recovery/parity-report.json` 的 `evidence_equal: true` / `wiki_equal: true`）锁定。→ 修它需同时改两处实现并更新 A1 契约，**属 owner 层设计决策**。
+- **【已由 A10 / S4-A6 处置】F4（独立盲审发现）**：畸形/缺失命中被铸成受信任的 E1 证据。实测两个矛盾：① `RetrievedPaper(title="Real paper", abstract="")` 落库 claim 声称 "its supplied abstract exist"，而同一论文的 `WikiPage.body` 写 "No abstract was supplied"；② `title="Untitled", doi/url/source_record_id 全 None` 的命中仍被铸成 E1，`independent_source` 退化为 `"<source>:None"`。**实测老服务 `search_service.py:175` 行为逐位相同**，且 claim 文案被 **A1 parity 契约**（`docs/rearchitecture/worktrees/A-runtime-recovery/parity-report.json` 的 `evidence_equal: true` / `wiki_equal: true`）锁定。→ 修它需同时改两处实现并更新 A1 契约，**属 owner 层设计决策**。
 
 ## Independent review（机制一，2026-09-14）
 

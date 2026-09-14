@@ -630,3 +630,236 @@ def test_source_composition_is_reported_in_the_run(services):
     assert "Retrieval sources for this run" in joined
     assert "semantic_scholar" in joined and "arxiv" in joined and "openalex" in joined
     assert "crossref" not in joined
+
+
+# --------------------------------------------------------------------------- #
+# 8. F4: a claim must describe the material, and unverifiable hits are refused
+# --------------------------------------------------------------------------- #
+
+
+def _single_hit_service(services, hit, *, source="s"):
+    store, evidence, knowledge = services
+
+    class Hits:
+        def retrieve(self, request):
+            return [hit]
+
+        def rate_limit_summary(self):
+            return {}
+
+    return (
+        AdapterBackedPaperSearchService(
+            store, evidence, knowledge, adapters={source: Hits()}, network_enabled=True
+        ),
+        store,
+        evidence,
+        knowledge,
+    )
+
+
+def test_claim_does_not_assert_an_abstract_that_is_absent(services):
+    """The claim and the wiki body describe one record; they must not contradict.
+
+    Before this, a hit without an abstract produced a claim saying "and its
+    supplied abstract exist" while the wiki page written in the same call said
+    "No abstract was supplied."
+    """
+
+    from autoresearch.search_adapters import RetrievedPaper
+
+    service, _, evidence, knowledge = _single_hit_service(
+        services, RetrievedPaper(title="No abstract here", source_record_id="s1")
+    )
+
+    outcome = service.search("p1", ["q"])
+    item = evidence.list("p1", valid_only=True)[0]
+    page = knowledge.store.get("wiki_page", outcome.papers[0].paper_id)
+
+    assert "abstract" not in item.claim.lower()
+    assert page["body"] == "No abstract was supplied."
+    assert item.metadata["abstract_present"] is False
+
+
+def test_claim_asserts_the_abstract_when_one_is_present(services):
+    from autoresearch.search_adapters import RetrievedPaper
+
+    service, _, evidence, _ = _single_hit_service(
+        services, RetrievedPaper(title="Has abstract", abstract="Body text.", source_record_id="s1")
+    )
+
+    service.search("p1", ["q"])
+    item = evidence.list("p1", valid_only=True)[0]
+
+    assert "abstract" in item.claim.lower()
+    assert item.metadata["abstract_present"] is True
+
+
+def test_a_hit_with_no_identifiers_is_refused_instead_of_minted_as_evidence(services):
+    """No DOI, URL or provider id means no bibliographic claim is possible.
+
+    Minting an E1 for it would let unverifiable material reach the gate.
+    """
+
+    from autoresearch.search_adapters import RetrievedPaper
+
+    service, store, evidence, _ = _single_hit_service(
+        services, RetrievedPaper(title="Untitled")
+    )
+
+    outcome = service.search("p1", ["q"])
+
+    assert outcome.papers == []
+    assert store.list("paper", partition="papers") == []
+    assert evidence.list("p1", valid_only=True) == []
+    assert any("refused" in item for item in outcome.diagnostics)
+
+
+def test_a_user_seed_without_identifiers_is_still_accepted(services):
+    """A seed's provenance is the user's own file, so a missing DOI is not a defect.
+
+    The first version of the F4 fix refused these too, silently dropping
+    legitimate input; the seed-paper test caught the over-correction.
+    """
+
+    service_us, evidence_us = _seed_service(services)
+    seed = PaperRecord(project_id="p1", title="User seed", source="manual")
+
+    outcome = service_us.search("p1", ["q"], seed_papers=[seed])
+
+    assert [paper.title for paper in outcome.papers] == ["User seed"]
+    items = evidence_us.list("p1", valid_only=True)
+    assert items[0].independent_source == "user_supplied:manual"
+    assert items[0].metadata["user_supplied"] is True
+
+
+def _seed_service(services):
+    store, evidence, knowledge = services
+    return (
+        AdapterBackedPaperSearchService(
+            store, evidence, knowledge, adapters={}, network_enabled=True
+        ),
+        evidence,
+    )
+
+
+def test_empty_provenance_no_longer_degrades_to_a_placeholder():
+    """``"s:None"`` used to be produced when every identifier was missing."""
+
+    from autoresearch.search_service import independent_source_for
+
+    assert independent_source_for(PaperRecord(project_id="p", title="T", source="s")) is None
+    assert independent_source_for(
+        PaperRecord(project_id="p", title="T", source="s", doi="10.1/x")
+    ) == "doi:10.1/x"
+
+
+# --------------------------------------------------------------------------- #
+# 9. N1: a partially failed retrieval must not look fully healthy
+# --------------------------------------------------------------------------- #
+
+
+def test_partial_provider_failure_is_recorded_even_with_papers(services):
+    """One source down, another returning papers: the run must say so.
+
+    The receipt is COMPLETED as soon as any paper exists, so without the flag a
+    run whose primary source never answered is indistinguishable from a healthy
+    one.
+    """
+
+    from autoresearch.search_adapters import RetrievalCredentialsRequired, RetrievedPaper
+
+    store, evidence, knowledge = services
+
+    class Failing:
+        def retrieve(self, request):
+            raise RetrievalCredentialsRequired("no key configured")
+
+        def rate_limit_summary(self):
+            return {}
+
+    class Working:
+        def retrieve(self, request):
+            return [RetrievedPaper(title="From secondary", source_record_id="s1")]
+
+        def rate_limit_summary(self):
+            return {}
+
+    service = AdapterBackedPaperSearchService(
+        store,
+        evidence,
+        knowledge,
+        adapters={"semantic_scholar": Failing(), "openalex": Working()},
+        network_enabled=True,
+    )
+
+    outcome = service.search("p1", ["q"])
+
+    assert len(outcome.papers) == 1, "the secondary source did return a paper"
+    assert outcome.provider_failure is True, (
+        "the primary source never answered and that fact must survive alongside the results"
+    )
+
+
+def test_partial_failure_survives_the_a4_boundary(services):
+    """The receipt keeps the fact even though its status stays COMPLETED."""
+
+    from autoresearch.capability import PaperSearchCapabilityAdapter
+    from autoresearch.invocation_contracts import InvocationStatus, PaperSearchRequest
+    from autoresearch.search_adapters import RetrievalCredentialsRequired, RetrievedPaper
+
+    store, evidence, knowledge = services
+
+    class Failing:
+        def retrieve(self, request):
+            raise RetrievalCredentialsRequired("no key configured")
+
+        def rate_limit_summary(self):
+            return {}
+
+    class Working:
+        def retrieve(self, request):
+            return [RetrievedPaper(title="From secondary", source_record_id="s1")]
+
+        def rate_limit_summary(self):
+            return {}
+
+    service = AdapterBackedPaperSearchService(
+        store,
+        evidence,
+        knowledge,
+        adapters={"semantic_scholar": Failing(), "openalex": Working()},
+        network_enabled=True,
+    )
+    adapter = PaperSearchCapabilityAdapter(service, store)
+
+    invocation = adapter.invoke(
+        PaperSearchRequest(
+            project_id="p1", run_id="r1", invocation_id="i1", query="q", limit=5
+        )
+    )
+
+    assert invocation.receipt.outcome_status is InvocationStatus.COMPLETED
+    assert invocation.receipt.provider_failure is True
+
+
+def test_a_healthy_run_does_not_claim_a_failure(services):
+    """The flag must discriminate, not always fire."""
+
+    from autoresearch.search_adapters import RetrievedPaper
+
+    store, evidence, knowledge = services
+
+    class Working:
+        def retrieve(self, request):
+            return [RetrievedPaper(title="Fine", source_record_id="s1")]
+
+        def rate_limit_summary(self):
+            return {}
+
+    service = AdapterBackedPaperSearchService(
+        store, evidence, knowledge, adapters={"openalex": Working()}, network_enabled=True
+    )
+
+    outcome = service.search("p1", ["q"])
+
+    assert outcome.provider_failure is False

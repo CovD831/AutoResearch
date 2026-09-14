@@ -177,6 +177,15 @@ class InvocationReceipt(BaseModel):
     request_fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
     paper_ids: list[str] = Field(default_factory=list, max_length=100)
     diagnostics: list[str] = Field(default_factory=list, max_length=100)
+    provider_failure: bool = Field(
+        default=False,
+        description=(
+            "True when at least one retrieval source failed to answer during this "
+            "invocation, even if others succeeded. Without this the receipt reads "
+            "COMPLETED whenever any paper exists, so a run whose primary source "
+            "never answered looks identical to a fully healthy one (N1)."
+        ),
+    )
     tokens: TokenUsage | None = Field(
         default=None,
         description="O12 provider usage. None when the invocation made no LLM call.",

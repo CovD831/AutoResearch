@@ -62,13 +62,21 @@ class PaperSearchCapabilityAdapter:
         return f"{request.run_id}:{request.invocation_id}"
 
     @staticmethod
-    def _outcome_parts(outcome: Any) -> tuple[list[PaperRecord], list[str]]:
+    def _outcome_parts(outcome: Any) -> tuple[list[PaperRecord], list[str], bool]:
+        """Split a service outcome into papers, diagnostics and the failure flag.
+
+        ``provider_failure`` is carried as a fact rather than re-derived from the
+        diagnostic text: a partially failed retrieval has papers, so the status
+        alone would record it as COMPLETED and the fact would be lost.
+        """
+
         papers = [
             paper if isinstance(paper, PaperRecord) else PaperRecord.model_validate(paper)
             for paper in outcome.papers
         ]
         diagnostics = [str(item) for item in getattr(outcome, "diagnostics", [])]
-        return papers, diagnostics
+        provider_failure = bool(getattr(outcome, "provider_failure", False))
+        return papers, diagnostics, provider_failure
 
     @staticmethod
     def _status(papers: list[PaperRecord], diagnostics: list[str]) -> InvocationStatus:
@@ -121,6 +129,7 @@ class PaperSearchCapabilityAdapter:
         status: InvocationStatus,
         papers: list[PaperRecord],
         diagnostics: list[str],
+        provider_failure: bool = False,
     ) -> PaperSearchInvocation:
         receipt = InvocationReceipt(
             invocation_id=request.invocation_id,
@@ -131,6 +140,7 @@ class PaperSearchCapabilityAdapter:
             request_fingerprint=fingerprint,
             paper_ids=[paper.paper_id for paper in papers],
             diagnostics=diagnostics,
+            provider_failure=provider_failure,
         )
         return PaperSearchInvocation(
             request=request,
@@ -229,14 +239,17 @@ class PaperSearchCapabilityAdapter:
                 seed_papers=request.seed_papers,
                 per_connector_limit=request.limit,
             )
-            papers, diagnostics = self._outcome_parts(outcome)
+            papers, diagnostics, provider_failure = self._outcome_parts(outcome)
             status = self._status(papers, diagnostics)
         except Exception as exc:
             papers = []
             diagnostics = [self._exception_diagnostic(exc)]
             status = self._exception_status(exc)
+            provider_failure = True
 
-        invocation = self._build_result(request, fingerprint, status, papers, diagnostics)
+        invocation = self._build_result(
+            request, fingerprint, status, papers, diagnostics, provider_failure
+        )
         self.store.mark_idempotent_phase(
             self.scope,
             key,
@@ -333,7 +346,9 @@ class PaperSearchCapabilityAdapter:
             recovery_reason = f"{reason}; service_returned is missing staged result"
         else:
             raise RuntimeError(f"cannot recover pending invocation at phase {phase!r}")
-        invocation = self._build_result(request, fingerprint, status, [], [recovery_reason])
+        invocation = self._build_result(
+            request, fingerprint, status, [], [recovery_reason], provider_failure=True
+        )
         self.store.finalize_idempotent(
             self.scope,
             key,

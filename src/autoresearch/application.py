@@ -132,10 +132,12 @@ class InvocationBoundedSearchPort:
                     papers.append(paper_record)
             diagnostics.extend(invocation.diagnostics)
             # A failed or unknown invocation is carried upward as a fact, not as
-            # diagnostic text: the downstream decision (surface the failure vs go
-            # find evidence) must not depend on how a message is worded.
+            # diagnostic text. ``receipt.provider_failure`` also covers the
+            # *partial* case: a run where the primary source never answered but a
+            # secondary one returned papers still reads COMPLETED, and without
+            # this flag that would be invisible (N1).
             outcome_status = invocation.receipt.outcome_status or invocation.receipt.status
-            if outcome_status in (
+            if invocation.receipt.provider_failure or outcome_status in (
                 InvocationStatus.FAILED,
                 InvocationStatus.UNKNOWN_OUTCOME,
             ):

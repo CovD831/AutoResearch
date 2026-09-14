@@ -40,12 +40,8 @@ import re
 from typing import Any
 
 from autoresearch.contracts import (
-    EvidenceGrade,
     EvidenceItem,
-    EvidenceType,
-    KnowledgePartition,
     PaperRecord,
-    WikiPage,
 )
 from autoresearch.evidence import EvidenceService
 from autoresearch.knowledge import KnowledgeService
@@ -56,7 +52,11 @@ from autoresearch.search_adapters import (
     SearchAdapterRequest,
     build_search_adapters,
 )
-from autoresearch.search_service import SearchOutcome
+from autoresearch.search_service import (
+    SearchOutcome,
+    independent_source_for,
+    persist_bibliographic_record,
+)
 from autoresearch.storage import RecordStore
 
 
@@ -101,45 +101,18 @@ class AdapterBackedPaperSearchService:
         normalized = re.sub(r"\W+", "", paper.title.lower())
         return "title:" + normalized
 
-    def _persist(self, paper: PaperRecord) -> tuple[PaperRecord, EvidenceItem]:
-        self.store.put(
-            "paper",
-            paper.paper_id,
-            paper,
-            project_id=paper.project_id,
-            partition=KnowledgePartition.PAPERS.value,
+    def _persist(self, paper: PaperRecord) -> tuple[PaperRecord, EvidenceItem] | None:
+        """Delegate to the shared bibliographic writer.
+
+        Identical durable facts to the legacy path (A1 parity), produced by the
+        same code rather than by a copy that has to be kept in step. The
+        provenance requirement is decided by the caller, keeping this signature
+        aligned with the legacy override that A2's fault matrix patches.
+        """
+
+        return persist_bibliographic_record(
+            self.store, self.evidence, self.knowledge, paper, actor=self.actor
         )
-        independent_source = paper.doi or paper.url or f"{paper.source}:{paper.source_record_id}"
-        evidence = self.evidence.add(
-            EvidenceItem(
-                project_id=paper.project_id,
-                evidence_type=EvidenceType.PAPER,
-                grade=EvidenceGrade.E1,
-                title=f"Bibliographic record: {paper.title}",
-                claim=(
-                    "This scholarly record and its supplied abstract exist in the cited source."
-                ),
-                source_uri=paper.url,
-                source_id=paper.paper_id,
-                locator="bibliographic record/abstract",
-                independent_source=independent_source,
-                metadata={"paper_id": paper.paper_id, "source": paper.source},
-            ),
-            actor=self.actor,
-        )
-        self.knowledge.add_page(
-            WikiPage(
-                page_id=paper.paper_id,
-                project_id=paper.project_id,
-                partition=KnowledgePartition.PAPERS,
-                title=paper.title,
-                body=paper.abstract or "No abstract was supplied.",
-                tags=[paper.source, str(paper.year or "")],
-                evidence_ids=[evidence.evidence_id],
-                level=1,
-            )
-        )
-        return paper, evidence
 
     def _to_record(self, project_id: str, source: str, hit: Any) -> PaperRecord:
         """``RetrievedPaper`` -> ``PaperRecord``.
@@ -233,7 +206,11 @@ class AdapterBackedPaperSearchService:
 
         seen: set[str] = set()
         for source, item in candidates:
-            if isinstance(item, PaperRecord):
+            # A PaperRecord here is a user seed: its provenance is the user's own
+            # file, so a missing DOI must not disqualify it. Only retrieved hits
+            # have to be attributable to a source (F4).
+            user_supplied = isinstance(item, PaperRecord)
+            if user_supplied:
                 paper = item
                 if paper.project_id != project_id:
                     paper = paper.model_copy(update={"project_id": project_id})
@@ -243,8 +220,20 @@ class AdapterBackedPaperSearchService:
             if key in seen:
                 continue
             seen.add(key)
-            persisted, _ = self._persist(paper)
-            outcome.papers.append(persisted)
+            # Only retrieved hits must be attributable to a source (F4).
+            if not user_supplied and independent_source_for(paper) is None:
+                outcome.diagnostics.append(
+                    f"record {paper.title!r} was refused: it carries no DOI, URL or "
+                    "provider id, so no bibliographic claim can be made about it"
+                )
+                continue
+            persisted = self._persist(paper)
+            if persisted is None:
+                outcome.diagnostics.append(
+                    f"record {paper.title!r} was refused by the persistence writer"
+                )
+                continue
+            outcome.papers.append(persisted[0])
 
         if not outcome.papers:
             # Two different situations must not collapse into one decision. The
