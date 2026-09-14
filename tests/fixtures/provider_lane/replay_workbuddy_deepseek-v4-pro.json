@@ -1,0 +1,24 @@
+{
+  "_provenance": {
+    "lane_id": "workbuddy:deepseek-v4-pro:v1",
+    "recorded_at": "2026-09-10T16:40:01.146984+00:00",
+    "endpoint_host": "workbuddy2api.henryai.top",
+    "note": "Live WorkBuddy custom-model response captured by scripts/parity_real_lane.py. Credentials are never stored."
+  },
+  "model": "deepseek-v4-pro",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "PONG"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 22,
+    "completion_tokens": 2,
+    "total_tokens": 24
+  }
+}

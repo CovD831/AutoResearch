@@ -10,7 +10,9 @@ from pydantic import BaseModel, Field
 
 from autoresearch.contracts import (
     EvidenceCandidate,
+    InvocationCost,
     PaperRecord,
+    TokenUsage,
     utc_now,
 )
 
@@ -23,6 +25,8 @@ __all__ = [
     "PaperSearchRequest",
     "CapabilityManifest",
     "request_fingerprint",
+    "TokenUsage",
+    "InvocationCost",
 ]
 
 
@@ -68,6 +72,11 @@ class PaperSearchRequest(BaseModel):
     seed_papers: list[PaperRecord] = Field(default_factory=list, max_length=100)
 
 
+# ``TokenUsage`` / ``InvocationCost`` are re-exported from ``contracts`` (see
+# ``__all__``) so downstream lanes keep importing them from this module while the
+# definition lives in the shared contract layer.
+
+
 class InvocationReceipt(BaseModel):
     invocation_id: str
     status: InvocationStatus
@@ -77,6 +86,14 @@ class InvocationReceipt(BaseModel):
     request_fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
     paper_ids: list[str] = Field(default_factory=list, max_length=100)
     diagnostics: list[str] = Field(default_factory=list, max_length=100)
+    tokens: TokenUsage | None = Field(
+        default=None,
+        description="O12 provider usage. None when the invocation made no LLM call.",
+    )
+    cost: InvocationCost | None = Field(
+        default=None,
+        description="O12 priced usage. None when unpriced (no LLM call, or no catalog entry).",
+    )
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 

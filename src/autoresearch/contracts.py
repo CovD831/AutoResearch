@@ -441,3 +441,59 @@ class ResumeRequest(BaseModel):
     approval: bool
     reviewer: str = Field(min_length=1, max_length=200)
     note: str = Field(default="", max_length=1000)
+
+
+# ---------------------------------------------------------------------------
+# Invocation pricing contracts (O12 ProviderLane)
+#
+# These live in the shared contract layer rather than inside a lane-owned module:
+# the field set is consumed by more than one lane (A1 invocation receipts, S3-A
+# capability receipts, A5 benchmark receipts), so its definition belongs to the
+# layer the project owner maintains — not to another lane's delivered file.
+# ---------------------------------------------------------------------------
+
+
+class TokenUsage(BaseModel):
+    """Provider-reported token usage attached to a receipt (O12, PLAN §4.2 names)."""
+
+    input: int = Field(default=0, ge=0)
+    output: int = Field(default=0, ge=0)
+    cache_read: int = Field(default=0, ge=0)
+    cache_write: int = Field(default=0, ge=0)
+    reasoning: int = Field(
+        default=0, ge=0, description="Subset of output tokens; never billed twice."
+    )
+
+
+class InvocationCost(BaseModel):
+    """Priced token usage in USD (O12 CostCalculator, pi-ai four-tier semantics).
+
+    Reasoning tokens are a subset of ``output`` and are never billed separately;
+    the four parts sum to ``total``. ``lane_id`` / ``model`` keep the price
+    traceable to the catalog entry that produced it (S3.1 parity accounting).
+
+    ``attempts`` records how many HTTP requests were sent to obtain this usage
+    (1 = first try). A failed retry is normally not billed, but a 5xx response can
+    arrive after the provider accepted the request, so ``total x attempts`` is the
+    honest *upper bound* for what this call may have cost. Defaults to 1 so that
+    receipts written before retry accounting existed stay valid.
+    """
+
+    input: float = Field(default=0.0, ge=0)
+    output: float = Field(default=0.0, ge=0)
+    cache_read: float = Field(default=0.0, ge=0)
+    cache_write: float = Field(default=0.0, ge=0)
+    total: float = Field(default=0.0, ge=0)
+    currency: str = Field(default="USD", max_length=8)
+    model: str | None = Field(default=None, max_length=200)
+    lane_id: str | None = Field(default=None, max_length=200)
+    attempts: int = Field(default=1, ge=1)
+    price_source: str | None = Field(
+        default=None,
+        max_length=200,
+        description=(
+            "Which price table produced this figure (e.g. the vendored catalog "
+            "snapshot and its date). These costs are estimates, not the provider's "
+            "invoice: the snapshot can lag the published price table."
+        ),
+    )

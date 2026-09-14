@@ -1,0 +1,21 @@
+{
+  "_meta": {
+    "note": "Manual price overrides layered on top of the vendored models.dev snapshot. The snapshot lags provider price pages — verified 2026-09-11 against DeepSeek's official rates, where the output price differed by ~4.3x. Overrides exist ONLY for the models this project actually calls; do not mass-sync every model in the snapshot.",
+    "policy": "docs/tasks/P1-I-owner-lane/tasks/O12-provider-lane/PRICE-POLICY.md",
+    "pricing_basis": "peak",
+    "pricing_basis_note": "DeepSeek publishes peak and off-peak rates (off-peak is half). Estimates deliberately use the peak rate so a cost estimate never under-reports what the provider may bill.",
+    "checked_by": "manual review of the provider price page"
+  },
+  "models": {
+    "deepseek/deepseek-v4-flash": {
+      "input": 0.3,
+      "output": 1.2,
+      "cache_read": 0.006,
+      "cache_write": 0.0,
+      "source": "https://api-docs.deepseek.com/quick_start/pricing",
+      "source_host": "api-docs.deepseek.com",
+      "checked_at": "2026-09-11",
+      "note": "Built-in model. Served by DeepSeek-V4.1-Flash; `deepseek-v4-flash` is a legacy alias still accepted and billed at the Flash price. Peak: $0.30 input (cache miss) / $1.20 output / $0.006 cache hit. Off-peak is $0.15 / $0.60 / $0.003. Snapshot previously said $0.14 / $0.28."
+    }
+  }
+}

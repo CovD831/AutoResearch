@@ -1,0 +1,25 @@
+{
+  "_provenance": {
+    "lane_id": "deepseek:chat:v1",
+    "recorded_at": "2026-09-10T15:30:00+08:00",
+    "note": "Replay fixture for O12 S1.5 parity skeleton. Usage block uses DeepSeek chat-completions shape (prompt_cache_hit_tokens). Transport (段 2) normalizes provider-native usage into provider_lane.Usage."
+  },
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Fixture response: minimal Evaluation Section outline for replay parity."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1200,
+    "completion_tokens": 350,
+    "total_tokens": 1550,
+    "prompt_cache_hit_tokens": 800,
+    "prompt_cache_miss_tokens": 400
+  }
+}
