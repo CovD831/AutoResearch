@@ -1,0 +1,25 @@
+diff --git a/src/autoresearch/contracts.py b/src/autoresearch/contracts.py
+index 6576a17..8c70d10 100644
+--- a/src/autoresearch/contracts.py
++++ b/src/autoresearch/contracts.py
+@@ -373,6 +373,7 @@ class ExperienceRecord(BaseModel):
+     grade: EvidenceGrade = EvidenceGrade.E0
+     recurrence_count: int = Field(default=1, ge=1)
+     evidence_ids: list[str] = Field(default_factory=list)
++    tags: list[str] = Field(default_factory=list)
+     promoted: bool = False
+ 
+ 
+diff --git a/src/autoresearch/evolution_service.py b/src/autoresearch/evolution_service.py
+index 4a6d870..326ec80 100644
+--- a/src/autoresearch/evolution_service.py
++++ b/src/autoresearch/evolution_service.py
+@@ -31,7 +31,7 @@ class ExperienceService:
+                 partition=KnowledgePartition.EXPERIENCES,
+                 title=experience.problem,
+                 body=f"Technique: {experience.technique}\nOutcome: {experience.outcome}",
+-                tags=["experience", experience.grade.value],
++                tags=["experience", experience.grade.value, *experience.tags],
+                 evidence_ids=experience.evidence_ids,
+                 level=1 if not experience.promoted else 2,
+             )

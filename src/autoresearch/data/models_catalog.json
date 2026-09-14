@@ -1,0 +1,2102 @@
+{
+ "_meta": {
+  "fetched_at": "2026-09-10T07:25:40+00:00",
+  "filter": "providers=alibaba,anthropic,deepseek,moonshotai,openai+vllm-local(hand-maintained); models with non-null cost and context>0; four canonical cost tiers (reasoning billed as output)",
+  "generated_by": "scripts/refresh_model_catalog.py",
+  "license": "MIT",
+  "repo": "https://github.com/anomalyco/models.dev",
+  "source": "https://models.dev/api.json",
+  "upstream_providers": 213
+ },
+ "providers": {
+  "alibaba": {
+   "api_family": "openai-completions",
+   "env_keys_hint": [],
+   "id": "alibaba",
+   "models": {
+    "deepseek-v4-flash-0731": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.04,
+      "cache_write": 0.0,
+      "input": 0.2,
+      "output": 0.4
+     },
+     "id": "deepseek-v4-flash-0731",
+     "limit": {
+      "context": 1000000,
+      "output": 384000
+     },
+     "name": "DeepSeek V4 Flash 0731",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "glm-5.2": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.28,
+      "cache_write": 0.0,
+      "input": 1.4,
+      "output": 4.4
+     },
+     "id": "glm-5.2",
+     "limit": {
+      "context": 1000000,
+      "output": 131072
+     },
+     "name": "GLM-5.2",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qvq-max": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 1.2,
+      "output": 4.8
+     },
+     "id": "qvq-max",
+     "limit": {
+      "context": 131072,
+      "output": 8192
+     },
+     "name": "QVQ Max",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen-flash": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.05,
+      "output": 0.4
+     },
+     "id": "qwen-flash",
+     "limit": {
+      "context": 1000000,
+      "output": 32768
+     },
+     "name": "Qwen Flash",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen-max": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 1.6,
+      "output": 6.4
+     },
+     "id": "qwen-max",
+     "limit": {
+      "context": 32768,
+      "output": 8192
+     },
+     "name": "Qwen Max",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen-mt-plus": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 2.46,
+      "output": 7.37
+     },
+     "id": "qwen-mt-plus",
+     "limit": {
+      "context": 16384,
+      "output": 8192
+     },
+     "name": "Qwen-MT Plus",
+     "reasoning": false,
+     "tool_call": false
+    },
+    "qwen-mt-turbo": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.16,
+      "output": 0.49
+     },
+     "id": "qwen-mt-turbo",
+     "limit": {
+      "context": 16384,
+      "output": 8192
+     },
+     "name": "Qwen-MT Turbo",
+     "reasoning": false,
+     "tool_call": false
+    },
+    "qwen-omni-turbo": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.07,
+      "output": 0.27
+     },
+     "id": "qwen-omni-turbo",
+     "limit": {
+      "context": 32768,
+      "output": 2048
+     },
+     "name": "Qwen-Omni Turbo",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen-omni-turbo-realtime": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.27,
+      "output": 1.07
+     },
+     "id": "qwen-omni-turbo-realtime",
+     "limit": {
+      "context": 32768,
+      "output": 2048
+     },
+     "name": "Qwen-Omni Turbo Realtime",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen-plus": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.4,
+      "output": 1.2
+     },
+     "id": "qwen-plus",
+     "limit": {
+      "context": 1000000,
+      "output": 32768
+     },
+     "name": "Qwen Plus",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen-plus-character-ja": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.5,
+      "output": 1.4
+     },
+     "id": "qwen-plus-character-ja",
+     "limit": {
+      "context": 8192,
+      "output": 512
+     },
+     "name": "Qwen Plus Character (Japanese)",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen-turbo": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.05,
+      "output": 0.2
+     },
+     "id": "qwen-turbo",
+     "limit": {
+      "context": 1000000,
+      "output": 16384
+     },
+     "name": "Qwen Turbo",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen-vl-max": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.8,
+      "output": 3.2
+     },
+     "id": "qwen-vl-max",
+     "limit": {
+      "context": 131072,
+      "output": 8192
+     },
+     "name": "Qwen-VL Max",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen-vl-ocr": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.72,
+      "output": 0.72
+     },
+     "id": "qwen-vl-ocr",
+     "limit": {
+      "context": 34096,
+      "output": 4096
+     },
+     "name": "Qwen-VL OCR",
+     "reasoning": false,
+     "tool_call": false
+    },
+    "qwen-vl-plus": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.21,
+      "output": 0.63
+     },
+     "id": "qwen-vl-plus",
+     "limit": {
+      "context": 131072,
+      "output": 8192
+     },
+     "name": "Qwen-VL Plus",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen2-5-14b-instruct": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.35,
+      "output": 1.4
+     },
+     "id": "qwen2-5-14b-instruct",
+     "limit": {
+      "context": 131072,
+      "output": 8192
+     },
+     "name": "Qwen2.5 14B Instruct",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen2-5-32b-instruct": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.7,
+      "output": 2.8
+     },
+     "id": "qwen2-5-32b-instruct",
+     "limit": {
+      "context": 131072,
+      "output": 8192
+     },
+     "name": "Qwen2.5 32B Instruct",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen2-5-72b-instruct": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 1.4,
+      "output": 5.6
+     },
+     "id": "qwen2-5-72b-instruct",
+     "limit": {
+      "context": 131072,
+      "output": 8192
+     },
+     "name": "Qwen2.5 72B Instruct",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen2-5-7b-instruct": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.175,
+      "output": 0.7
+     },
+     "id": "qwen2-5-7b-instruct",
+     "limit": {
+      "context": 131072,
+      "output": 8192
+     },
+     "name": "Qwen2.5 7B Instruct",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen2-5-omni-7b": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.1,
+      "output": 0.4
+     },
+     "id": "qwen2-5-omni-7b",
+     "limit": {
+      "context": 32768,
+      "output": 2048
+     },
+     "name": "Qwen2.5-Omni 7B",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen2-5-vl-72b-instruct": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 2.8,
+      "output": 8.4
+     },
+     "id": "qwen2-5-vl-72b-instruct",
+     "limit": {
+      "context": 131072,
+      "output": 8192
+     },
+     "name": "Qwen2.5-VL 72B Instruct",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen2-5-vl-7b-instruct": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.35,
+      "output": 1.05
+     },
+     "id": "qwen2-5-vl-7b-instruct",
+     "limit": {
+      "context": 131072,
+      "output": 8192
+     },
+     "name": "Qwen2.5-VL 7B Instruct",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen3-14b": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.35,
+      "output": 1.4
+     },
+     "id": "qwen3-14b",
+     "limit": {
+      "context": 131072,
+      "output": 8192
+     },
+     "name": "Qwen3 14B",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3-235b-a22b": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.7,
+      "output": 2.8
+     },
+     "id": "qwen3-235b-a22b",
+     "limit": {
+      "context": 131072,
+      "output": 16384
+     },
+     "name": "Qwen3 235B-A22B",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3-32b": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.7,
+      "output": 2.8
+     },
+     "id": "qwen3-32b",
+     "limit": {
+      "context": 131072,
+      "output": 16384
+     },
+     "name": "Qwen3 32B",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3-8b": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.18,
+      "output": 0.7
+     },
+     "id": "qwen3-8b",
+     "limit": {
+      "context": 131072,
+      "output": 8192
+     },
+     "name": "Qwen3 8B",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3-asr-flash": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.035,
+      "output": 0.035
+     },
+     "id": "qwen3-asr-flash",
+     "limit": {
+      "context": 53248,
+      "output": 4096
+     },
+     "name": "Qwen3-ASR Flash",
+     "reasoning": false,
+     "tool_call": false
+    },
+    "qwen3-coder-30b-a3b-instruct": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.45,
+      "output": 2.25
+     },
+     "id": "qwen3-coder-30b-a3b-instruct",
+     "limit": {
+      "context": 262144,
+      "output": 65536
+     },
+     "name": "Qwen3-Coder 30B-A3B Instruct",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen3-coder-480b-a35b-instruct": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 1.5,
+      "output": 7.5
+     },
+     "id": "qwen3-coder-480b-a35b-instruct",
+     "limit": {
+      "context": 262144,
+      "output": 65536
+     },
+     "name": "Qwen3-Coder 480B-A35B Instruct",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen3-coder-flash": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.3,
+      "output": 1.5
+     },
+     "id": "qwen3-coder-flash",
+     "limit": {
+      "context": 1000000,
+      "output": 65536
+     },
+     "name": "Qwen3 Coder Flash",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen3-coder-plus": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 1.0,
+      "output": 5.0
+     },
+     "id": "qwen3-coder-plus",
+     "limit": {
+      "context": 1048576,
+      "output": 65536
+     },
+     "name": "Qwen3 Coder Plus",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen3-livetranslate-flash-realtime": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 10.0,
+      "output": 10.0
+     },
+     "id": "qwen3-livetranslate-flash-realtime",
+     "limit": {
+      "context": 53248,
+      "output": 4096
+     },
+     "name": "Qwen3-LiveTranslate Flash Realtime",
+     "reasoning": false,
+     "tool_call": false
+    },
+    "qwen3-max": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 1.2,
+      "output": 6.0
+     },
+     "id": "qwen3-max",
+     "limit": {
+      "context": 262144,
+      "output": 65536
+     },
+     "name": "Qwen3 Max",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen3-next-80b-a3b-instruct": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.5,
+      "output": 2.0
+     },
+     "id": "qwen3-next-80b-a3b-instruct",
+     "limit": {
+      "context": 131072,
+      "output": 32768
+     },
+     "name": "Qwen3-Next 80B-A3B Instruct",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen3-next-80b-a3b-thinking": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.5,
+      "output": 6.0
+     },
+     "id": "qwen3-next-80b-a3b-thinking",
+     "limit": {
+      "context": 131072,
+      "output": 32768
+     },
+     "name": "Qwen3-Next 80B-A3B (Thinking)",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3-omni-flash": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.43,
+      "output": 1.66
+     },
+     "id": "qwen3-omni-flash",
+     "limit": {
+      "context": 65536,
+      "output": 16384
+     },
+     "name": "Qwen3-Omni Flash",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3-omni-flash-realtime": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.52,
+      "output": 1.99
+     },
+     "id": "qwen3-omni-flash-realtime",
+     "limit": {
+      "context": 65536,
+      "output": 16384
+     },
+     "name": "Qwen3-Omni Flash Realtime",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "qwen3-vl-235b-a22b": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.7,
+      "output": 2.8
+     },
+     "id": "qwen3-vl-235b-a22b",
+     "limit": {
+      "context": 131072,
+      "output": 32768
+     },
+     "name": "Qwen3-VL 235B-A22B",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3-vl-30b-a3b": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.2,
+      "output": 0.8
+     },
+     "id": "qwen3-vl-30b-a3b",
+     "limit": {
+      "context": 131072,
+      "output": 32768
+     },
+     "name": "Qwen3-VL 30B-A3B",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3-vl-plus": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.2,
+      "output": 1.6
+     },
+     "id": "qwen3-vl-plus",
+     "limit": {
+      "context": 262144,
+      "output": 32768
+     },
+     "name": "Qwen3-VL Plus",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.5-122b-a10b": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.4,
+      "output": 3.2
+     },
+     "id": "qwen3.5-122b-a10b",
+     "limit": {
+      "context": 262144,
+      "output": 65536
+     },
+     "name": "Qwen3.5 122B-A10B",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.5-27b": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.3,
+      "output": 2.4
+     },
+     "id": "qwen3.5-27b",
+     "limit": {
+      "context": 262144,
+      "output": 65536
+     },
+     "name": "Qwen3.5 27B",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.5-35b-a3b": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.25,
+      "output": 2.0
+     },
+     "id": "qwen3.5-35b-a3b",
+     "limit": {
+      "context": 262144,
+      "output": 65536
+     },
+     "name": "Qwen3.5 35B-A3B",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.5-397b-a17b": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.6,
+      "output": 3.6
+     },
+     "id": "qwen3.5-397b-a17b",
+     "limit": {
+      "context": 262144,
+      "output": 65536
+     },
+     "name": "Qwen3.5 397B-A17B",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.5-plus": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.4,
+      "output": 2.4
+     },
+     "id": "qwen3.5-plus",
+     "limit": {
+      "context": 1000000,
+      "output": 65536
+     },
+     "name": "Qwen3.5 Plus",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.6-27b": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.6,
+      "output": 3.6
+     },
+     "id": "qwen3.6-27b",
+     "limit": {
+      "context": 262144,
+      "output": 65536
+     },
+     "name": "Qwen3.6 27B",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.6-35b-a3b": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.248,
+      "output": 1.485
+     },
+     "id": "qwen3.6-35b-a3b",
+     "limit": {
+      "context": 262144,
+      "output": 65536
+     },
+     "name": "Qwen3.6 35B-A3B",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.6-flash": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.234375,
+      "input": 0.1875,
+      "output": 1.125
+     },
+     "id": "qwen3.6-flash",
+     "limit": {
+      "context": 1000000,
+      "output": 65536
+     },
+     "name": "Qwen3.6 Flash",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.6-max-preview": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.13,
+      "cache_write": 1.625,
+      "input": 1.3,
+      "output": 7.8
+     },
+     "id": "qwen3.6-max-preview",
+     "limit": {
+      "context": 262144,
+      "output": 65536
+     },
+     "name": "Qwen3.6 Max Preview",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.6-plus": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.05,
+      "cache_write": 0.625,
+      "input": 0.5,
+      "output": 3.0
+     },
+     "id": "qwen3.6-plus",
+     "limit": {
+      "context": 1000000,
+      "output": 65536
+     },
+     "name": "Qwen3.6 Plus",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.7-max": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.5,
+      "cache_write": 3.125,
+      "input": 2.5,
+      "output": 7.5
+     },
+     "id": "qwen3.7-max",
+     "limit": {
+      "context": 1000000,
+      "output": 65536
+     },
+     "name": "Qwen3.7 Max",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.7-plus": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.05,
+      "cache_write": 0.625,
+      "input": 0.5,
+      "output": 3.0
+     },
+     "id": "qwen3.7-plus",
+     "limit": {
+      "context": 1000000,
+      "output": 65536
+     },
+     "name": "Qwen3.7 Plus",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.8-flash": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.016,
+      "cache_write": 0.2,
+      "input": 0.15,
+      "output": 0.47
+     },
+     "id": "qwen3.8-flash",
+     "limit": {
+      "context": 1000000,
+      "output": 131072
+     },
+     "name": "Qwen3.8 Flash",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwen3.8-max": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.25,
+      "cache_write": 2.5,
+      "input": 2.0,
+      "output": 6.0
+     },
+     "id": "qwen3.8-max",
+     "limit": {
+      "context": 1000000,
+      "output": 131072
+     },
+     "name": "Qwen3.8 Max",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "qwq-plus": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.8,
+      "output": 2.4
+     },
+     "id": "qwq-plus",
+     "limit": {
+      "context": 131072,
+      "output": 8192
+     },
+     "name": "QwQ Plus",
+     "reasoning": true,
+     "tool_call": true
+    }
+   },
+   "name": "Alibaba"
+  },
+  "anthropic": {
+   "api_family": "anthropic-messages",
+   "env_keys_hint": [],
+   "id": "anthropic",
+   "models": {
+    "claude-fable-5": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 1.0,
+      "cache_write": 12.5,
+      "input": 10.0,
+      "output": 50.0
+     },
+     "id": "claude-fable-5",
+     "limit": {
+      "context": 1000000,
+      "output": 128000
+     },
+     "name": "Claude Fable 5",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "claude-fable-5-1": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 0.25,
+      "cache_write": 12.5,
+      "input": 10.0,
+      "output": 50.0
+     },
+     "id": "claude-fable-5-1",
+     "limit": {
+      "context": 1000000,
+      "output": 128000
+     },
+     "name": "Claude Fable 5.1",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "claude-haiku-4-5": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 0.1,
+      "cache_write": 1.25,
+      "input": 1.0,
+      "output": 5.0
+     },
+     "id": "claude-haiku-4-5",
+     "limit": {
+      "context": 200000,
+      "output": 64000
+     },
+     "name": "Claude Haiku 4.5 (latest)",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "claude-haiku-4-5-20251001": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 0.1,
+      "cache_write": 1.25,
+      "input": 1.0,
+      "output": 5.0
+     },
+     "id": "claude-haiku-4-5-20251001",
+     "limit": {
+      "context": 200000,
+      "output": 64000
+     },
+     "name": "Claude Haiku 4.5",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "claude-opus-4-5": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 0.5,
+      "cache_write": 6.25,
+      "input": 5.0,
+      "output": 25.0
+     },
+     "id": "claude-opus-4-5",
+     "limit": {
+      "context": 200000,
+      "output": 64000
+     },
+     "name": "Claude Opus 4.5 (latest)",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "claude-opus-4-5-20251101": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 0.5,
+      "cache_write": 6.25,
+      "input": 5.0,
+      "output": 25.0
+     },
+     "id": "claude-opus-4-5-20251101",
+     "limit": {
+      "context": 200000,
+      "output": 64000
+     },
+     "name": "Claude Opus 4.5",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "claude-opus-4-6": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 0.5,
+      "cache_write": 6.25,
+      "input": 5.0,
+      "output": 25.0
+     },
+     "id": "claude-opus-4-6",
+     "limit": {
+      "context": 1000000,
+      "output": 128000
+     },
+     "name": "Claude Opus 4.6",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "claude-opus-4-7": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 0.5,
+      "cache_write": 6.25,
+      "input": 5.0,
+      "output": 25.0
+     },
+     "id": "claude-opus-4-7",
+     "limit": {
+      "context": 1000000,
+      "output": 128000
+     },
+     "name": "Claude Opus 4.7",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "claude-opus-4-8": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 0.5,
+      "cache_write": 6.25,
+      "input": 5.0,
+      "output": 25.0
+     },
+     "id": "claude-opus-4-8",
+     "limit": {
+      "context": 1000000,
+      "output": 128000
+     },
+     "name": "Claude Opus 4.8",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "claude-opus-5": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 0.5,
+      "cache_write": 6.25,
+      "input": 5.0,
+      "output": 25.0
+     },
+     "id": "claude-opus-5",
+     "limit": {
+      "context": 1000000,
+      "output": 128000
+     },
+     "name": "Claude Opus 5",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "claude-sonnet-4-5": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 0.3,
+      "cache_write": 3.75,
+      "input": 3.0,
+      "output": 15.0
+     },
+     "id": "claude-sonnet-4-5",
+     "limit": {
+      "context": 1000000,
+      "output": 64000
+     },
+     "name": "Claude Sonnet 4.5 (latest)",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "claude-sonnet-4-5-20250929": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 0.3,
+      "cache_write": 3.75,
+      "input": 3.0,
+      "output": 15.0
+     },
+     "id": "claude-sonnet-4-5-20250929",
+     "limit": {
+      "context": 1000000,
+      "output": 64000
+     },
+     "name": "Claude Sonnet 4.5",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "claude-sonnet-4-6": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 0.3,
+      "cache_write": 3.75,
+      "input": 3.0,
+      "output": 15.0
+     },
+     "id": "claude-sonnet-4-6",
+     "limit": {
+      "context": 1000000,
+      "output": 128000
+     },
+     "name": "Claude Sonnet 4.6",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "claude-sonnet-5": {
+     "api_family": "anthropic-messages",
+     "cost": {
+      "cache_read": 0.2,
+      "cache_write": 2.5,
+      "input": 2.0,
+      "output": 10.0
+     },
+     "id": "claude-sonnet-5",
+     "limit": {
+      "context": 1000000,
+      "output": 128000
+     },
+     "name": "Claude Sonnet 5",
+     "reasoning": true,
+     "tool_call": true
+    }
+   },
+   "name": "Anthropic"
+  },
+  "deepseek": {
+   "api_family": "openai-completions",
+   "env_keys_hint": [],
+   "id": "deepseek",
+   "models": {
+    "deepseek-v4-flash": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0028,
+      "cache_write": 0.0,
+      "input": 0.14,
+      "output": 0.28
+     },
+     "id": "deepseek-v4-flash",
+     "limit": {
+      "context": 1000000,
+      "output": 384000
+     },
+     "name": "DeepSeek V4 Flash",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "deepseek-v4-flash-vision-exp": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0028,
+      "cache_write": 0.0,
+      "input": 0.14,
+      "output": 0.28
+     },
+     "id": "deepseek-v4-flash-vision-exp",
+     "limit": {
+      "context": 1000000,
+      "output": 384000
+     },
+     "name": "DeepSeek V4 Flash Vision Exp",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "deepseek-v4-pro": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.003625,
+      "cache_write": 0.0,
+      "input": 0.435,
+      "output": 0.87
+     },
+     "id": "deepseek-v4-pro",
+     "limit": {
+      "context": 1000000,
+      "output": 384000
+     },
+     "name": "DeepSeek V4 Pro",
+     "reasoning": true,
+     "tool_call": true
+    }
+   },
+   "name": "DeepSeek"
+  },
+  "moonshotai": {
+   "api_family": "openai-completions",
+   "env_keys_hint": [],
+   "id": "moonshotai",
+   "models": {
+    "kimi-k2.6": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.16,
+      "cache_write": 0.0,
+      "input": 0.95,
+      "output": 4.0
+     },
+     "id": "kimi-k2.6",
+     "limit": {
+      "context": 262144,
+      "output": 262144
+     },
+     "name": "Kimi K2.6",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "kimi-k2.7-code": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.19,
+      "cache_write": 0.0,
+      "input": 0.95,
+      "output": 4.0
+     },
+     "id": "kimi-k2.7-code",
+     "limit": {
+      "context": 262144,
+      "output": 262144
+     },
+     "name": "Kimi K2.7 Code",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "kimi-k2.7-code-highspeed": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.38,
+      "cache_write": 0.0,
+      "input": 1.9,
+      "output": 8.0
+     },
+     "id": "kimi-k2.7-code-highspeed",
+     "limit": {
+      "context": 262144,
+      "output": 262144
+     },
+     "name": "Kimi K2.7 Code HighSpeed",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "kimi-k3": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.3,
+      "cache_write": 0.0,
+      "input": 3.0,
+      "output": 15.0
+     },
+     "id": "kimi-k3",
+     "limit": {
+      "context": 1048576,
+      "output": 131072
+     },
+     "name": "Kimi K3",
+     "reasoning": true,
+     "tool_call": true
+    }
+   },
+   "name": "Moonshot AI"
+  },
+  "openai": {
+   "api_family": "openai-completions",
+   "env_keys_hint": [],
+   "id": "openai",
+   "models": {
+    "gpt-3.5-turbo": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.5,
+      "output": 1.5
+     },
+     "id": "gpt-3.5-turbo",
+     "limit": {
+      "context": 16385,
+      "output": 4096
+     },
+     "name": "GPT-3.5-turbo",
+     "reasoning": false,
+     "tool_call": false
+    },
+    "gpt-4": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 30.0,
+      "output": 60.0
+     },
+     "id": "gpt-4",
+     "limit": {
+      "context": 8192,
+      "output": 8192
+     },
+     "name": "GPT-4",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "gpt-4-turbo": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 10.0,
+      "output": 30.0
+     },
+     "id": "gpt-4-turbo",
+     "limit": {
+      "context": 128000,
+      "output": 4096
+     },
+     "name": "GPT-4 Turbo",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "gpt-4.1": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.5,
+      "cache_write": 0.0,
+      "input": 2.0,
+      "output": 8.0
+     },
+     "id": "gpt-4.1",
+     "limit": {
+      "context": 1047576,
+      "output": 32768
+     },
+     "name": "GPT-4.1",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "gpt-4.1-mini": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.1,
+      "cache_write": 0.0,
+      "input": 0.4,
+      "output": 1.6
+     },
+     "id": "gpt-4.1-mini",
+     "limit": {
+      "context": 1047576,
+      "output": 32768
+     },
+     "name": "GPT-4.1 mini",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "gpt-4.1-nano": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.025,
+      "cache_write": 0.0,
+      "input": 0.1,
+      "output": 0.4
+     },
+     "id": "gpt-4.1-nano",
+     "limit": {
+      "context": 1047576,
+      "output": 32768
+     },
+     "name": "GPT-4.1 nano",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "gpt-4o": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 1.25,
+      "cache_write": 0.0,
+      "input": 2.5,
+      "output": 10.0
+     },
+     "id": "gpt-4o",
+     "limit": {
+      "context": 128000,
+      "output": 16384
+     },
+     "name": "GPT-4o",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "gpt-4o-2024-05-13": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 5.0,
+      "output": 15.0
+     },
+     "id": "gpt-4o-2024-05-13",
+     "limit": {
+      "context": 128000,
+      "output": 4096
+     },
+     "name": "GPT-4o (2024-05-13)",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "gpt-4o-2024-08-06": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 1.25,
+      "cache_write": 0.0,
+      "input": 2.5,
+      "output": 10.0
+     },
+     "id": "gpt-4o-2024-08-06",
+     "limit": {
+      "context": 128000,
+      "output": 16384
+     },
+     "name": "GPT-4o (2024-08-06)",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "gpt-4o-2024-11-20": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 1.25,
+      "cache_write": 0.0,
+      "input": 2.5,
+      "output": 10.0
+     },
+     "id": "gpt-4o-2024-11-20",
+     "limit": {
+      "context": 128000,
+      "output": 16384
+     },
+     "name": "GPT-4o (2024-11-20)",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "gpt-4o-mini": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.075,
+      "cache_write": 0.0,
+      "input": 0.15,
+      "output": 0.6
+     },
+     "id": "gpt-4o-mini",
+     "limit": {
+      "context": 128000,
+      "output": 16384
+     },
+     "name": "GPT-4o mini",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "gpt-5": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.125,
+      "cache_write": 0.0,
+      "input": 1.25,
+      "output": 10.0
+     },
+     "id": "gpt-5",
+     "limit": {
+      "context": 400000,
+      "output": 128000
+     },
+     "name": "GPT-5",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5-mini": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.025,
+      "cache_write": 0.0,
+      "input": 0.25,
+      "output": 2.0
+     },
+     "id": "gpt-5-mini",
+     "limit": {
+      "context": 400000,
+      "output": 128000
+     },
+     "name": "GPT-5 Mini",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5-nano": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.005,
+      "cache_write": 0.0,
+      "input": 0.05,
+      "output": 0.4
+     },
+     "id": "gpt-5-nano",
+     "limit": {
+      "context": 400000,
+      "output": 128000
+     },
+     "name": "GPT-5 Nano",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5-pro": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 15.0,
+      "output": 120.0
+     },
+     "id": "gpt-5-pro",
+     "limit": {
+      "context": 400000,
+      "output": 272000
+     },
+     "name": "GPT-5 Pro",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.1": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.125,
+      "cache_write": 0.0,
+      "input": 1.25,
+      "output": 10.0
+     },
+     "id": "gpt-5.1",
+     "limit": {
+      "context": 400000,
+      "output": 128000
+     },
+     "name": "GPT-5.1",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.2": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.175,
+      "cache_write": 0.0,
+      "input": 1.75,
+      "output": 14.0
+     },
+     "id": "gpt-5.2",
+     "limit": {
+      "context": 400000,
+      "output": 128000
+     },
+     "name": "GPT-5.2",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.2-chat-latest": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.175,
+      "cache_write": 0.0,
+      "input": 1.75,
+      "output": 14.0
+     },
+     "id": "gpt-5.2-chat-latest",
+     "limit": {
+      "context": 128000,
+      "output": 16384
+     },
+     "name": "GPT-5.2 Chat",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.2-pro": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 21.0,
+      "output": 168.0
+     },
+     "id": "gpt-5.2-pro",
+     "limit": {
+      "context": 400000,
+      "output": 128000
+     },
+     "name": "GPT-5.2 Pro",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.3-chat-latest": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.175,
+      "cache_write": 0.0,
+      "input": 1.75,
+      "output": 14.0
+     },
+     "id": "gpt-5.3-chat-latest",
+     "limit": {
+      "context": 128000,
+      "output": 16384
+     },
+     "name": "GPT-5.3 Chat (latest)",
+     "reasoning": false,
+     "tool_call": true
+    },
+    "gpt-5.3-codex": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.175,
+      "cache_write": 0.0,
+      "input": 1.75,
+      "output": 14.0
+     },
+     "id": "gpt-5.3-codex",
+     "limit": {
+      "context": 400000,
+      "output": 128000
+     },
+     "name": "GPT-5.3 Codex",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.3-codex-spark": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.175,
+      "cache_write": 0.0,
+      "input": 1.75,
+      "output": 14.0
+     },
+     "id": "gpt-5.3-codex-spark",
+     "limit": {
+      "context": 128000,
+      "output": 32000
+     },
+     "name": "GPT-5.3 Codex Spark",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.4": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.25,
+      "cache_write": 0.0,
+      "input": 2.5,
+      "output": 15.0
+     },
+     "id": "gpt-5.4",
+     "limit": {
+      "context": 1050000,
+      "output": 128000
+     },
+     "name": "GPT-5.4",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.4-mini": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.075,
+      "cache_write": 0.0,
+      "input": 0.75,
+      "output": 4.5
+     },
+     "id": "gpt-5.4-mini",
+     "limit": {
+      "context": 400000,
+      "output": 128000
+     },
+     "name": "GPT-5.4 mini",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.4-nano": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.02,
+      "cache_write": 0.0,
+      "input": 0.2,
+      "output": 1.25
+     },
+     "id": "gpt-5.4-nano",
+     "limit": {
+      "context": 400000,
+      "output": 128000
+     },
+     "name": "GPT-5.4 nano",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.4-pro": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 30.0,
+      "output": 180.0
+     },
+     "id": "gpt-5.4-pro",
+     "limit": {
+      "context": 1050000,
+      "output": 128000
+     },
+     "name": "GPT-5.4 Pro",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.5": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.5,
+      "cache_write": 0.0,
+      "input": 5.0,
+      "output": 30.0
+     },
+     "id": "gpt-5.5",
+     "limit": {
+      "context": 1050000,
+      "output": 128000
+     },
+     "name": "GPT-5.5",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.5-pro": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 30.0,
+      "output": 180.0
+     },
+     "id": "gpt-5.5-pro",
+     "limit": {
+      "context": 1050000,
+      "output": 128000
+     },
+     "name": "GPT-5.5 Pro",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.6": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.4,
+      "cache_write": 5.0,
+      "input": 4.0,
+      "output": 20.0
+     },
+     "id": "gpt-5.6",
+     "limit": {
+      "context": 1050000,
+      "output": 128000
+     },
+     "name": "GPT-5.6",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.6-luna": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.02,
+      "cache_write": 0.25,
+      "input": 0.2,
+      "output": 1.2
+     },
+     "id": "gpt-5.6-luna",
+     "limit": {
+      "context": 1050000,
+      "output": 128000
+     },
+     "name": "GPT-5.6 Luna",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.6-sol": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.4,
+      "cache_write": 5.0,
+      "input": 4.0,
+      "output": 20.0
+     },
+     "id": "gpt-5.6-sol",
+     "limit": {
+      "context": 1050000,
+      "output": 128000
+     },
+     "name": "GPT-5.6 Sol",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-5.6-terra": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.2,
+      "cache_write": 2.5,
+      "input": 2.0,
+      "output": 12.0
+     },
+     "id": "gpt-5.6-terra",
+     "limit": {
+      "context": 1050000,
+      "output": 128000
+     },
+     "name": "GPT-5.6 Terra",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-6-astra": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 1.0,
+      "cache_write": 12.5,
+      "input": 10.0,
+      "output": 50.0
+     },
+     "id": "gpt-6-astra",
+     "limit": {
+      "context": 1050000,
+      "output": 128000
+     },
+     "name": "GPT-6 Astra",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "gpt-realtime-2.1": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.4,
+      "cache_write": 0.0,
+      "input": 4.0,
+      "output": 24.0
+     },
+     "id": "gpt-realtime-2.1",
+     "limit": {
+      "context": 128000,
+      "output": 32000
+     },
+     "name": "GPT-Realtime-2.1",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "o1": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 7.5,
+      "cache_write": 0.0,
+      "input": 15.0,
+      "output": 60.0
+     },
+     "id": "o1",
+     "limit": {
+      "context": 200000,
+      "output": 100000
+     },
+     "name": "o1",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "o1-pro": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 150.0,
+      "output": 600.0
+     },
+     "id": "o1-pro",
+     "limit": {
+      "context": 200000,
+      "output": 100000
+     },
+     "name": "o1-pro",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "o3": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.5,
+      "cache_write": 0.0,
+      "input": 2.0,
+      "output": 8.0
+     },
+     "id": "o3",
+     "limit": {
+      "context": 200000,
+      "output": 100000
+     },
+     "name": "o3",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "o3-mini": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.55,
+      "cache_write": 0.0,
+      "input": 1.1,
+      "output": 4.4
+     },
+     "id": "o3-mini",
+     "limit": {
+      "context": 200000,
+      "output": 100000
+     },
+     "name": "o3-mini",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "o3-pro": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 20.0,
+      "output": 80.0
+     },
+     "id": "o3-pro",
+     "limit": {
+      "context": 200000,
+      "output": 100000
+     },
+     "name": "o3-pro",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "o4-mini": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.275,
+      "cache_write": 0.0,
+      "input": 1.1,
+      "output": 4.4
+     },
+     "id": "o4-mini",
+     "limit": {
+      "context": 200000,
+      "output": 100000
+     },
+     "name": "o4-mini",
+     "reasoning": true,
+     "tool_call": true
+    },
+    "text-embedding-3-large": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.13,
+      "output": 0.0
+     },
+     "id": "text-embedding-3-large",
+     "limit": {
+      "context": 8191,
+      "output": 3072
+     },
+     "name": "text-embedding-3-large",
+     "reasoning": false,
+     "tool_call": false
+    },
+    "text-embedding-3-small": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.02,
+      "output": 0.0
+     },
+     "id": "text-embedding-3-small",
+     "limit": {
+      "context": 8191,
+      "output": 1536
+     },
+     "name": "text-embedding-3-small",
+     "reasoning": false,
+     "tool_call": false
+    },
+    "text-embedding-ada-002": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.1,
+      "output": 0.0
+     },
+     "id": "text-embedding-ada-002",
+     "limit": {
+      "context": 8192,
+      "output": 1536
+     },
+     "name": "text-embedding-ada-002",
+     "reasoning": false,
+     "tool_call": false
+    }
+   },
+   "name": "OpenAI"
+  },
+  "vllm-local": {
+   "api_family": "openai-completions",
+   "env_keys_hint": [],
+   "id": "vllm-local",
+   "models": {
+    "local-model": {
+     "api_family": "openai-completions",
+     "cost": {
+      "cache_read": 0.0,
+      "cache_write": 0.0,
+      "input": 0.0,
+      "output": 0.0
+     },
+     "id": "local-model",
+     "limit": {
+      "context": 0,
+      "output": 0
+     },
+     "name": "User-deployed model (template entry, zero cost)",
+     "reasoning": false,
+     "tool_call": true
+    }
+   },
+   "name": "Local vLLM (self-hosted, user-configured)",
+   "user_configurable": true
+  }
+ }
+}

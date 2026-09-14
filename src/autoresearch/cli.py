@@ -355,6 +355,29 @@ def propose_evolution(
         runtime.close()
 
 
+@app.command("settle-experiences")
+def settle_experiences(
+    project_id: Annotated[str, typer.Argument(help="Existing paper project ID")],
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="List mapped failure causes without writing"),
+    ] = False,
+) -> None:
+    """Settle interception events into failure experiences (read-only event-log pull)."""
+    runtime = AutoResearchApplication()
+    try:
+        if runtime.projects.get(project_id) is None:
+            raise typer.BadParameter(f"unknown project: {project_id}")
+        if dry_run:
+            _echo(
+                [cause.as_dict() for cause in runtime.experience_sink.failure_causes(project_id)]
+            )
+            return
+        _echo(runtime.settle_failure_experiences(project_id).as_dict())
+    finally:
+        runtime.close()
+
+
 @app.command()
 def serve(
     host: Annotated[str, typer.Option("--host")] = "127.0.0.1",

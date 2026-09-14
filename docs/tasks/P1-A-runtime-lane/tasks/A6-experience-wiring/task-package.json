@@ -1,0 +1,50 @@
+{
+  "task_id": "S4-A2-EXPERIENCE-WIRING",
+  "phase": "S4",
+  "owner_lane": "runtime",
+  "status": "handoff",
+  "base_ref": "1e7e196",
+  "branch": "codex/s4-a2-experience-wiring",
+  "depends_on": ["A3/B3 accepted", "O7 S3 promotion"],
+  "merge_after": ["A3/B3 accepted"],
+  "allowed_paths": [
+    "src/autoresearch/experience_sink.py",
+    "src/autoresearch/application.py",
+    "src/autoresearch/api.py",
+    "src/autoresearch/cli.py",
+    "tests/test_experience_sink.py",
+    "tests/fixtures/experience_sink/",
+    "docs/tasks/P1-A-runtime-lane/tasks/A6-experience-wiring/",
+    ".ai-team/tasks/S4-A2-EXPERIENCE-WIRING.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/evolution_service.py",
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/knowledge.py",
+    "src/autoresearch/audit_evidence.py",
+    "src/autoresearch/audit.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/capability.py",
+    "src/autoresearch/capability_registry.py",
+    "src/autoresearch/search_service.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "deliverables": [
+    "event-consumption hook over the persisted audit event log (read-only, no writes to the audit chain)",
+    "interception-event -> failure-experience mapping table (the table itself is a deliverable)",
+    "repeat-interception dedup: same cause merges into one record and increments recurrence_count for the promote gate",
+    "offline fixtures and tests",
+    "the sink must stay below EvolutionService's four promotion gates (grade stays E0; promote is never called)",
+    "a real production trigger (Application method + HTTP endpoint + CLI subcommand), so the hook cannot be dead code",
+    "task-local ledger, L3 record, progress log and handoff"
+  ],
+  "acceptance_commands": [
+    "python -m pytest tests/test_experience_sink.py",
+    "python -m pytest tests",
+    "python -m ruff check src tests",
+    "node .ai-team/check.mjs --task .ai-team/tasks/S4-A2-EXPERIENCE-WIRING.md --base main"
+  ],
+  "next_package": "S4-A3-KNOWLEDGE-VECTOR"
+}
