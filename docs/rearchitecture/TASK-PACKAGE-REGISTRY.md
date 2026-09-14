@@ -25,7 +25,7 @@
 | S4-B-REAL-PILOT | S4 | evidence/domain | reserved | ready（O7 S3 promotion，2026-09-10；B6 EvoMap 交叉评审条款见 B 线 TASK-SPECS） | S3 promotion | S3 promotion | — | — |
 | S4-A2-EXPERIENCE-WIRING | S4 | runtime | `owner/s4-a2-integration` merged via **PR #21** (`febd12d`)，supersedes #20 | **integrated**（2026-09-14：owner 三轮审查 + 三轮代修；1 高 + 4 中 + 1 低全部关闭；失败注入矩阵 `scripts/experience_sink_failure_matrix.py` 7/7） | A3/B3 accepted（已满足） | O7（已过） | — | — |
 | S4-A3-KNOWLEDGE-VECTOR | S4 | runtime | reserved | planned（追加包 2026-09-10：sqlite-vec + bge-small 向量检索，原 O10 实现部分前移成员 A，见 A 线 TASK-SPECS A7） | A6 | — | — | — |
-| O13-CAPABILITY-MANIFEST | S3 | integration/lead（Owner 亲自实施，2026-09-11：定性为 O 线变更——改写冻结 L2 §CapabilityManifest，成员包不得单方面改写） | local（**未 commit**） | active（本地完成：299 passed、ruff clean、判别力 10 判据型；待 owner 复核 D-O13-07/D-O13-08 两处偏离与 `manifest_id` 跨版本缺口） | `main@1e7e196` | S3-A accepted（已满足） | — | O14-CAPABILITY-CATALOG |
+| O13-CAPABILITY-MANIFEST | S3 | integration/lead（Owner 亲自实施，2026-09-11：定性为 O 线变更——改写冻结 L2 §CapabilityManifest，成员包不得单方面改写） | `owner/o13-capability-manifest` merged via **PR #22** (`ac782d1`)，基于 `main@60a9ea4` | **integrated**（2026-09-14：owner 独立盲审后自修——修 D-O13-10（契约必备字段 `entrypoint`/`evidence_mode` 从未被校验，3 个 built-in 全未声明）；D-O13-11 判定为虚警并回退（空候选是 `D-F8-01` 的确定性终态成功）；D-O13-07/D-O13-08 两处偏离经 owner 批准按实现为准） | `main@1e7e196` | S3-A accepted（已满足） | — | O14-CAPABILITY-CATALOG |
 | O14-CAPABILITY-CATALOG | S3 | integration/lead | reserved | planned（注册目录 + 内置多选；依赖 O13；首批仅 `paper_search` 单槽，含 PLAN §2.8 可插拔判据 P1–P5） | O13 | — | — | — |
 | I0-SHARED-CONTRACT-INTEGRATION | MVP | integration/lead | `main` | integrated | P1-A + P1-B | P1-A, P1-B | I1 | — |
 | I1-PIPELINE-ORCHESTRATION | MVP | integration/lead | `main` | integrated | I0 | I0 | I2 | — |

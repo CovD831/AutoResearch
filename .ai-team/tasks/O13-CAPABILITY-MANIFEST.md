@@ -50,8 +50,8 @@
 - D-O13-04 非致命事项走 `manifest_warnings()` / `CapabilityRegistrationView.warnings`，**不塞进 `overridden_fields`**（后者描述「注册调用的偏离」，前者描述「manifest 本身」，语义不同）。
 - D-O13-05 receipt 增加 `manifest_id` / `contract_version` / `input_schema_ref` / `output_schema_ref` / `license_spdx`（默认 None / "l2"）。理由：receipt 是持久记录，不应依赖回查 manifest 才能解释自己；重放路径经 `model_copy(update=...)` 天然保留这些字段。
 - D-O13-06 `CapabilityRegistrationView` 以**只读属性**暴露 manifest 身份字段（`manifest_id` / `contract_version` / `input_schema_ref` / `output_schema_ref` / `license_spdx` / `supports_offline`），**不复制字段**——避免再造一处真值源。
-- D-O13-07 **偏离登记**：PLAN §D1-2 第 2 条原写「schema ref 必须可解析（在已知 contract 名字表内）」。实现改为**只校验形状**。理由见 Invariants 第 6 条。需 owner 知悉：如需深度解析，应放在 S3-A3/O14 选择层而非注册边界。
-- D-O13-08 **偏离登记**：PLAN §A6 原写「`deprecated` 注册成功且 diagnostics 非空」。`register()` 无 diagnostics 通道，实现改为独立的 `warnings` 字段。语义等价，落点更清晰（且保证告警不能拒绝）。
+- D-O13-07 **已裁决 · 接受实现**（owner 批准 2026-09-14）：PLAN §D1-2 第 2 条原写「schema ref 必须可解析（在已知 contract 名字表内）」。实现改为**只校验形状**，**owner 批准以此为准**。理由：中央 contract 名字表会让「接入一个新能力就要改核心」，正是 O14 目录化要消除的失败模式；深度解析属选择层职责（S3-A3/O14）。PLAN 与实现的不一致以此条关闭。
+- D-O13-08 **已裁决 · 接受实现**（owner 批准 2026-09-14）：PLAN §A6 原写「`deprecated` 注册成功且 diagnostics 非空」。实现改为独立的 `warnings` 字段（`CapabilityRegistrationView.warnings` + `manifest_warnings()`）。**owner 批准以此为准**。理由：语义等价、落点更清晰，且强化「非致命告警永不具备拒绝能力」这一不变式（两通道不合并）。
 - D-O13-09 判据力口径固化为全包要求（owner 裁决 §0.1 第 7 条）：**判据型失败计入，符号缺失型失败不计入**。见 Verification。
 - D-O13-10（owner 独立盲审后自修；契约必备字段必须真的必填）：L2 合同明文列 `name` / `kind` / `version` / `entrypoint` / `inputs` / `outputs` / `permissions` / `evidence_mode` / `network_required` / `allowed_network_domains` 为**必备字段**，而 `validate_manifest()` 只覆盖了其中一部分：**`entrypoint` 与 `evidence_mode` 从未被检查**，且两者默认值都是 `None`。实测：`CapabilityManifest(name='x', manifest_id='x', input_schema_ref='A', output_schema_ref='B')` → `validate_manifest()` 返回 `[]`（放行）。更糟的是**仓库自己的三个 built-in 适配器全部没有声明 `entrypoint`**，且被既有测试背书通过——即「冻结契约声称必备、实现既不校验、自家数据也不填」。修法：补上两个必备字段的校验；三个 built-in 通过新的 `capability_entrypoint` 属性声明入口（默认 `module:ClassName`）。
 - D-O13-11（owner 独立盲审后判定为**虚警**；空候选是成功不是失败）：盲审提出 `candidate_only` 适配器返回 `value=None + candidates=[]` 时仍记为 `COMPLETED`，属 fail-soft，建议判 `FAILED`。**复核判定不成立**：`D-F8-01` 是早已确立的设计决策——「合法查询返回零命中是**确定性终态成功**」，适配器会在 diagnostics 里显式标记该情形；把空候选一律判失败会**摧毁这条语义**（实测按盲审意见修改后 44 个测试失败，含 `test_deterministic_empty_result_is_a_success_not_an_unknown`）。**已回退该修改，逻辑保持原样**，仅在注释中写明「空候选不是失败」的理由与 D-F8-01 的出处，避免下一轮审查者重复提出。**教训：审查发现必须先用仓库既有的设计决策校验，否则会把有意语义当缺陷「修掉」。**
@@ -69,7 +69,7 @@
 ## Pending
 
 - S3-A3/O14（注册目录 + 内置多选，含 §2.8 可插拔判据 P1–P5）未开工——依赖本包落地。
-- D-O13-07 / D-O13-08 两处偏离待 owner 确认。
+- D-O13-07 / D-O13-08 **两处偏离已于 2026-09-14 由 owner 批准，均接受实现（见 Decisions）**——不再阻塞合并。
 - **owner 独立盲审已完成（2026-09-14）**：2 高 3 中 2 低，逐条独立复现。**已修 1 条高危（D-O13-10）**，**1 条判定为虚警并回退（D-O13-11）**，其余为「校验分支实为死代码」「关键失败路径零覆盖」「外部旧 manifest 无迁移说明」——**登记为已知，不在本包修**（理由见下）。
 - `manifest_id` 与 `name` 目前在三处构造点取值相同；**「同一能力的多版本是否共享 manifest_id」的语义仅由文档约束、无测试强制**（见 Known limits）。
 - 未与 O12/#15 分支交叉验证：该分支若引入 manifest 形状，须纳入未来穷举验收。
