@@ -189,6 +189,29 @@ class GateDecision(BaseModel):
 
 
 class HandoffEnvelope(BaseModel):
+    """A work order passed between agents.
+
+    ``artifact_refs`` and ``evidence_ids`` are **reference lists, not payloads**
+    (D-A9-01). They carry identities so the receiver can resolve the artifacts
+    from durable storage; nothing downstream reads their bodies. Two bounds are
+    therefore deliberately different in kind:
+
+    * the *reference* bounds below are what a handoff may name, and they are
+      sized for a real retrieval run rather than for the handful of papers the
+      original offline fixtures produced;
+    * a handoff must **never** be used to move artifact content, because
+      ``ArtifactRef.summary`` is capped at 500 characters per entry and the
+      envelope is persisted inside the run state. Bulk content belongs in the
+      store, addressed by id.
+
+    An earlier revision capped these at 20/100 while ``paper_reader`` attached one
+    ref per reading card and one evidence id per mined claim. A real run that
+    retrieved 44 papers produced 41 refs and 164 evidence ids and the envelope
+    was rejected outright. Widening the numbers without fixing the semantics only
+    moves the cliff; see ``docs/tasks/P1-A-runtime-lane/tasks/A8-mainline-adapter/``
+    and package A9 for the reasoning.
+    """
+
     handoff_id: str = Field(default_factory=lambda: new_id("handoff"))
     project_id: str
     run_id: str
@@ -196,8 +219,11 @@ class HandoffEnvelope(BaseModel):
     to_agent: AgentId
     objective: str = Field(min_length=1, max_length=500)
     expected_output: str = Field(min_length=1, max_length=500)
-    artifact_refs: list[ArtifactRef] = Field(default_factory=list, max_length=20)
-    evidence_ids: list[str] = Field(default_factory=list, max_length=100)
+    #: Reference bounds, not content bounds (D-A9-01). Sized above a single real
+    #: retrieval run so a legitimate run is never rejected, and still finite so a
+    #: runaway producer is caught rather than silently absorbed.
+    artifact_refs: list[ArtifactRef] = Field(default_factory=list, max_length=500)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=2000)
     constraints: list[str] = Field(default_factory=list, max_length=20)
     bounded_context: str = Field(default="", max_length=2000)
     created_at: datetime = Field(default_factory=utc_now)
@@ -426,6 +452,13 @@ class ResearchState(BaseModel):
     gate_decision_ids: list[str] = Field(default_factory=list)
     handoff: dict[str, Any] | None = None
     diagnostics: list[str] = Field(default_factory=list)
+    #: Non-blocking warnings. Distinct from ``blockers`` on purpose: a blocker
+    #: stops the run, a warning means the run continues but something the
+    #: operator must know happened. A partially failed retrieval belongs here --
+    #: there are papers to read, so the run proceeds, but "the primary source
+    #: never answered" has to reach a decision point rather than living only in
+    #: free-form diagnostics text (N1).
+    warnings: list[str] = Field(default_factory=list)
     blockers: list[str] = Field(default_factory=list)
     last_agent: AgentId | None = None
     updated_at: datetime = Field(default_factory=utc_now)

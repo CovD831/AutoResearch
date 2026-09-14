@@ -81,20 +81,17 @@ class PaperReaderAgent:
                     "Audit reading provenance and decide whether innovation planning may proceed."
                 ),
                 expected_output="Gate-backed review report with required changes.",
+                # Reference list, not a payload (D-A9-01): the reviewer resolves
+                # cards and candidates from the store by id. An earlier revision
+                # embedded one truncated finding per card, which made the artifact
+                # list grow with the retrieval volume and rejected the envelope on
+                # a real 44-paper run.
                 artifact_refs=[
-                    ArtifactRef(
-                        artifact_id=card.card_id,
-                        kind="reading_card",
-                        summary=card.findings[0][:300],
-                    )
+                    ArtifactRef(artifact_id=card.card_id, kind="reading_card")
                     for card in cards
                 ]
                 + [
-                    ArtifactRef(
-                        artifact_id=item.innovation_id,
-                        kind="innovation_candidate",
-                        summary=item.statement[:300],
-                    )
+                    ArtifactRef(artifact_id=item.innovation_id, kind="innovation_candidate")
                     for item in innovations
                 ],
                 evidence_ids=combined_evidence,

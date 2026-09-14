@@ -1,0 +1,45 @@
+{
+  "task_id": "S4-A5-HANDOFF-BY-REFERENCE",
+  "phase": "S4",
+  "owner_lane": "runtime",
+  "status": "active",
+  "base_ref": "owner/a8-mainline-adapter",
+  "branch": "owner/a8-mainline-adapter",
+  "depends_on": ["S4-A4-MAINLINE-ADAPTER"],
+  "merge_after": ["S4-A4-MAINLINE-ADAPTER"],
+  "allowed_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/agents/paper_search.py",
+    "src/autoresearch/agents/paper_reader.py",
+    "tests/test_handoff_by_reference.py",
+    "docs/tasks/P1-A-runtime-lane/tasks/A9-handoff-by-reference/",
+    ".ai-team/tasks/S4-A5-HANDOFF-BY-REFERENCE.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/storage.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/gates.py",
+    "src/autoresearch/capability.py",
+    "src/autoresearch/capability_registry.py",
+    "src/autoresearch/search_service.py",
+    "src/autoresearch/adapter_search_service.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "deliverables": [
+    "HandoffEnvelope.reference bounds redefined as reference-list sizes rather than content sizes, with the semantics written into the docstring",
+    "paper_reader stops embedding a truncated finding per reading card; refs carry ids only",
+    "paper_search stops copying the paper title into ArtifactRef.summary (unbounded title vs 500-char cap)",
+    "the remaining truncation in paper_search is reported in diagnostics instead of silently dropping records",
+    "discriminating tests covering the real-volume regression (41 refs / 164 evidence ids) and the no-content-embedded invariant",
+    "task-local ledger with the measured discriminating-power result"
+  ],
+  "acceptance_commands": [
+    "python -m pytest tests/test_handoff_by_reference.py",
+    "python -m pytest tests",
+    "python -m ruff check src tests",
+    "python -m compileall -q src",
+    "node .ai-team/check.mjs --base main"
+  ],
+  "next_package": "S4-A3-KNOWLEDGE-VECTOR"
+}

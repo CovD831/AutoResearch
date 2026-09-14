@@ -8,6 +8,7 @@ from typing import Any
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Command
 
+from autoresearch.adapter_search_service import AdapterBackedPaperSearchService
 from autoresearch.agents import (
     OrchestratorAgent,
     PaperReaderAgent,
@@ -46,6 +47,7 @@ from autoresearch.gates import GateService
 from autoresearch.graph import build_research_graph
 from autoresearch.handoffs import HandoffService
 from autoresearch.invocation_contracts import (
+    InvocationStatus,
     PaperSearchRequest,
     request_fingerprint,
 )
@@ -58,7 +60,7 @@ from autoresearch.pipeline_contracts import (
 from autoresearch.profile_service import UserProfileService
 from autoresearch.project_service import ProjectService
 from autoresearch.reader_service import PaperReaderService
-from autoresearch.search_service import PaperSearchService, SearchOutcome
+from autoresearch.search_service import SearchOutcome
 from autoresearch.state_machine import StateMachine
 from autoresearch.storage import RecordStore
 from autoresearch.writing_service import WritingService
@@ -108,6 +110,8 @@ class InvocationBoundedSearchPort:
         papers = []
         seen: set[str] = set()
         diagnostics: list[str] = []
+        provider_failure = False
+        refused_records = 0
         for query in queries:
             request = self.build_request(
                 project_id,
@@ -128,7 +132,24 @@ class InvocationBoundedSearchPort:
                     seen.add(paper_record.paper_id)
                     papers.append(paper_record)
             diagnostics.extend(invocation.diagnostics)
-        return SearchOutcome(papers=papers, diagnostics=diagnostics)
+            # A failed or unknown invocation is carried upward as a fact, not as
+            # diagnostic text. ``receipt.provider_failure`` also covers the
+            # *partial* case: a run where the primary source never answered but a
+            # secondary one returned papers still reads COMPLETED, and without
+            # this flag that would be invisible (N1).
+            outcome_status = invocation.receipt.outcome_status or invocation.receipt.status
+            if invocation.receipt.provider_failure or outcome_status in (
+                InvocationStatus.FAILED,
+                InvocationStatus.UNKNOWN_OUTCOME,
+            ):
+                provider_failure = True
+            refused_records += invocation.receipt.refused_records
+        return SearchOutcome(
+            papers=papers,
+            diagnostics=diagnostics,
+            provider_failure=provider_failure,
+            refused_records=refused_records,
+        )
 
 
 class AutoResearchApplication:
@@ -147,10 +168,11 @@ class AutoResearchApplication:
             self.settings.template_dir,
             self.store,
         )
-        self.search = PaperSearchService(
+        self.search = AdapterBackedPaperSearchService(
             self.store,
             self.evidence,
             self.knowledge,
+            settings=self.settings,
             network_enabled=self.settings.network_enabled,
         )
         self.search_capability = PaperSearchCapabilityAdapter(self.search, self.store)
@@ -247,6 +269,11 @@ class AutoResearchApplication:
             "run_id": state["run_id"],
             "project_id": state["project_id"],
             "status": status,
+            # Lifted to the top level next to ``status`` on purpose. A warning that
+            # only lives inside ``state`` is one a caller has to know to look for;
+            # promoting it makes "this run completed, but the retrieval was
+            # incomplete" a first-class property of the run record (N1).
+            "warnings": list(state.get("warnings") or []),
             "state": state,
             "interrupts": interrupts or [],
         }

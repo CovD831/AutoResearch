@@ -26,6 +26,11 @@ class WorkflowState(TypedDict, total=False):
     gate_decision_ids: list[str]
     handoff: dict[str, Any] | None
     diagnostics: list[str]
+    #: Non-blocking warnings carried through the graph. This key MUST be declared
+    #: here: langgraph keeps only the keys the state schema declares and silently
+    #: drops the rest, so a warning written by a node without a declaration here
+    #: never survives the graph at all.
+    warnings: list[str]
     blockers: list[str]
     last_agent: str
     updated_at: str
