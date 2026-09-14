@@ -17,13 +17,16 @@ from autoresearch.contracts import (
 )
 
 __all__ = [
+    "RESTRICTED_LICENSES",
+    "CapabilityLifecycleStatus",
+    "CapabilityManifest",
+    "CapabilityTrustClass",
     "EvidenceCandidate",
     "InvocationPhase",
     "InvocationReceipt",
     "InvocationStatus",
     "PaperSearchInvocation",
     "PaperSearchRequest",
-    "CapabilityManifest",
     "request_fingerprint",
     "TokenUsage",
     "InvocationCost",
@@ -48,8 +51,48 @@ class InvocationPhase(StrEnum):
     FINALIZED = "finalized"
 
 
+class CapabilityTrustClass(StrEnum):
+    """Self-described provenance class of a capability. NOT the operator policy.
+
+    ``CapabilityTrustTier`` (in ``capability_registry``) is the *operator's*
+    effective assignment. This enum is what the capability says about *itself*.
+    A manifest can never raise its own effective tier by declaring a class, and
+    the two dimensions must never be collapsed into one field:
+
+    * ``trust_class``   -> "where did this capability come from" (self-described)
+    * ``trust_tier``    -> "how much do we trust its output" (operator-assigned)
+    """
+
+    LOCAL = "local"
+    REVIEWED_EXTERNAL = "reviewed_external"
+    UNREVIEWED_EXTERNAL = "unreviewed_external"
+
+
+class CapabilityLifecycleStatus(StrEnum):
+    """Publication state of a capability manifest."""
+
+    DRAFT = "draft"
+    ACTIVE = "active"
+    DEPRECATED = "deprecated"
+    RETIRED = "retired"
+
+
+#: Licenses that carry distribution obligations, so an option under one may never
+#: become a default primary selection. See PLAN-capability-metadata §D2-7.
+RESTRICTED_LICENSES = frozenset(
+    {"AGPL-3.0", "AGPL-3.0-only", "AGPL-3.0-or-later", "AGPL-1.0", "SSPL-1.0"}
+)
+
+
 class CapabilityManifest(BaseModel):
-    """Backward-compatible manifest; operator trust assignment stays outside it."""
+    """Backward-compatible manifest; operator trust assignment stays outside it.
+
+    Every field added after the S3-A freeze is optional with a default, so A1/A2
+    construction sites keep working unchanged. The *registration* boundary is what
+    enforces presence: ``validate_manifest`` in ``capability_registry`` rejects a
+    manifest that is missing identity or schema refs, and that check runs before
+    any adapter is reachable.
+    """
 
     name: str = Field(min_length=1, max_length=100)
     kind: str = Field(default="native", min_length=1, max_length=50)
@@ -61,6 +104,54 @@ class CapabilityManifest(BaseModel):
     evidence_mode: str | None = Field(default=None, max_length=50)
     network_required: bool = False
     allowed_network_domains: list[str] = Field(default_factory=list, max_length=50)
+
+    # --- identity / contract (S3-A2; closes the L2 "plugin lifecycle" open slot)
+    manifest_id: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Stable identity that does NOT change across versions of the same capability.",
+    )
+    contract_version: str = Field(default="l2", min_length=1, max_length=50)
+    input_schema_ref: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Name of the typed request contract this capability accepts.",
+    )
+    output_schema_ref: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Name of the typed result contract this capability produces.",
+    )
+
+    # --- policy / profile
+    trust_class: CapabilityTrustClass = Field(
+        default=CapabilityTrustClass.LOCAL,
+        description="Self-described provenance. Never grants an effective trust tier.",
+    )
+    license_spdx: str | None = Field(default=None, max_length=100)
+    selection_restricted_reason: str | None = Field(
+        default=None,
+        max_length=300,
+        description=(
+            "Required when license_spdx is a restricted license. Records why the "
+            "option is admissible at all, and is the text a selection layer shows."
+        ),
+    )
+    requires_credentials: list[str] = Field(default_factory=list, max_length=20)
+    supports_offline: bool = False
+    selection_tags: list[str] = Field(default_factory=list, max_length=30)
+    conformance_fixture: str | None = Field(
+        default=None,
+        max_length=300,
+        description="Path to the fixture that pins this manifest's declared contract.",
+    )
+    lifecycle_status: CapabilityLifecycleStatus = Field(
+        default=CapabilityLifecycleStatus.ACTIVE
+    )
+
+    @property
+    def is_restricted_license(self) -> bool:
+        return bool(self.license_spdx) and self.license_spdx in RESTRICTED_LICENSES
 
 
 class PaperSearchRequest(BaseModel):

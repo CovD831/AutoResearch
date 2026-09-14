@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import StrEnum
@@ -9,8 +10,16 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, Field, computed_field
 
-from autoresearch.contracts import EvidenceCandidate, InvocationCost, TokenUsage, utc_now
-from autoresearch.invocation_contracts import CapabilityManifest
+from autoresearch.contracts import (
+    EvidenceCandidate,
+    InvocationCost,
+    TokenUsage,
+    utc_now,
+)
+from autoresearch.invocation_contracts import (
+    CapabilityLifecycleStatus,
+    CapabilityManifest,
+)
 
 
 class CapabilityTrustTier(StrEnum):
@@ -57,6 +66,112 @@ class CapabilityInvocationConflictError(CapabilityRegistryError):
 
 class CapabilityBoundaryViolation(CapabilityRegistryError):
     """An adapter attempted to write a project-owned fact through its context."""
+
+
+class CapabilityManifestInvalidError(CapabilityRegistrationError):
+    """The registry rejected a manifest that violates the L2 contract.
+
+    Subclasses ``CapabilityRegistrationError`` so existing callers that catch the
+    registration error keep working; the narrower type exists so a caller can
+    distinguish "your manifest is incomplete" from "that name is already taken".
+    """
+
+
+_REF_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
+
+
+def validate_manifest(manifest: CapabilityManifest) -> list[str]:
+    """Return the L2-contract violations of ``manifest``; empty means admissible.
+
+    This is the single validation entry point the registration boundary calls. It
+    deliberately does **not** do filesystem or import work -- a registry that
+    reaches into the filesystem is no longer a pure policy boundary. Fixture
+    existence is asserted by the contract test instead.
+
+    The schema refs are checked for shape, not resolved against a central name
+    table, on purpose: a central table would be a file every new capability has to
+    edit, which is exactly the "plugging in one option touches the core" failure
+    the catalog work exists to remove.
+    """
+
+    problems: list[str] = []
+
+    if not manifest.name:
+        problems.append("manifest.name is required")
+    if not manifest.version:
+        problems.append("manifest.version is required")
+    if not manifest.manifest_id:
+        problems.append("manifest.manifest_id is required")
+    if not manifest.contract_version:
+        problems.append("manifest.contract_version is required")
+
+    # The L2 contract lists ``entrypoint`` and ``evidence_mode`` among the required
+    # fields. Both were silently optional: ``entrypoint`` defaulted to ``None`` and
+    # ``evidence_mode`` too, and neither was checked here, so a manifest with no
+    # declared entry point registered cleanly -- which is how every built-in
+    # adapter shipped. Required means required (D-O13-09).
+    if not manifest.entrypoint:
+        problems.append(
+            "manifest.entrypoint is required (the contract names it a required field; "
+            "a capability with no declared entry point cannot be dispatched)"
+        )
+    if not manifest.evidence_mode:
+        problems.append(
+            "manifest.evidence_mode is required (the contract names the self-described "
+            "evidence mode a required field)"
+        )
+
+    for field_name, ref in (
+        ("input_schema_ref", manifest.input_schema_ref),
+        ("output_schema_ref", manifest.output_schema_ref),
+    ):
+        if not ref:
+            problems.append(f"manifest.{field_name} is required")
+        elif not _REF_PATTERN.match(ref):
+            problems.append(f"manifest.{field_name} is not a contract name: {ref!r}")
+
+    if manifest.network_required and not manifest.allowed_network_domains:
+        problems.append(
+            "manifest.network_required=True requires a non-empty "
+            "allowed_network_domains (the allowlist must not be empty while egress "
+            "is declared)"
+        )
+
+    if manifest.kind not in {item.value for item in CapabilityKind}:
+        problems.append(f"manifest.kind is not a known adapter kind: {manifest.kind!r}")
+
+    if manifest.lifecycle_status is CapabilityLifecycleStatus.RETIRED:
+        problems.append("manifest.lifecycle_status=retired must not be registered")
+
+    if manifest.is_restricted_license and not manifest.selection_restricted_reason:
+        problems.append(
+            f"manifest.license_spdx={manifest.license_spdx!r} is a restricted "
+            "license and requires selection_restricted_reason"
+        )
+
+    return problems
+
+
+def manifest_warnings(manifest: CapabilityManifest) -> list[str]:
+    """Non-fatal notices about a manifest that is nevertheless admissible.
+
+    Kept separate from ``validate_manifest`` on purpose: a warning must never be
+    able to reject a registration, or the two channels blur and callers start
+    treating deprecation as an error.
+    """
+
+    notices: list[str] = []
+    if manifest.lifecycle_status is CapabilityLifecycleStatus.DEPRECATED:
+        notices.append(
+            "manifest.lifecycle_status=deprecated: this option is registered but "
+            "should not be selected for new work"
+        )
+    if manifest.supports_offline and manifest.network_required:
+        notices.append(
+            "manifest declares supports_offline=True while network_required=True: "
+            "the offline claim is only meaningful if the network path is optional"
+        )
+    return notices
 
 
 @dataclass(slots=True)
@@ -137,6 +252,14 @@ class CapabilityInvocationReceipt(BaseModel):
         ),
     )
     diagnostics: list[str] = Field(default_factory=list, max_length=100)
+
+    # --- manifest identity, carried so a durable receipt never needs the manifest
+    manifest_id: str | None = Field(default=None, max_length=200)
+    contract_version: str = Field(default="l2", max_length=50)
+    input_schema_ref: str | None = Field(default=None, max_length=200)
+    output_schema_ref: str | None = Field(default=None, max_length=200)
+    license_spdx: str | None = Field(default=None, max_length=100)
+
     tokens: TokenUsage | None = Field(
         default=None,
         description=(
@@ -204,17 +327,54 @@ class CapabilityRegistration:
     kind: CapabilityKind
     network_required: bool
     allowed_network_domains: tuple[str, ...]
+    overridden_fields: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)
 class CapabilityRegistrationView:
-    """Public registration metadata without a raw adapter bypass handle."""
+    """Public registration metadata without a raw adapter bypass handle.
+
+    ``overridden_fields`` names every place a caller passed an explicit value that
+    disagreed with the manifest's own declaration. It exists so the two sources of
+    truth cannot silently diverge: an override is allowed, but it is never quiet.
+
+    ``warnings`` carries non-fatal manifest notices (e.g. deprecated). It is
+    separate from ``overridden_fields`` because it describes the manifest itself,
+    not the registration call.
+    """
 
     manifest: CapabilityManifest
     trust_tier: CapabilityTrustTier
     kind: CapabilityKind
     network_required: bool
     allowed_network_domains: tuple[str, ...]
+    overridden_fields: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+
+    @property
+    def manifest_id(self) -> str | None:
+        return self.manifest.manifest_id
+
+    @property
+    def contract_version(self) -> str:
+        return self.manifest.contract_version
+
+    @property
+    def input_schema_ref(self) -> str | None:
+        return self.manifest.input_schema_ref
+
+    @property
+    def output_schema_ref(self) -> str | None:
+        return self.manifest.output_schema_ref
+
+    @property
+    def license_spdx(self) -> str | None:
+        return self.manifest.license_spdx
+
+    @property
+    def supports_offline(self) -> bool:
+        return self.manifest.supports_offline
 
 
 def request_fingerprint(request: Any) -> str:
@@ -267,32 +427,75 @@ class CapabilityRegistry:
         network_required: bool | None = None,
         allowed_network_domains: list[str] | tuple[str, ...] | None = None,
     ) -> CapabilityRegistrationView:
-        """Register an adapter with an operator-owned trust assignment."""
+        """Register an adapter with an operator-owned trust assignment.
 
-        registration_kind = CapabilityKind(kind or manifest.kind)
+        The manifest is validated **before** anything else, so an incomplete
+        manifest never reaches an adapter and never takes a registry slot.
+
+        ``kind`` / ``network_required`` / ``allowed_network_domains`` default to the
+        manifest's own declaration. Passing them explicitly is still supported, but
+        a value that disagrees with the manifest is recorded in
+        ``overridden_fields`` instead of silently winning -- the manifest stays the
+        single source of truth and the divergence stays visible.
+        """
+
+        problems = validate_manifest(manifest)
+        if problems:
+            raise CapabilityManifestInvalidError(
+                f"capability manifest is not admissible ({manifest.name}@"
+                f"{manifest.version}): " + "; ".join(problems)
+            )
+
+        registration_kind = (
+            CapabilityKind(manifest.kind) if kind is None else CapabilityKind(kind)
+        )
+
+        if not isinstance(trust_tier, CapabilityTrustTier):
+            trust_tier = CapabilityTrustTier(trust_tier)
+
+        if network_required is None:
+            resolved_network_required = manifest.network_required
+        else:
+            resolved_network_required = network_required
+
+        if allowed_network_domains is None:
+            domains = tuple(manifest.allowed_network_domains)
+        else:
+            domains = tuple(allowed_network_domains)
+
+        overridden = tuple(
+            name
+            for name, declared, supplied in (
+                ("kind", manifest.kind, registration_kind.value),
+                ("network_required", manifest.network_required, resolved_network_required),
+                ("allowed_network_domains", tuple(manifest.allowed_network_domains), domains),
+            )
+            if supplied != declared
+        )
+
         key = self._key(manifest)
         if key in self._registrations:
             raise CapabilityRegistrationError(f"duplicate capability registration: {key}")
-        if not isinstance(trust_tier, CapabilityTrustTier):
-            trust_tier = CapabilityTrustTier(trust_tier)
-        domains = tuple(allowed_network_domains or ())
+
         registration = CapabilityRegistration(
             manifest=manifest,
             adapter=adapter,
             trust_tier=trust_tier,
             kind=registration_kind,
-            network_required=(
-                manifest.network_required if network_required is None else network_required
-            ),
+            network_required=resolved_network_required,
             allowed_network_domains=domains,
+            overridden_fields=overridden,
+            warnings=tuple(manifest_warnings(manifest)),
         )
         self._registrations[key] = registration
         return CapabilityRegistrationView(
             manifest=manifest,
             trust_tier=trust_tier,
             kind=registration_kind,
-            network_required=registration.network_required,
+            network_required=resolved_network_required,
             allowed_network_domains=domains,
+            overridden_fields=overridden,
+            warnings=registration.warnings,
         )
 
     def list(self) -> list[CapabilityRegistrationView]:
@@ -303,6 +506,8 @@ class CapabilityRegistry:
                 kind=item.kind,
                 network_required=item.network_required,
                 allowed_network_domains=item.allowed_network_domains,
+                overridden_fields=item.overridden_fields,
+                warnings=item.warnings,
             )
             for item in self._registrations.values()
         ]
@@ -330,6 +535,11 @@ class CapabilityRegistry:
             candidate_count=len(candidates or []),
             structured_result_available=value is not None,
             diagnostics=diagnostics or [],
+            manifest_id=registration.manifest.manifest_id,
+            contract_version=registration.manifest.contract_version,
+            input_schema_ref=registration.manifest.input_schema_ref,
+            output_schema_ref=registration.manifest.output_schema_ref,
+            license_spdx=registration.manifest.license_spdx,
         )
 
     def _denied(
@@ -423,6 +633,13 @@ class CapabilityRegistry:
                     "authoritative"
                 )
             if registration.trust_tier == CapabilityTrustTier.CANDIDATE_ONLY:
+                # A legal query with zero hits is a **deterministic terminal
+                # success** (D-F8-01), so an empty candidate list is not by itself
+                # a failure: the adapter marks that case explicitly in its
+                # diagnostics, and a downstream gate must not read "no candidates"
+                # as "nothing to check". The failure here is a candidate_only
+                # adapter returning a structured value, which only
+                # compliant_structured adapters may produce.
                 if value is not None and not candidates:
                     diagnostics.append("candidate_only adapter returned no EvidenceCandidate")
                     status = CapabilityReceiptStatus.FAILED
@@ -521,6 +738,7 @@ __all__ = [
     "CapabilityInvocationConflictError",
     "CapabilityInvocationReceipt",
     "CapabilityKind",
+    "CapabilityManifestInvalidError",
     "CapabilityNotRegisteredError",
     "PaperSearchCapabilityAdapterBridge",
     "CapabilityReceiptStatus",
@@ -529,5 +747,7 @@ __all__ = [
     "CapabilityRegistrationError",
     "CapabilityRegistry",
     "CapabilityTrustTier",
+    "manifest_warnings",
     "request_fingerprint",
+    "validate_manifest",
 ]

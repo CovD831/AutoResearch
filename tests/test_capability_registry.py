@@ -174,13 +174,24 @@ def manifest(
     kind: str = "native",
     network_required: bool = False,
     version: str = "1",
+    allowed_network_domains: list[str] | None = None,
 ):
     return CapabilityManifest(
         name=name,
+        manifest_id=f"{name}-manifest",
         kind=kind,
         version=version,
+        entrypoint=f"tests.test_capability_registry:{name}",
         evidence_mode="compliant_structured",
+        input_schema_ref="RegistryTestRequest",
+        output_schema_ref="RegistryTestResult",
+        conformance_fixture="tests/fixtures/capabilities/registry-test.json",
         network_required=network_required,
+        allowed_network_domains=(
+            allowed_network_domains
+            if allowed_network_domains is not None
+            else (["registry-test.example"] if network_required else [])
+        ),
     )
 
 

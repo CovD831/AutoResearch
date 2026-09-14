@@ -709,12 +709,17 @@ class StubAdapter:
     def manifest(self) -> CapabilityManifest:
         return CapabilityManifest(
             name="stub_search",
+            manifest_id="stub_search",
             kind="native",
             version="1.0",
+            entrypoint="tests.test_benchmark_runtime:StubRegistryProvider",
             inputs=["query"],
             outputs=["evidence_candidate"],
+            input_schema_ref="SearchAdapterRequest",
+            output_schema_ref="RetrievedPaper",
             evidence_mode="candidate_only",
             network_required=False,
+            conformance_fixture="tests/fixtures/capabilities/stub_search.json",
         )
 
 

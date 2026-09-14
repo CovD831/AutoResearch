@@ -7,8 +7,26 @@
 职责：声明能力身份、版本、输入输出、权限与自述 evidence mode。不负责：证明结果正确、拥有项目状态、★决定生效信任层级（trust tier 由 operator 指派，见 02 修订 2）。
 
 必备字段：`name`、`kind`、`version`、`entrypoint`、`inputs`、`outputs`、`permissions`、`evidence_mode`（自述）、★`network_required`（布尔，默认 false = 默认禁网）、★`allowed_network_domains`（resolver 域名白名单）。
-状态：established（S1 字段）；签名、来源许可、依赖锁定 open（plugin lifecycle 增量）。
+状态：established（S1 字段）；依赖锁定 open（plugin lifecycle 增量）。**★「来源许可」子项已于 S3-A2 关闭**（见下）。
 ★D-S3-01（2026-09-10，owner 审查 PR #12 裁决）：原 `network` 单字段拆分为 `network_required` + `allowed_network_domains`——布尔必填位与域名白名单分离，语义更可执行；A1/A2 构造零影响（两者均为可选默认字段）。`allowed_network_domains` 传输层强制归 ProviderLane/O12 与后续网络沙箱窗口。
+
+★S3-A2（2026-09-11，owner 裁决 PLAN-capability-metadata §0.1 第 5 条）：**注册模板由设计草案升格为运行时契约**，原 `CAPABILITY-REGISTRY-TEMPLATE.yaml` v0.1 与 `CAPABILITY-CANDIDATES.md`§注册模板审查结论的三层划分中，**identity/contract 层与 policy/profile 层**并入必备字段。新增（全部可选默认，A1/A2 构造零影响）：
+
+- **identity/contract**：`manifest_id`（稳定身份，**不随 version 变**）、`contract_version`、`input_schema_ref`、`output_schema_ref`
+- **policy/profile**：`trust_class`、`license_spdx`、`selection_restricted_reason`、`requires_credentials`、`supports_offline`、`selection_tags`、`conformance_fixture`、`lifecycle_status`
+
+**★生效规则（注册期 fail-closed）**：`validate_manifest()` 是唯一校验入口，由 `CapabilityRegistry.register()` 在**重复检查之前**调用，违规抛 `CapabilityManifestInvalidError`（`CapabilityRegistrationError` 子类），**adapter 零调用**。非致命事项（deprecated 等）走独立通道 `manifest_warnings()`，**永不具备拒绝能力**——两通道不合并，否则调用方会把弃用当错误处理。
+
+**★`trust_class` 与 `trust_tier` 是两个维度，不得合并**：
+- `trust_class`（本合同的字段）= 能力**自述**的来源类别（`local` / `reviewed_external` / `unreviewed_external`）；
+- `trust_tier`（`capability_registry` 的 operator 指派）= **生效**策略。
+自述永不提升生效层级（沿用 S3-A「能力自述不能自行提升 trust tier」不变式），`CapabilityRegistrationView` 中二者分列。
+
+**★`license_spdx` + `selection_restricted_reason`**：声明受限许可（AGPL/SSPL 族，见 `RESTRICTED_LICENSES`）时必须同时给出受限原因，否则拒绝注册。该字段是「来源许可」open 项的关闭证据，也是选择层渲染与审计的输入。**注意边界**：本条只把许可事实变成机器可读，**不阻止任何选择**——「受限许可选项不得成为 primary」是选择层的规则（PLAN §D2-7），不在 L2 合同内。
+
+**★`allowed_network_domains` 的非空约束**：`network_required=True` 时白名单必须非空（关闭「声明出网但白名单为空」的静默洞）。**传输层强制仍不在本层**，归 ProviderLane/O12 与网络沙箱窗口。
+
+**★schema ref 的校验口径**：只校验**形状**（合法 contract 名），**不解析到中央名字表**。理由：中央表会成为「每新增一个能力都要改核心」的耦合点，与可插拔目标直接冲突（PLAN §2.8 判据 P1/P2）。深度解析归选择层。
 
 ## CapabilityAdapter
 
