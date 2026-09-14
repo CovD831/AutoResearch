@@ -21,7 +21,6 @@ from typing import Any
 from autoresearch.config import Settings
 from autoresearch.provider_lane import (
     LANE_SPECS,
-    LaneBudgetProfile,
     LaneIdentity,
     LaneNotConfiguredError,
     LaneRequest,
@@ -31,6 +30,7 @@ from autoresearch.provider_lane import (
     ModelCost,
     ProviderLaneError,
     build_preset_lane,
+    default_budget_profile,
     load_default_catalog,
     receipt_usage_fields,
 )
@@ -68,6 +68,10 @@ def _catalog_price_for_model(model_id: str) -> tuple[ModelCost, str] | None:
     written as ``.../v1`` (or with different host casing) would fall through to an
     unpriced lane and report cost 0 for a call that really happened — an audit
     hole, not a conservative default.
+
+    Returns ``None`` when the model is absent from every provider's catalog
+    section: that means *unpriced*, and the caller must propagate ``None`` rather
+    than substitute a zero-rate table.
     """
 
     if not model_id:
@@ -82,14 +86,48 @@ def _catalog_price_for_model(model_id: str) -> tuple[ModelCost, str] | None:
     return None
 
 
+def _catalog_limits_for_model(model_id: str) -> tuple[int, int]:
+    """Look up ``(context_window, max_output_tokens)`` for a bare model id.
+
+    Used to derive a budget for the custom-provider path. Returns ``(0, 0)`` when
+    the model is unknown -- ``default_budget_profile`` treats 0 as "unknown" and
+    substitutes its fallback window, so the caps stay finite. Returning a real
+    window when one is known keeps the caps proportional to what the model can
+    actually consume instead of to a guess.
+    """
+
+    if not model_id:
+        return 0, 0
+    catalog = load_default_catalog()
+    for provider in _PRICING_PROVIDER_ORDER:
+        try:
+            model = catalog.get_model(provider, model_id)
+        except ProviderLaneError:
+            continue
+        limit = model.get("limit") or {}
+        return int(limit.get("context") or 0), int(limit.get("output") or 0)
+    return 0, 0
+
+
 def lane_from_settings(settings: Settings) -> LaneIdentity:
     """Resolve Settings to a lane identity.
 
     A preset lane is reused when the endpoint matches one (tolerantly), bringing
     in that lane's identity metadata. Pricing, however, is resolved from the model
     id via the vendored catalog, so it survives endpoint spelling differences; a
-    model absent from the catalog stays unpriced (cost 0) rather than being given
-    an invented rate. The credential is supplied explicitly by the facade.
+    model absent from the catalog stays **unpriced** -- ``cost`` and
+    ``price_source`` are both ``None``, never a zero-rate table that would price
+    real calls at $0.00 (D-O12-14, per TASK-SPECS "未命中价目时为 None 而非 0").
+
+    The **custom-provider path also gets a derived budget** (D-O12-13). Six
+    preset lanes shipping caps is not the same as every reachable lane shipping
+    one: a ``base_url`` that matches no preset lands here, and this path used to
+    build ``LaneBudgetProfile()`` -- three ``None`` caps, i.e. no budget at all,
+    which is precisely the hole member review found (P1-1). The caps are derived
+    by the same :func:`default_budget_profile` the presets use, so both paths
+    agree on one rule. An unpriced model leaves only the dollar cap unset (it
+    cannot be derived from a price that does not exist); calls and tokens stay
+    bounded.
     """
 
     base_url = (settings.llm_base_url or "").rstrip("/")
@@ -109,18 +147,24 @@ def lane_from_settings(settings: Settings) -> LaneIdentity:
         except ProviderLaneError:
             break
     priced = _catalog_price_for_model(model)
+    cost = priced[0] if priced else None
+    context_window, max_output_tokens = _catalog_limits_for_model(model)
     return LaneIdentity(
         lane_id=f"{settings.llm_provider}:settings:v1",
         provider=settings.llm_provider,
         endpoint=base_url,
         model=model,
         api_family="openai-completions",
-        cost=priced[0] if priced else ModelCost(input=0.0, output=0.0),
-        context_window=0,
-        max_output_tokens=0,
+        cost=cost,
+        context_window=context_window,
+        max_output_tokens=max_output_tokens,
         reasoning_supported=False,
         credential_env_names=("AUTORESEARCH_LLM_API_KEY", "LLM_API_KEY"),
-        budget_profile=LaneBudgetProfile(),
+        budget_profile=default_budget_profile(
+            context_window=context_window,
+            max_output_tokens=max_output_tokens,
+            cost=cost,
+        ),
         price_source=(priced[1] if priced else None),
     )
 
@@ -182,9 +226,13 @@ class LLMService:
             LaneRequest(system=system, user=user, temperature=temperature, json_mode=json_mode)
         )
         self.last_result = result
+        # ``receipt_usage_fields`` yields ``{"tokens": None, "cost": None}`` when
+        # the provider told us nothing. Mirror that for the passthrough ``usage``
+        # key too: an empty dict would read as "usage was reported and empty",
+        # which is a different fact from "not reported" (D-O12-14b).
         raw: dict[str, Any] = {
             "id": result.raw.get("id"),
-            "usage": result.raw.get("usage", {}),
+            "usage": result.raw.get("usage"),
             **receipt_usage_fields(result, price_source=self.lane.price_source),
         }
         return LLMResult(

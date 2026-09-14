@@ -124,10 +124,12 @@ def _workbuddy_lane(model_id: str) -> tuple[LaneIdentity, str]:
         pytest.skip(f"model {model_id} not configured in {WORKBUDDY_MODELS}")
 
     cost = None
+    price_source = None
     catalog = load_default_catalog()
     for provider in ("deepseek", "openai", "anthropic", "alibaba", "moonshotai"):
         try:
             cost = ModelCost.from_dict(catalog.get_model(provider, model_id)["cost"])
+            price_source = catalog.model_price_source(provider, model_id)
             break
         except ProviderLaneError:
             continue
@@ -138,12 +140,15 @@ def _workbuddy_lane(model_id: str) -> tuple[LaneIdentity, str]:
         endpoint=str(entry["url"]),
         model=model_id,
         api_family="openai-completions",
-        cost=cost or ModelCost(input=0.0, output=0.0),
+        # Unpriced stays None end to end; a zero-rate table would price a real
+        # call at $0.00 (D-O12-14).
+        cost=cost,
         context_window=0,
         max_output_tokens=0,
         reasoning_supported=bool(entry.get("supportsReasoning")),
         credential_env_names=("AUTORESEARCH_LLM_API_KEY", "LLM_API_KEY"),
         thinking_format="openai" if entry.get("supportsReasoning") else None,
+        price_source=price_source,
     )
     return lane, str(entry["apiKey"])
 
@@ -170,14 +175,19 @@ def test_real_parity_workbuddy_priced_lane() -> None:
     not REAL_ENABLED,
     reason="real API parity runs only with AUTORESEARCH_LANE_REAL=1 (段 3, S3.1)",
 )
-def test_real_parity_workbuddy_unpriced_lane_stays_zero() -> None:
-    """诚实负结果：端点模型无 catalog 条目 → 不计价，也不编造价目。"""
+def test_real_parity_workbuddy_unpriced_lane_stays_unpriced() -> None:
+    """诚实负结果：端点模型无 catalog 条目 → 不计价，也不编造价目。
+
+    ``None``, not ``0.0``: the call really happened and really was billed by the
+    gateway, we just cannot say by how much. Writing ``$0.00`` into the receipt
+    would state a fact we do not have (D-O12-14).
+    """
     lane, credential = _workbuddy_lane("glm-5.3")
-    assert lane.cost.input == 0.0 and lane.cost.output == 0.0
+    assert lane.cost is None and lane.price_source is None
 
     result = LaneTransport(lane, credential=credential, timeout_seconds=90.0).complete(
         LaneRequest(system="You are a terse assistant.", user=PROMPT, temperature=0.0)
     )
 
-    assert result.usage.input_tokens > 0
-    assert result.usage_cost.total == 0.0
+    assert result.usage is not None and result.usage.input_tokens > 0
+    assert result.usage_cost is None

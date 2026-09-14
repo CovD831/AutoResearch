@@ -9,6 +9,7 @@ to endpoint spelling instead of silently zeroing the price.
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import pytest
 from pydantic import SecretStr
@@ -20,6 +21,7 @@ from autoresearch.provider_lane import (
     LaneRequest,
     LaneResult,
     ModelCost,
+    ProviderLaneError,
     Usage,
     calculate_cost,
 )
@@ -111,8 +113,44 @@ def test_lane_from_settings_falls_back_to_unpriced_lane() -> None:
 
     assert lane.lane_id == "workbuddy:settings:v1"
     assert lane.endpoint == "https://custom.example.invalid/v1"
-    assert lane.cost.input == 0.0 and lane.cost.output == 0.0
+    # Unpriced is ``None``, not a zero-rate table: a $0.00 model would price real
+    # calls as free (D-O12-14). ``cost`` and ``price_source`` move together.
+    assert lane.cost is None
+    assert lane.price_source is None
     assert lane.api_family == "openai-completions"
+
+
+def test_unpriced_lane_still_carries_a_volume_budget() -> None:
+    """Regression for P1-1: the custom-provider path must not ship an empty budget.
+
+    The six preset lanes having caps is not the same as every reachable lane
+    having one. A ``base_url`` matching no preset lands on the settings-derived
+    lane, which used to build ``LaneBudgetProfile()`` -- three ``None`` caps, i.e.
+    no budget at all, so a caller could make unbounded calls.
+    """
+
+    lane = lane_from_settings(CUSTOM_SETTINGS)
+
+    assert lane.budget_profile.max_calls_per_run is not None
+    assert lane.budget_profile.max_tokens_per_run is not None
+    assert lane.budget_profile.max_calls_per_run == 240  # same rule as the presets
+
+
+def test_unpriced_lane_leaves_only_the_dollar_cap_unset() -> None:
+    """An unpriced model cannot be bounded in dollars -- say so, do not fake a 0.
+
+    Deriving a cost cap from a price that does not exist would either reject real
+    work (deriving 0) or protect nothing. The documented trade-off is: volume is
+    bounded, dollars are not, and the caller can see that from ``None``.
+    """
+
+    lane = lane_from_settings(CUSTOM_SETTINGS)
+
+    assert lane.cost is None
+    assert lane.budget_profile.max_cost_per_call_usd is None
+    # ...while the two derivable dimensions stay enforced.
+    assert lane.budget_profile.max_calls_per_run == 240
+    assert lane.budget_profile.max_tokens_per_run > 0
 
 
 def test_unknown_model_stays_unpriced() -> None:
@@ -120,8 +158,18 @@ def test_unknown_model_stays_unpriced() -> None:
 
     lane = lane_from_settings(_settings("https://api.deepseek.com", "no-such-model"))
 
-    assert lane.cost.input == 0.0
-    assert lane.cost.output == 0.0
+    assert lane.cost is None
+    assert lane.price_source is None
+
+
+def test_lane_identity_rejects_half_priced_state() -> None:
+    """``cost``/``price_source`` are two views of one fact and cannot disagree."""
+
+    lane = lane_from_settings(CUSTOM_SETTINGS)
+    with pytest.raises(ProviderLaneError):
+        replace(lane, cost=ModelCost(input=1.0, output=1.0))  # price_source stays None
+    with pytest.raises(ProviderLaneError):
+        replace(lane, price_source="dangling")  # cost stays None
 
 
 def test_incomplete_settings_raise_a_recovery_hint() -> None:

@@ -26,6 +26,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -327,7 +328,7 @@ def default_budget_profile(
     *,
     context_window: int,
     max_output_tokens: int,
-    cost: ModelCost,
+    cost: ModelCost | None,
     local_endpoint: bool = False,
 ) -> LaneBudgetProfile:
     """Build the complete, fail-closed budget a preset lane ships with.
@@ -341,18 +342,28 @@ def default_budget_profile(
       receipt, so the two ends of the pricing chain agree on one number.
     * ``max_tokens_per_run``: 240 calls x (context window + max output).
     * ``max_cost_per_call_usd``: one full-window call at this lane's worst rate
-      tier, times a small headroom factor.
+      tier, times a small headroom factor. ``cost=None`` (an unpriced model, i.e.
+      one with no catalog entry) leaves this cap **unset** -- and that is a
+      deliberate, documented gap, not a silent one: a dollar cap cannot be derived
+      from a price that does not exist, and inventing one would either reject real
+      work (deriving 0) or protect nothing. The calls/tokens caps still bound the
+      lane, so an unpriced lane is bounded in *volume* even when it cannot be
+      bounded in *dollars*. Callers that need a dollar bound must register the
+      model in the catalog or pass an explicit ``LaneBudgetProfile``.
     """
 
     context = context_window if context_window > 0 else _FALLBACK_CONTEXT_TOKENS
     output = max_output_tokens if max_output_tokens > 0 else _FALLBACK_OUTPUT_TOKENS
-    rate_input = max([cost.input, *(tier.input for tier in cost.tiers)])
-    rate_output = max([cost.output, *(tier.output for tier in cost.tiers)])
-    worst_call_usd = (
-        rate_input * context / 1_000_000 + rate_output * output / 1_000_000
-    ) * _COST_CAP_HEADROOM
+    if cost is None:
+        max_cost_per_call_usd: float | None = None
+    else:
+        rate_input = max([cost.input, *(tier.input for tier in cost.tiers)])
+        rate_output = max([cost.output, *(tier.output for tier in cost.tiers)])
+        max_cost_per_call_usd = (
+            rate_input * context / 1_000_000 + rate_output * output / 1_000_000
+        ) * _COST_CAP_HEADROOM
     return LaneBudgetProfile(
-        max_cost_per_call_usd=worst_call_usd,
+        max_cost_per_call_usd=max_cost_per_call_usd,
         max_calls_per_run=DEFAULT_MAX_CALLS_PER_RUN,
         max_tokens_per_run=DEFAULT_MAX_CALLS_PER_RUN * (context + output),
         local_endpoint=local_endpoint,
@@ -371,7 +382,12 @@ class LaneIdentity:
     endpoint: str
     model: str
     api_family: str
-    cost: ModelCost
+    # ``None`` = the model has no catalog entry, so calls on this lane cannot be
+    # priced. It must NOT be substituted with a zero-rate ``ModelCost``: a zero
+    # rate silently prices real calls at $0.00, which is indistinguishable from
+    # "free" in a receipt. ``price_source is None`` marks the same condition and
+    # the two are meant to be read together (D-O12-14).
+    cost: ModelCost | None
     context_window: int  # 0 = unknown (local template entry), resolved at runtime
     max_output_tokens: int  # 0 = unknown
     reasoning_supported: bool
@@ -398,6 +414,16 @@ class LaneIdentity:
             raise ProviderLaneError(
                 f"unknown api_family {self.api_family!r}",
                 suggested_recovery=f"use one of {API_FAMILIES}",
+            )
+        if (self.cost is None) != (self.price_source is None):
+            raise ProviderLaneError(
+                f"provider lane {self.lane_id} is inconsistent about pricing: "
+                f"cost={'set' if self.cost is not None else 'None'} but "
+                f"price_source={'set' if self.price_source is not None else 'None'}",
+                suggested_recovery=(
+                    "an unpriced lane must set both cost and price_source to None; "
+                    "a priced lane must set both"
+                ),
             )
         if not self.credential_env_names and not self.budget_profile.local_endpoint:
             raise ProviderLaneError(
@@ -1092,11 +1118,30 @@ class LaneRequest:
 
 @dataclass(frozen=True)
 class LaneResult:
+    """One completed lane call.
+
+    ``usage`` and ``usage_cost`` are **nullable on purpose**. ``None`` means "the
+    provider did not tell us", and that is a different fact from zero:
+
+    * ``usage=None`` -- the response carried no ``usage`` block at all, so the
+      token count is genuinely unknown. Recording it as 0 tokens would make an
+      unmetered call look like a free one (D-O12-14).
+    * ``usage_cost=None`` -- the model has no catalog entry, so the usage exists
+      but cannot be priced. Recording it as ``$0.00`` would make "unpriced" look
+      like "free"; ``price_source`` is ``None`` in exactly this case, and the two
+      fields are meant to be read together.
+
+    A caller that needs a number must therefore decide what to do about ``None``
+    rather than silently inheriting a zero. ``LaneRunLedger.record_spend`` is the
+    reference handling: tokens are accumulated only when known, and dollars only
+    when priced.
+    """
+
     text: str
     lane_id: str
     model: str
-    usage: Usage
-    usage_cost: UsageCost
+    usage: Usage | None
+    usage_cost: UsageCost | None
     raw: Mapping[str, Any]
     # How many HTTP attempts it took to obtain this result (1 = first try).
     # Recorded so a receipt can state the upper bound of what the call cost: a
@@ -1263,12 +1308,76 @@ class LaneRunLedger:
     budget protects the provider's quota and the operator's bill, so a run stuck
     on retries has to consume it -- counting only successes would let a
     permanently-429 lane retry forever without ever reaching its cap.
+
+    **Reservation is atomic.** :meth:`reserve_request` performs the cap check and
+    the increment under one lock, because doing them as two steps let two threads
+    both read the same ``requests_made``, both pass the check, and both dispatch
+    (D-O12-15) -- a cap of 1 admitted 2 requests. That is the same TOCTOU the
+    storage layer already fixed with a conditional UPDATE; the ledger needs the
+    same guarantee for callers that share it across threads. ``threading.Lock``
+    is the right primitive: the ledger is shared *within* a process (the transport
+    is sync), so cross-process concerns stay with the storage layer.
     """
 
     requests_made: int = 0
     calls_completed: int = 0
     spent_usd: float = 0.0
     spent_tokens: int = 0
+
+    def __post_init__(self) -> None:
+        self._lock = threading.Lock()
+
+    def __copy__(self) -> LaneRunLedger:
+        """Copy the counters without trying to copy the lock.
+
+        A plain dataclass holds ``_lock`` as an instance attribute, so
+        ``copy.deepcopy`` walks into it and dies with ``cannot pickle
+        '_thread.lock' object`` -- an error that names neither the ledger nor the
+        reason. Shipping one took no callers today, but it is a landmine for
+        anyone who later copies a config object that happens to carry a ledger.
+        The copy gets a *fresh* lock: two ledgers are two budgets, and sharing a
+        lock across independent copies would serialise unrelated runs.
+        """
+
+        clone = type(self)(
+            requests_made=self.requests_made,
+            calls_completed=self.calls_completed,
+            spent_usd=self.spent_usd,
+            spent_tokens=self.spent_tokens,
+        )
+        return clone
+
+    __deepcopy__ = lambda self, memo=None: self.__copy__()  # noqa: E731
+
+    def reserve_request(self, lane: LaneIdentity) -> int:
+        """Check the call cap and claim one request slot, atomically.
+
+        Returns the attempt number this reservation represents (1-based). Raises
+        :class:`LaneBudgetExceededError` without consuming a slot when the cap is
+        already reached. Callers must not increment ``requests_made`` themselves:
+        the whole point is that the check and the increment cannot be separated.
+        """
+
+        with self._lock:
+            check_call_budget(lane, calls_used=self.requests_made)
+            self.requests_made += 1
+            return self.requests_made
+
+    def record_spend(self, *, cost_total: float | None, tokens: int) -> None:
+        """Accumulate post-call spend under the same lock.
+
+        ``cost_total=None`` means the call happened but could not be priced (an
+        unpriced model). Such a call adds **no** dollars -- and adds nothing that
+        pretends to be dollars either: recording ``0.0`` here would make "unknown"
+        indistinguishable from "free" in the ledger, which is the defect this
+        parameter exists to avoid (D-O12-14).
+        """
+
+        with self._lock:
+            self.calls_completed += 1
+            self.spent_tokens += tokens
+            if cost_total is not None:
+                self.spent_usd += cost_total
 
 
 class LaneTransport:
@@ -1349,45 +1458,84 @@ class LaneTransport:
             nonlocal attempts
             # Fail closed *before* every network request, retries included: the
             # budget protects the provider's quota, so an attempt that would
-            # exceed the cap must never leave the process.
-            check_call_budget(self.lane, calls_used=ledger.requests_made)
-            ledger.requests_made += 1
-            attempts += 1
+            # exceed the cap must never leave the process. The check and the
+            # increment happen inside one lock (D-O12-15): split apart, two
+            # threads both read the same count, both pass, and the cap admits
+            # more requests than it allows.
+            attempts = ledger.reserve_request(self.lane)
             return self._post(payload)
 
         raw = retry_with_backoff(_dispatch, policy=self.retry_policy, sleep=self._sleep)
-        try:
-            text = raw["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError, AttributeError) as exc:
+        message = self._extract_message(raw)
+        text = message.get("content")
+        # Accepted response shapes for this api_family, stated explicitly because
+        # each rejection below is a real boundary someone will hit:
+        #   * non-blank string content           -> the normal text completion
+        #   * null/blank content + tool_calls    -> a tool call, legal with no text
+        # Rejected (deterministic, never retried):
+        #   * null/blank content without tool_calls -- an unusable answer, not a
+        #     completion (D-O12-16)
+        #   * non-string content -- multimodal content arrays and the legacy
+        #     ``function_call`` shape (which is not ``tool_calls``) are out of
+        #     scope for this api_family; do not silently stringify them
+        if text is None or (isinstance(text, str) and not text.strip()):
+            if not message.get("tool_calls"):
+                raise LaneResponseError(
+                    "chat completion carried no content and no tool_calls",
+                    suggested_recovery=(
+                        "check the response_format / model support; an empty answer is not a result"
+                    ),
+                )
+            text = ""
+        elif not isinstance(text, str):
             raise LaneResponseError(
-                "malformed chat completion response: missing choices[0].message.content",
-                suggested_recovery="inspect the raw payload; it did not match the api_family shape",
-            ) from exc
-        usage = normalize_usage_openai(raw.get("usage") or {})
-        usage_cost = calculate_cost(usage, self.lane.cost)
+                f"choices[0].message.content must be a string, got {type(text).__name__}",
+                suggested_recovery=(
+                    "multimodal content arrays and the legacy function_call shape are "
+                    "not supported by this api_family"
+                ),
+            )
+
+        # ``usage`` present but empty/absent are the same fact to us: the provider
+        # did not report consumption. Keep it None rather than zero, so an
+        # unmetered call is not indistinguishable from a free one (D-O12-14).
+        raw_usage = raw.get("usage")
+        usage = normalize_usage_openai(raw_usage) if raw_usage else None
+        usage_cost = (
+            calculate_cost(usage, self.lane.cost)
+            if usage is not None and self.lane.cost is not None
+            else None
+        )
 
         # Accumulate the run budget. A per-call cost cap can only be judged after
         # the provider reports usage (there is no token estimator yet), so it — and
         # the per-run token cap — stop the run rather than pretend to pre-empt it.
         profile = self.lane.budget_profile
-        ledger.calls_completed += 1
-        ledger.spent_usd += usage_cost.total
-        ledger.spent_tokens += (
-            usage.input_tokens
-            + usage.output_tokens
-            + usage.cache_read_tokens
-            + usage.cache_write_tokens
+        tokens = 0
+        if usage is not None:
+            tokens = (
+                usage.input_tokens
+                + usage.output_tokens
+                + usage.cache_read_tokens
+                + usage.cache_write_tokens
+            )
+        ledger.record_spend(
+            cost_total=usage_cost.total if usage_cost is not None else None,
+            tokens=tokens,
         )
-        if profile.max_cost_per_call_usd is not None and (
-            usage_cost.total > profile.max_cost_per_call_usd
+        if (
+            profile.max_cost_per_call_usd is not None
+            and usage_cost is not None
+            and usage_cost.total > profile.max_cost_per_call_usd
         ):
             raise LaneBudgetExceededError(
                 f"lane {self.lane.lane_id} call cost ${usage_cost.total:.6f} exceeds "
                 f"per-call cap ${profile.max_cost_per_call_usd:.6f}",
                 suggested_recovery="raise max_cost_per_call_usd or shrink the prompt",
             )
-        if profile.max_tokens_per_run is not None and (
-            ledger.spent_tokens > profile.max_tokens_per_run
+        if (
+            profile.max_tokens_per_run is not None
+            and ledger.spent_tokens > profile.max_tokens_per_run
         ):
             raise LaneBudgetExceededError(
                 f"lane {self.lane.lane_id} run tokens {ledger.spent_tokens} exceed "
@@ -1401,9 +1549,27 @@ class LaneTransport:
             model=self.lane.model,
             usage=usage,
             usage_cost=usage_cost,
-            raw={"id": raw.get("id"), "usage": raw.get("usage")},
+            raw={"id": raw.get("id"), "usage": raw_usage},
             attempts=attempts,
         )
+
+    @staticmethod
+    def _extract_message(raw: Mapping[str, Any]) -> Mapping[str, Any]:
+        """Pull ``choices[0].message`` out of the payload, or fail closed."""
+
+        try:
+            message = raw["choices"][0]["message"]
+        except (KeyError, IndexError, TypeError, AttributeError) as exc:
+            raise LaneResponseError(
+                "malformed chat completion response: missing choices[0].message",
+                suggested_recovery="inspect the raw payload; it did not match the api_family shape",
+            ) from exc
+        if not isinstance(message, Mapping):
+            raise LaneResponseError(
+                f"choices[0].message must be an object, got {type(message).__name__}",
+                suggested_recovery="inspect the raw payload; it did not match the api_family shape",
+            )
+        return message
 
     def _post(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         import httpx
@@ -1465,23 +1631,32 @@ def receipt_usage_fields(
 ) -> dict[str, Any]:
     """Build the ``tokens`` / ``cost`` receipt blocks for a lane result.
 
-    Returns ``{"tokens": {...}, "cost": {...}}`` using the shared
+    Returns ``{"tokens": {...} | None, "cost": {...} | None}`` using the shared
     ``TokenUsage`` / ``InvocationCost`` field names, so a receipt can be filled
     without O12 importing the receipt module (one-way dependency). ``reasoning``
     is a subset of ``output`` and is recorded for transparency only — it is
     never priced separately (pi-ai semantics).
+
+    **``None`` is a first-class value here.** The whole block is ``None`` when the
+    underlying fact is unknown, so an unpriced call cannot be written into a
+    receipt as ``$0.00`` -- that would turn "we do not know" into "it was free",
+    and the receipt is exactly the artifact a reader trusts for cost (D-O12-14).
+    A receipt consumer must branch on ``None``.
     """
 
     usage, cost = result.usage, result.usage_cost
-    return {
-        "tokens": {
+    tokens: dict[str, Any] | None = None
+    if usage is not None:
+        tokens = {
             "input": usage.input_tokens,
             "output": usage.output_tokens,
             "cache_read": usage.cache_read_tokens,
             "cache_write": usage.cache_write_tokens,
             "reasoning": usage.reasoning_tokens,
-        },
-        "cost": {
+        }
+    priced: dict[str, Any] | None = None
+    if cost is not None:
+        priced = {
             "input": cost.input,
             "output": cost.output,
             "cache_read": cost.cache_read,
@@ -1492,8 +1667,8 @@ def receipt_usage_fields(
             "lane_id": result.lane_id,
             "attempts": result.attempts,
             "price_source": price_source,
-        },
-    }
+        }
+    return {"tokens": tokens, "cost": priced}
 
 
 # --------------------------------------------------------------------------
@@ -1510,12 +1685,17 @@ def selftest_catalog(*, catalog_path: str | Path | None = None) -> list[str]:
     lines: list[str] = []
     for lane_id in PRESET_LANE_IDS:
         lane = build_preset_lane(lane_id, catalog=catalog)
+        rates = (
+            f"cost_in=${lane.cost.input}/1M cost_out=${lane.cost.output}/1M"
+            if lane.cost is not None
+            else "cost=unpriced"
+        )
         lines.append(
             f"OK {lane.lane_id} provider={lane.provider} model={lane.model} "
             f"endpoint={lane.endpoint} api={lane.api_family} "
             f"context={lane.context_window} max_out={lane.max_output_tokens} "
             f"reasoning={lane.reasoning_supported} "
-            f"cost_in=${lane.cost.input}/1M cost_out=${lane.cost.output}/1M "
+            f"{rates} "
             f"env={','.join(lane.credential_env_names) or '-'}"
         )
     return lines

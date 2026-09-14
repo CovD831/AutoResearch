@@ -61,6 +61,11 @@ reasoning 档位、constrained-sampling 降级、auth/重试分类）+ openpilot
 - **D-O12-13（预算按网络请求计，不按成功数；成员复审 C4，Owner 口径 2026-09-11）**：`attempts` 逐请求自增，但预算只在 `complete()` 成功返回后 +1（429→200 时 `network_requests=2 / attempts=2 / calls_made=1`）。口径定为**按网络请求计**：预算的目的是**保护**（provider 配额与账单），不是支付记录；按成功计则一个持续 429 的 run 可无限发请求而永不触顶。现在 `check_call_budget` 移入 `_dispatch`，**每次请求前**判、逐请求 +1，超限的请求不会出网。支付口径不变：`LaneResult.attempts` 仍记录真实请求数，`InvocationCost.attempts` 语义不变。
 - **D-O12-14（provider 应答不可读 → `LaneResponseError`；成员复审 C1）**：`ProviderLaneError` 是声明唯一的错误面，实测却有**三类异常逃逸**：非 JSON body →`json.JSONDecodeError`、`usage` 非数值 →`ValueError`、`usage` 为 list / `*_details` 为 str →`AttributeError`（第三类是 owner 发现的）。下游没炸只因 `orchestrator`/`writing_service` 用 `except Exception` 兜底——**那是下游仁慈，不是接口正确**。现在非 JSON body、非对象 body、畸形 `choices`、不可读 `usage` 一律抛 `LaneResponseError`（继承 `LaneTransportError` 以保既有 `except` 不破），且 **`retryable=False`**：2xx + 畸形 body 是确定性结论，重试只会再付一次钱。`Usage.__post_init__` 的负值 fail-closed 消息不被覆盖。
 - **D-O12-10（override 数据必须自校验；独立盲审 v3）**：override 只在**实际 patch 了 ≥1 档价目**时才给模型打来源标签（否则 receipt 会声称一个并未提供数字的价目表，`price_source` 的意义被摧毁）；价目字段严格校验——负数 / NaN / ±inf / 非数值一律 `LaneCatalogError` fail-closed；畸形条目（非 dict、`models` 非对象）在**加载期显式报错**而非抛裸 `AttributeError`/`ValueError`。理由：价目是每个成本数字的审计依据，坏数据必须响，不能静默。
+- **D-O12-17（settings 派生 lane 同样必须带预算；成员 A 第二轮复核 P1-1）**：`default_budget_profile` 只接到了六个预置 lane 上——`llm.py` 的 **settings 兜底路径**（`base_url` 不匹配任何预置端点时）仍在建 `LaneBudgetProfile()`，三档全 `None`。D-O12-11 说「预置 lane 一律带完整预算」是真的，但**「每个可达的 lane 都带预算」不是**：成员 A 实测调用数到 100000 仍 allowed。现在两条路径共用同一个 `default_budget_profile`，并用 `lane.budget_profile.max_calls_per_run == preset` 锁定「同一条规则」。**族性教训**：修一个缺陷族时必须枚举该族的所有位置——C2 修了看得见的六条，漏了第七条。
+- **D-O12-14b（usage 缺失是「不知道」，不是零；成员 A 第二轮复核 P1-2）**：`raw.get("usage") or {}` 使缺 usage 的应答得到全零 `Usage`，`cost.total=0.0` 且 `ledger` 累加 0——**把「未计量」记成「零消耗」**。现在 `LaneResult.usage` / `usage_cost` 可为 `None`，`LaneRunLedger.record_spend(cost_total=None)` 只累加以知值。讽刺点：`normalize_usage_openai` 自己的 `suggested_recovery` 就写着 *"record the model as unpriced (cost=None) rather than a cost of 0"*，而 usage 缺失这条路径恰好违反了它自己写的劝告。
+- **D-O12-15（预算占位必须原子；成员 A 第二轮复核 P1-3）**：`check_call_budget(读)` 与 `requests_made += 1(写)` 是两处独立操作，两线程都读到同一个计数、都通过、都出网——cap=1 实测发出 2 次请求。这是 A2 阶段已修过的**跨实例 TOCTOU（F-1）在计量层的同族复发**：`storage.py` 当时用条件 UPDATE 修掉了，`LaneRunLedger` 没有。现在 `LaneRunLedger.reserve_request()` 把判定与占位收进一个 `threading.Lock`，调用方**没有机会**把两步分开；被拒的占位不消耗配额。选 `Lock` 而非跨进程原语的理由：transport 是同步的，ledger 的共享范围在进程内，跨进程一致性仍归存储层。
+- **D-O12-18（未命中价目 → `None`，不是零价目表；成员 A 第二轮复核 P2-1）**：`llm.py` 在 catalog 无该模型时建 `ModelCost(input=0.0, output=0.0)`，直接违反 TASK-SPECS「未命中价目时为 `None` 而非 0」——真实发生的调用被记成 `$0.00`。现在 `LaneIdentity.cost: ModelCost | None`，且新增不变量 **`cost is None` ⟺ `price_source is None`**（`__post_init__` 拒绝半价状态）：两个字段是同一条事实的两个视图，不允许一个说「有价」另一个说「无来源」。`receipt_usage_fields` 相应可返回 `{"tokens": None, "cost": None}`。既有测试 `test_real_parity_workbuddy_unpriced_lane_stays_zero` 曾把这个缺陷**固化成期望**（断言 `cost.total == 0.0`），已改名 `..._stays_unpriced` 并改断言——**测试固化缺陷**本身是这轮最该记的一条。
+- **D-O12-16（`content: null` 不是完成；成员 A 第二轮复核 P2-2）**：无 `tool_calls` 的文本应答里 `content` 为 `null` 时仍标 completed，下游会把 `None` 当产出读。现在 `_extract_message()` 统一取出 message 并校验：无内容且无 `tool_calls` → `LaneResponseError`（确定性、不重试）；`content` 非字符串亦拒；**有 `tool_calls` 时允许 `content=None`**（合法形状，不误拦）。与 D-O12-14b 同族：都是「空/无」被当作有效值。
 
 ## Completed
 
@@ -77,9 +82,10 @@ reasoning 档位、constrained-sampling 降级、auth/重试分类）+ openpilot
 
 ## Pending
 
-- S3.3 **已完成**（成员 A 复审，3 条意见全部复现为真）→ 剩 S3.4。
+- S3.3 **已完成两轮**：第一轮 3 条（C1–C4，2026-09-11 修完）、**第二轮 5 条（P1-1/2/3、P2-1/2，2026-09-14 修完）** → 剩 S3.4。
 - S3.4 需在合并后执行。
 - S3.4 registry 回写（S3-A2-PROVIDER-LANE → integrated，合并后执行）。
+- **本轮新增的已知缺口（须在下游声明）**：unpriced lane 的 `max_cost_per_call_usd=None` = 美元维度不设防（体积维度仍有 240 calls / tokens 上限）。A5/B6 若消费 unpriced lane，必须在报告里声明「成本不可护卫」。解除路径：把该模型登记进 `price_overrides.json`（override 只覆盖已有条目，需先确认 catalog 有该条目）。
 - **价目口径已定（v3，Owner 拍板）**：tokens 为主口径、cost 为辅（带 `price_source`）；内置模型 DeepSeek V4.1 Flash 按官方 peak 价钉住（\$0.30/\$1.20/\$0.006，见 `price_overrides.json`）；核对走人工（成本敏感实验前），不写官网爬虫。政策见 `PRICE-POLICY.md`。
 - **价格收敛仍需机制**（未闭合）：override 只钉住在用模型，其余模型仍用快照价；peak/off-peak 双档在目录结构中不可表达；provider 变更模型路由（如 09-14 `deepseek-v4-pro` 改路由）刷新脚本发现不了，只能人工核对时发现。
 - **待复审人裁决**：跨 lane 增量修改 S3-A 的 `capability_registry.py`（引用共享类型 + 2 个可选字段，越界面已最小化）。
@@ -88,7 +94,17 @@ reasoning 档位、constrained-sampling 降级、auth/重试分类）+ openpilot
 
 ## Next step
 
-**先推 owner 代修**（rebase 已改写历史，需 `--force-with-lease` 更新 PR #15），再请成员 A 复核 C1–C4 的修复是否彻底（尤其是 `default_budget_profile` 的推导口径与 D-O12-12 中 `LLMService` 可选签名那一处偏离）。原始复审要求：**请优先攻击 `SELF-REVIEW.md` §4.5（价目口径）与 §6 第 1、2 条**——那是唯一未闭合且影响 A5 的部分；另请对「跨 lane 引用共享类型 + 加可选字段」表态。§8 记录了独立盲审的 4 项发现及其修复，可一并复核。复审通过并合并后回写 registry（S3.4）。
+**第二轮代修已推送（2026-09-14）**，请成员 A 复核 P1-1 / P1-2 / P1-3 / P2-1 / P2-2 五条是否彻底。
+
+**请优先攻击这三处**：
+
+1. **`LaneResult.usage` / `usage_cost` 与 `LaneIdentity.cost` 变成可空**——这是本轮最大的接口变化。`None` 会沿调用链传下去，请查是否有消费方把 `None` 当 0 用（`receipt_usage_fields` 已改为返回 `None` 块；`LaneRunLedger.record_spend` 已改为只累加已知值）。`cost is None ⟺ price_source is None` 的不变量是否够？
+2. **`reserve_request` 的锁粒度**——选 `threading.Lock` 是因为 transport 同步、ledger 共享范围在进程内。若你认为需要跨进程安全（例如将来上多进程 worker），请指出，我按 A2 的存储层先例改用别的原语。
+3. **unpriced lane 的 `max_cost_per_call_usd=None`**——这是本轮的**已知缺口**，不是遗漏：价目不存在时无法推导美元上限，强行推导要么拒真活（推成 0）要么毫无作用。当前取舍是「体积有界、美元无界」并写进 docstring。若你认为必须堵死，请给出你认为可接受的替代（例如强制 unpriced lane 只能用于有限试跑）。
+
+**另请对一条方法论表态**：本轮 5 条里有 2 条（P1-1、P1-3）是**我们自己前面修复的漏网**——C2 修了六条预置 lane 漏了第七条路径，F-1 修了存储层漏了计量层。我打算把「修一个缺陷族时枚举该族所有位置」写进自审清单，你认为还该加什么硬检查？
+
+复审通过并合并后回写 registry（S3.4）。
 
 ## Verification
 
@@ -114,9 +130,19 @@ reasoning 档位、constrained-sampling 降级、auth/重试分类）+ openpilot
 - [x] **C3 作用域实测**：两个 transport 共享一个 ledger、cap=1 → 第二个 transport 的请求未出网即被拒（修复前两实例各自跑满，两次都成功）。
 - [x] **C2 实测**：`PRESET_LANE_IDS` 六条 lane 的三项 cap 全部非 `None`；`max_cost_per_call_usd ≥ 该 lane 满窗调用按基础费率计价`（推导自证），且显式 profile 仍可覆盖默认。
 - [x] **环境耦合修复（v3 盲审）**：`test_empty_key_fails_closed…` 改为 monkeypatch 清环境自包含（本机 shell 的 `DEEPSEEK_API_KEY` 曾使它假红），并补反向断言「环境有 key 时取用而非发空 Bearer」。
+- [x] **成员 A 第二轮复核（2026-09-12）5 条全部独立复现为真**（不看结论自己跑探针）：P1-1 自定义 provider 三档全 `None`、P1-2 缺 usage 得 `0/0/0/0` 且 `spent_usd=0.0`、P1-3 cap=1 两并发都 completed 且 `requests_made=2`、P2-1 `ModelCost(0.0,0.0)`、P2-2 `content:null` 标 completed。
+- [x] **第二轮 owner 代修后复验（2026-09-14）**：全量 `PYTHONPATH=src python -m pytest -o addopts="" -W error -q` → **444 passed, 2 skipped, 0 failed**（基线 `4efecde` 为 411 passed；+33 个测试实例，其中 5 个是替换固化缺陷的旧断言）。`ruff check src tests` → All checks passed（`ruff format --check` 基线即 27 文件待排，不属本 PR 门禁）。`compileall -q src` → exit 0。`check.mjs --base origin/main` → valid。`check_pr_contract.py --base origin/main` → passed（29 changed paths / 1 ledger）。
+- [x] **第二轮新增测试判别力实测（关键）**：新增 `tests/test_o12_review_fixes.py` 28 条，**在修复前基线 `4efecde` 上 21 条失败、修复后 28 条全过**。逐条归属：P1-1 三条、P1-2 两条、P2-1 两条、P2-2 三条、P2-2 形状参数化六条、deepcopy 一条、facade 透传一条 = **判据型失败**（断言落空）；P1-3 的两条是**符号缺失型失败**（基线无 `reserve_request`，按纪律**不计入判据**）。
+- [x] **P1-3 判据型证据（诚实标注）**：竞态窗口在 CPython GIL 下窄到无法从外部可靠复现——先试「barrier 拉长 `post`」、再试「barrier 客户端」，**两次都无法让基线的并发测试失败**。故改用**插桩探针**取得确定判据：monkeypatch 使 `check_call_budget` 返回后 `sleep(0.05)` 强制切走 GIL → 基线 `requests_made=2`、修复后 `requests_made=1`。`test_ledger_reservation_is_strictly_atomic_under_contention`（64 线程 / cap=7）在基线上**也通过**，仅作回归护栏，已在 docstring 里写明它没有判别力。
+- [x] **第二轮行为面实测**：自定义 provider lane `max_calls=240 / max_tokens=332160000 / max_cost_call=1.15362`（修复前三档全 `None`）；unpriced 模型 `cost=None` 而 `max_calls=240` 仍生效（体积有界、美元无界，已文档化）；缺 usage → `usage=None`、`spent_tokens=0`、`spent_usd=0.0`；cap=1 两并发 → 一成一拒、`requests_made=1`；串行 cap=2 → 2 成功、第 3 次拒、`requests_made=2`（未过度收紧）；`content:null` 无 tool_calls → `LaneResponseError`，空串同拒，有 tool_calls 放行。
+- [x] **owner 对抗性自查（2026-09-14，子代理盲审被限流故自跑探针）3 项新发现**：
+  1. **`deepcopy` 会因锁而炸**（`cannot pickle '_thread.lock' object`）——`_lock` 是实例属性，任何 deepcopy 走到它都会失败且报错不点明原因。当前无调用方，属未来地雷。已加 `__copy__` / `__deepcopy__`（副本换**新锁**：两个 ledger 是两个预算）。
+  2. **`LLMResult.raw["usage"]` 用 `{}` 而 `raw["cost"]` 用 `None`**——口径不一致，空 dict 读起来像「报了 usage 但内容为空」。已统一为 `None`。
+  3. **响应形状边界未文档化**：`content` 为 `False`/`0`/多模态 list/legacy `function_call` 全部被拒（**行为正确**：本 api_family 只支持纯文本 + `tool_calls`），但 docstring 未声明这个边界，将来接 legacy 形状的 provider 会莫名失败。已补显式声明 + 6 条参数化测试。
+- [x] **计数点审计**：全部写点（`requests_made += 1` @1341、`calls_completed += 1` / `spent_tokens +=` / `spent_usd +=` @1355-1358）都在 `reserve_request` / `record_spend` 的锁内，**无锁外旁路**。第 1507 行读 `ledger.spent_tokens` 判 token cap 是锁外读，但 `int` 读写无撕裂且语义上正是「看全 run 总量」，不构成缺陷。
 
 ## Handoff note
 
 - From: `user/team`
 - To: `member A`
-- Summary（2026-09-11 owner 代修后更新）: 成员 A 复审提出的 3 条意见**全部复现为真**，owner 已修 C1–C4 并 rebase 至 `main@66aba64`（全量 304 passed，新增测试 16 个实例中 12 个在修复前失败）。**本次请重点复核**：① `default_budget_profile` 的推导口径（`max_calls_per_run=240` 与 A5 对齐、成本上限按满窗×最坏档×1.5 余量）是否合理；② D-O12-12 给 `LLMService` 加了**可选** `ledger=`（既有调用语义不变，但确实动了签名）——如判定违反「签名不变」不变量，可回退为仅在 adapter 侧注入；③ `LaneResponseError` 继承 `LaneTransportError` 的兼容性处理是否恰当。以下为原始交付说明：O12 段 1/段 2/S3.1 已完成，并通过**两轮自审 + 一轮独立盲审**（`SELF-REVIEW.md` v2 / §8）。**最需要你看的是 §4.5**：真去抓了 DeepSeek 官方定价页，**发现本项目价目快照与官方最高差约 4.5×、且缺 peak/off-peak 结构**——这条直接影响 A5 的成本口径，已机制化（`price_source` / `attempts`）但未收敛。§8 是独立盲审在 override 机制上抓到的 4 项缺陷（已修复），可复核其修复是否彻底。另需你对「跨 lane 引用共享类型 + 加可选字段」表态。已知偏离：D-O12-03（`complete_json` 保 `json_object`）已确认，PLAN 原文已同步修订。
+- Summary（2026-09-14 第二轮 owner 代修后更新）: **你 2026-09-12 追加复核的 5 条全部独立复现为真**（我逐条跑探针，不看结论），已全部修复并推送：P1-1 自定义 provider 路径改走同一个 `default_budget_profile`（原来三档全 `None`）、P1-2 `usage` 缺失改为 `None` 而非全零、P1-3 `reserve_request()` 把判定与占位收进一把锁（原来 cap=1 能发出 2 次）、P2-1 未命中价目改 `None` 并加 `cost ⟺ price_source` 不变量、P2-2 无内容无 tool_calls → `LaneResponseError`。**你对 P2-1 的判据是对的**（TASK-SPECS:63 明确写 `None` 而非 0），我按 P1 处理了。新增 20 条测试在修复前基线上 13 条失败。**本轮我自己犯的两处错已记在 Verification**：①并发测试两次设计都没判别力，最后靠插桩取得判据；②既有 parity 测试把 P2-1 缺陷固化成期望断言。**请优先攻击 Next step 里的三点**（可空 `usage`/`cost` 的传染、锁粒度、unpriced 的美元缺口）。以下为上一轮（2026-09-11）交付说明：成员 A 复审提出的 3 条意见**全部复现为真**，owner 已修 C1–C4 并 rebase 至 `main@66aba64`（全量 304 passed，新增测试 16 个实例中 12 个在修复前失败）。**本次请重点复核**：① `default_budget_profile` 的推导口径（`max_calls_per_run=240` 与 A5 对齐、成本上限按满窗×最坏档×1.5 余量）是否合理；② D-O12-12 给 `LLMService` 加了**可选** `ledger=`（既有调用语义不变，但确实动了签名）——如判定违反「签名不变」不变量，可回退为仅在 adapter 侧注入；③ `LaneResponseError` 继承 `LaneTransportError` 的兼容性处理是否恰当。以下为原始交付说明：O12 段 1/段 2/S3.1 已完成，并通过**两轮自审 + 一轮独立盲审**（`SELF-REVIEW.md` v2 / §8）。**最需要你看的是 §4.5**：真去抓了 DeepSeek 官方定价页，**发现本项目价目快照与官方最高差约 4.5×、且缺 peak/off-peak 结构**——这条直接影响 A5 的成本口径，已机制化（`price_source` / `attempts`）但未收敛。§8 是独立盲审在 override 机制上抓到的 4 项缺陷（已修复），可复核其修复是否彻底。另需你对「跨 lane 引用共享类型 + 加可选字段」表态。已知偏离：D-O12-03（`complete_json` 保 `json_object`）已确认，PLAN 原文已同步修订。
