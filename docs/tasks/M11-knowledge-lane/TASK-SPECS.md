@@ -5,7 +5,7 @@
 > **改动摘要**：见文末 §改动对照
 > **权威关系**：本文件是 M11 lane 的执行权威；R-006 的 L1/L2 降为**参考设计**，只在本文件明确引用的地方生效。
 > **v3 修订**：状态一律改为中文枚举（与 `.ai-team/check.mjs` 的 `VALID_STATES` 对齐）；补齐 6 项就绪性缺陷（见 §5）。
-> **v4 修订**：§5-B1 已裁决并执行 —— R-006 P1 合并进 main（最终 `f31d0dc`），四包 `base_ref` 同步更新，**MVP-01 可开工**。
+> **v4 修订**：§5-B1 已裁决并执行 —— R-006 P1 合并进 main（最终 `49fcffb`），四包 `base_ref` 同步更新，**MVP-01 可开工**。
 
 ---
 
@@ -67,11 +67,11 @@
 | 预演态全量测试 | **537 passed / 2 skipped**，ruff clean，30 files |
 | 补 P1 的成员账本（修 `check.mjs` gate） | commit `ea1663b` |
 | 保护窗口 DELETE → merge → 恢复 | `04ce9a9` → `ea1663b`（ff-only） |
-| v3 文档修订提交 | commit `08bec37` → 最终 main = **`f31d0dc`** |
+| v3 文档修订提交 | `08bec37` → 后续 `f31d0dc` → 最终 main = **`49fcffb`** |
 | 恢复保护后逐项核对 | **12/12 项一致** ✅ |
 | 合并后门禁 | pytest `537 passed` / ruff clean / `check.mjs` `valid` |
 
-**四包 `base_ref` 已更新为 `f31d0dc`**（合并后的 main）。
+**四包 `base_ref` 已更新为 `49fcffb`**（当前 main HEAD）。
 
 **关于 `owner/r006-l1-writer` 分支**：其内容已全部并入 main，**分支可保留作历史**，但成员不再需要引用它 ——
 `SOURCE-AND-HANDOFF.md` §0 已改为「直接从 `origin/main` 切」。
@@ -155,10 +155,10 @@ git merge-base --is-ancestor HEAD origin/main  →  NO: NOT in main
 
 ## M11-MVP-01 — Wiki+Graph 规范来源与边界
 
-- **状态**：`ready`（✅ **可开工** —— §5-B1 已裁决，P1 已并入 main `f31d0dc`）
+- **状态**：`ready`（✅ **可开工** —— §5-B1 已裁决，P1 已并入 main `49fcffb`）
 - **对应原文**：M11-01、M11-02、M11-03
 - **目标**：固定 Wiki+Graph 的分区、页面版本和图边边界，为后续检索建立唯一规范来源。
-- **依赖**：M04-01（已落地）、**R-006 P1（✅ 已并入 main，`f31d0dc`）**
+- **依赖**：M04-01（已落地）、**R-006 P1（✅ 已并入 main，`49fcffb`）**
 
 ### 主要交付
 
@@ -324,7 +324,7 @@ forbidden_paths:
 
 ### 7.0 前置：✅ 已解决
 
-§5-B1 已裁决并执行完毕（P1 并入 main `f31d0dc`），**可直接开工**。
+§5-B1 已裁决并执行完毕（P1 并入 main `49fcffb`），**可直接开工**。
 
 ### 7.1 建立 worktree
 
@@ -351,7 +351,7 @@ PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m
 PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m compileall -q src
 ```
 
-**期望**：`537 passed / 2 skipped / 0 failed`（在合并后的 main `f31d0dc` 上实测所得）。
+**期望**：`537 passed / 2 skipped / 0 failed`（在合并后的 main 上实测所得，全新克隆复现）。
 **⚠️ 注意**：引用前**必须在本 worktree 上重新实测**，不得搬运本文档的数字
 （本项目硬约束：基线不可跨 worktree 搬运）。
 

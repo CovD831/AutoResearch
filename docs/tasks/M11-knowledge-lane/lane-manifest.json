@@ -3,7 +3,7 @@
   "owner": "member A",
   "owner_lane": "knowledge",
   "worktree": "../AutoResearch-m11",
-  "base_ref": "f31d0dc",
+  "base_ref": "49fcffb",
   "branch_prefix": "codex/m11-",
   "task_queue": [
     "M11-MVP-01",
@@ -29,7 +29,7 @@
     ".ai-team/TASK.md"
   ],
   "notes": [
-    "base_ref = f31d0dc：R-006 P1 已合并进 main（经保护窗口，2026-09-15）。MVP-01 从这里切分支，不再依赖未合并的 owner/r006-l1-writer",
+    "base_ref = 49fcffb（当前 main HEAD）：R-006 P1 已合并进 main（经保护窗口，2026-09-15）。MVP-01 从这里切分支。注意 f31d0dc 是本次的中间提交，不要引用它作 base",
     "contracts.py 是「条件允许」（v2 同时列在 allowed 与 forbidden，自相矛盾，无法执行）——判据见 TASK-SPECS.md §5-B2 的 A/B/C 三选一。禁止项：删除或改名既有 RetrievalHit 对外字段、改 C2 Statement / C9 ExperienceInjection、借顺手重构改契约组织方式",
     "frozen_shared_paths 是 v3 新增：这 4 个文件 P1 已经改过（3 处补 author= 必填字段 + evolution_service 的 revision 派生真 bug 修复），本 lane 不得再动 —— 详见 TASK-SPECS.md §6.1",
     "MVP-01 承接 R-006 P1 已实现成果（9c60043，实测 537 passed / 2 skipped / 0 failed），不重复实现；P1 分支已推送但未合并 main、未开 PR",

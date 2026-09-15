@@ -8,7 +8,7 @@
 
 ## 0. ✅ 前置已解决：直接从 `main` 切分支
 
-**R-006 P1 已合并进 main**（经保护窗口，`04ce9a9` → `ea1663b` → `f31d0dc`），
+**R-006 P1 已合并进 main**（经保护窗口，`04ce9a9` → `ea1663b` → `f31d0dc` → `49fcffb`），
 所以**不再需要 `upstream/owner/r006-l1-writer`** —— 那个分支的内容已经在 main 里了。
 
 ```bash
@@ -18,7 +18,7 @@ git worktree add ../AutoResearch-m11 codex/m11-mvp-01
 ```
 
 **基线数字**：`537 passed / 2 skipped / 0 failed`
-（在合并后的 main 上实测；若你的 clone 落后于 `f31d0dc`，先 `git pull`）
+（在合并后的 main 上实测，**全新克隆复现**；若你的 clone 落后于 `49fcffb`，先 `git pull`）
 
 > 历史记录：合并前曾有二选一（先合 P1 vs MVP-01 继承 P1 分支）。老板 2026-09-15 采纳「先合 P1」，
 > 理由：P1（写入者基建）与 M11（边界 + 检索）性质不同，混一个 PR 会让审查面从 +234 膨胀到 +4536。
