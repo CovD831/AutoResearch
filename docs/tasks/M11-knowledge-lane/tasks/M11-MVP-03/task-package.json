@@ -3,7 +3,7 @@
   "phase": "M11",
   "owner_lane": "knowledge",
   "status": "planned",
-  "base_ref": "9c60043",
+  "base_ref": "f31d0dc",
   "branch": "codex/m11-mvp-03",
   "depends_on": [
     "M11-MVP-02"
@@ -77,7 +77,7 @@
     "PATH=/Users/abab/.workbuddy/binaries/node/versions/22.22.2-2/bin:$PATH node .ai-team/check.mjs --base 9c60043"
   ],
   "next_package": "M11-MVP-04",
-  "base_ref_note": "R-006 P1 的实际内容在 9c60043（比 main 多 2 个 commit）。本包 merge_after ['M11-MVP-02']，实际 base 是上一个包合并后的 sha；保持与 lane-manifest 一致，待 §5-B1 裁决后统一更新",
+  "base_ref_note": "R-006 P1 已合并进 main（f31d0dc，经保护窗口 2026-09-15）。本包从当前 main 切分支即可；原 04ce9a9 不含 P1 代码，原 9c60043 是未合并的 P1 分支，均已作废",
   "acceptance_command_notes": [
     "v2 的 `python -m pytest` 缺 PYTHONPATH=src，且沙箱内 python 指向 3.9.6（仓库需要 3.13）",
     "v2 的 `node .ai-team/check.mjs --base main` 实测在 main 上也是 Result: blocked（该 gate 依赖 base..HEAD 差异 + 账本存在）。必须传本包的 base sha，且必须先建 .ai-team/tasks/<task>.md 账本",

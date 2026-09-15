@@ -4,10 +4,13 @@
   "owner_lane": "knowledge",
   "status": "ready",
   "status_note": "ready 指的是「依赖已满足」；开工前 owner 必须先裁决 TASK-SPECS.md §5-B1（R-006 P1 是否先合 main），否则产出可能合不回 main",
-  "base_ref": "9c60043",
-  "base_ref_note": "原 v2 写 04ce9a9（= main HEAD），但 R-006 P1 的实际内容在 9c60043。若 §5-B1 选「先合 P1」，本字段改为合并后新 main 的 sha",
+  "base_ref": "f31d0dc",
+  "base_ref_note": "R-006 P1 已合并进 main（f31d0dc，经保护窗口 2026-09-15）。本包从当前 main 切分支即可；原 04ce9a9 不含 P1 代码，原 9c60043 是未合并的 P1 分支，均已作废",
   "branch": "codex/m11-mvp-01",
-  "depends_on": ["M04-01 (landed)", "R-006 P1 (implemented at 9c60043, pending merge)"],
+  "depends_on": [
+    "M04-01 (landed)",
+    "R-006 P1 (implemented at 9c60043, pending merge)"
+  ],
   "merge_after": [],
   "allowed_paths": [
     "src/autoresearch/knowledge.py",
@@ -54,11 +57,26 @@
     "head_index": "wiki_page_head record maps bare page_id -> {current_revision_id, revision}; version+head written in one transaction",
     "resolution_entrypoint": "get_page(page_id) / list_pages(...) are the only sanctioned bare-id reads",
     "bridge_edges_whitelist": [
-      "CITES", "SUPPORTS", "CONTRADICTS", "INVALIDATES", "DERIVED_FROM",
-      "APPLIES_TO", "USES_METHOD", "USES_DATASET", "EVALUATES_ON",
-      "HAS_LIMITATION", "EXTENDS", "IMPROVES", "CREATED_IN", "PREFERS"
+      "CITES",
+      "SUPPORTS",
+      "CONTRADICTS",
+      "INVALIDATES",
+      "DERIVED_FROM",
+      "APPLIES_TO",
+      "USES_METHOD",
+      "USES_DATASET",
+      "EVALUATES_ON",
+      "HAS_LIMITATION",
+      "EXTENDS",
+      "IMPROVES",
+      "CREATED_IN",
+      "PREFERS"
     ],
-    "same_partition_edges": ["SUMMARIZED_BY", "DUPLICATES", "SUPERSEDES"],
+    "same_partition_edges": [
+      "SUMMARIZED_BY",
+      "DUPLICATES",
+      "SUPERSEDES"
+    ],
     "list_pages_query_complexity": "O(1) queries - NO per-head store.get (N+1 forbidden)",
     "existing_rejection_assertion_stays_green": "tests/test_governance_services.py:114 test_partitioned_wiki_graph_retrieval (assertion at line 154) must stay green. NOTE: ValidationError is a subclass of ValueError, so this test being green does NOT prove the whitelist works - it only proves the rejection side is intact. Both sides must be tested."
   },

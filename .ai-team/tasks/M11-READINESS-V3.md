@@ -66,6 +66,29 @@ node .ai-team/check.mjs --base <prev sha>
 合并预演：临时 worktree 上 `git merge --no-commit --no-ff owner/r006-l1-writer` → 自动合并成功，
 合并态全量 537 passed / ruff clean / 30 files。
 
+## Follow-up: base_ref moved to the merged main (v4)
+
+R-006 P1 was merged into main through the protection window
+(`04ce9a9` → `ea1663b` → `f31d0dc`; protection restored and verified 12/12).
+
+The task pack was updated in the same change:
+
+- All four `task-package.json` and `lane-manifest.json`: `base_ref` `9c60043` → `f31d0dc`
+  (the previous value pointed at an unmerged branch).
+- `TASK-SPECS.md` → v4: §5-B1 marked resolved with the execution record;
+  MVP-01 status changed from "ready but blocked" to "ready, can start".
+- `TASK-QUEUE.md` → v4: blocking banner removed.
+- `SOURCE-AND-HANDOFF.md` → v4: §0 and §7 rewritten to cut from `origin/main`;
+  the `upstream/owner/r006-l1-writer` instruction is gone (P1 is in main now).
+
+Merge dry-run: temporary worktree `git merge --no-commit --no-ff owner/r006-l1-writer`
+→ clean, 537 passed, ruff clean, 30 files.
+
+> Note: the first `--ff-only` attempt aborted because the main worktree held an
+> untracked copy of this task pack (the local v3 revision) that collided with the
+> same paths arriving from P1. Handled by backing v3 up, moving the local copy
+> aside, merging, then restoring v3 on top — v3 is a superset (664 vs 419 lines).
+
 ## Handoff note
 
 **MVP-01 已解锁**：base 是合并后的 main。执行人按 `TASK-SPECS.md` §7 开工，

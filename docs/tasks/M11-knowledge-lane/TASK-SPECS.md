@@ -1,10 +1,11 @@
 # M11 知识库 lane — 任务规格（改进版）
 
-> **版本**：v3（2026-09-15 14:30，就绪性审计后修订；v2 = 同日 owner 改进稿）
+> **版本**：v4（2026-09-15 14:50，P1 已并入 main；v3 = 就绪性审计修订；v2 = 同日 owner 改进稿）
 > **基础**：成员 A 提交的 `M11-MVP-01～04` 拆分（结构采纳）+ R-006 L2 契约（择优注入）
 > **改动摘要**：见文末 §改动对照
 > **权威关系**：本文件是 M11 lane 的执行权威；R-006 的 L1/L2 降为**参考设计**，只在本文件明确引用的地方生效。
 > **v3 修订**：状态一律改为中文枚举（与 `.ai-team/check.mjs` 的 `VALID_STATES` 对齐）；补齐 6 项就绪性缺陷（见 §5）。
+> **v4 修订**：§5-B1 已裁决并执行 —— R-006 P1 合并进 main（最终 `f31d0dc`），四包 `base_ref` 同步更新，**MVP-01 可开工**。
 
 ---
 
@@ -54,9 +55,38 @@
 > 那两个包就必然又要在别处重新发明一套平行结构 —— 这正是本项目「新模块绕过现成原语 = 新缺陷的根源」那一族。
 > **为什么不全放**：全放会让人顺手改 C2/C9 或删字段，而 `RetrievalHit` 是**对外契约**（lane 不变量 3 明写不可删改名）。
 
-### 5-B1【待 owner 决策】`owner/r006-l1-writer` 的合并时机
+### 5-B1【✅ 已裁决 2026-09-15】先合 P1 再开 MVP-01
 
-**实测状态**：
+**裁决结果**：采纳选项 ① —— **R-006 P1 先合并进 main，MVP-01 从合并后的 main 切分支。**
+
+**执行记录**：
+
+| 步骤 | 结果 |
+|---|---|
+| 预演（临时 worktree 上 `git merge --no-commit --no-ff`） | 自动合并成功，无冲突 |
+| 预演态全量测试 | **537 passed / 2 skipped**，ruff clean，30 files |
+| 补 P1 的成员账本（修 `check.mjs` gate） | commit `ea1663b` |
+| 保护窗口 DELETE → merge → 恢复 | `04ce9a9` → `ea1663b`（ff-only） |
+| v3 文档修订提交 | commit `08bec37` → 最终 main = **`f31d0dc`** |
+| 恢复保护后逐项核对 | **12/12 项一致** ✅ |
+| 合并后门禁 | pytest `537 passed` / ruff clean / `check.mjs` `valid` |
+
+**四包 `base_ref` 已更新为 `f31d0dc`**（合并后的 main）。
+
+**关于 `owner/r006-l1-writer` 分支**：其内容已全部并入 main，**分支可保留作历史**，但成员不再需要引用它 ——
+`SOURCE-AND-HANDOFF.md` §0 已改为「直接从 `origin/main` 切」。
+
+**为什么选 ①（历史理由）**：P1（写入者基建，537 passed 自洽）与 M11（边界 + 检索）是两种性质的工作；
+M11 是三包串行栈（02/03/04 都依赖 01），把 P1 一起塞进去会让后续每个 PR 的 diff 都拖着 P1 的历史。
+实测也印证了这点：合并 P1 带来 **30 文件 / +4627**，若再叠 MVP-01 会让审查面继续膨胀。
+
+**⚠️ 操作过程中发现的一个真问题（已处理）**：主仓工作树里的本地 v3 文档（未跟踪）与 P1 追踪的同名文件冲突，
+导致 `--ff-only` 合并被拒。处理方式：先备份 v3 到 `/tmp`，移开本地副本，合并后再用 v3 覆盖（v3 是 P1 内版本的超集：
+664 vs 419 行）。**教训**：主仓常驻本地维护物时，合并前必须先确认哪些路径与目标分支重叠。
+
+#### 原表述（保留作记录）
+
+**实测状态（合并前）**：
 
 ```
 wt-l1-writer HEAD = 9c60043 (owner/r006-l1-writer)
@@ -66,17 +96,10 @@ git merge-base --is-ancestor HEAD origin/main  →  NO: NOT in main
 
 四包 `base_ref` 都写 `04ce9a9`（= main HEAD），而 P1 实际内容在 `9c60043`，**比 main 多 2 个 commit**。
 
-**两个选项**：
-
 | 选项 | 做法 | 代价 |
 |---|---|---|
-| **① 先合 P1，再开 MVP-01**（本文件建议） | 走保护窗口把 `9c60043` 合入 main；MVP-01 从新 main 切出 | 走一次保护窗口流程；MVP-01 开工延后约半天 |
-| ② MVP-01 直接继承该分支，成果挂在同一条 PR 上 | `git switch -c codex/m11-mvp-01 origin/owner/r006-l1-writer`，P1 与 MVP-01 同一个 PR 交付 | **审查面从 +234 契约膨胀到 +4536**，且 MVP-02/03 还要继续往上叠 |
-
-**建议 ①**，理由：P1（写入者基建，537 passed 自洽）与 M11（边界 + 检索）是两种性质的工作；
-且 M11 是三包串行栈（02/03/04 都依赖 01），**把 P1 一起塞进去会让后续每个 PR 的 diff 都拖着 P1 的历史**。
-
-**⚠️ 此项未决前，MVP-01 不得开工** —— 因为「从哪条分支切」直接决定产出能否合回 main。
+| **① 先合 P1，再开 MVP-01**（已采纳） | 走保护窗口把 P1 合入 main；MVP-01 从新 main 切出 | 走一次保护窗口流程 |
+| ② MVP-01 直接继承该分支，成果挂在同一条 PR 上 | P1 与 MVP-01 同一个 PR 交付 | 审查面从 +234 膨胀到 +4536，且 MVP-02/03 继续往上叠 |
 
 ### 5-M1【已处置】P1 实际改动清单（含 4 个 forbidden 文件）
 
@@ -132,10 +155,10 @@ git merge-base --is-ancestor HEAD origin/main  →  NO: NOT in main
 
 ## M11-MVP-01 — Wiki+Graph 规范来源与边界
 
-- **状态**：`ready`（**⚠️ 但受 §5-B1 阻塞：owner 未定 base 分支前不得开工**）
+- **状态**：`ready`（✅ **可开工** —— §5-B1 已裁决，P1 已并入 main `f31d0dc`）
 - **对应原文**：M11-01、M11-02、M11-03
 - **目标**：固定 Wiki+Graph 的分区、页面版本和图边边界，为后续检索建立唯一规范来源。
-- **依赖**：M04-01（已落地）、**R-006 P1（已实现，`9c60043`，待合并——见 §5-B1）**
+- **依赖**：M04-01（已落地）、**R-006 P1（✅ 已并入 main，`f31d0dc`）**
 
 ### 主要交付
 
@@ -299,22 +322,22 @@ forbidden_paths:
 
 ## 7. 开工步骤（v3 修订：修正三条不成立的 gate 命令）
 
-### 7.0 前置：确认 §5-B1 已由 owner 裁决
+### 7.0 前置：✅ 已解决
 
-**未裁决前不要开工**（见 §5-B1）。
+§5-B1 已裁决并执行完毕（P1 并入 main `f31d0dc`），**可直接开工**。
 
 ### 7.1 建立 worktree
 
 ```bash
-# 情况 A：你在 fork 里开发（成员 A 的情况）
-git remote add upstream https://github.com/CovD831/AutoResearch.git   # 一次性
-git fetch upstream
-git switch -c codex/m11-mvp-01 upstream/owner/r006-l1-writer
-git worktree add ../AutoResearch-m11 codex/m11-mvp-01
-
-# 情况 B：主仓 clone（owner / 集成人）—— 且 §5-B1 已选「先合 P1」
+# 主仓 clone（owner / 集成人）
 git fetch origin
 git switch -c codex/m11-mvp-01 origin/main
+git worktree add ../AutoResearch-m11 codex/m11-mvp-01
+
+# 在 fork 里开发（成员 A 的情况）
+git remote add upstream https://github.com/CovD831/AutoResearch.git   # 一次性
+git fetch upstream
+git switch -c codex/m11-mvp-01 upstream/main
 git worktree add ../AutoResearch-m11 codex/m11-mvp-01
 ```
 
@@ -328,9 +351,9 @@ PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m
 PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m compileall -q src
 ```
 
-**期望**：`537 passed / 2 skipped / 0 failed`（在 `9c60043` 上实测所得）。
-**⚠️ 注意**：这个数字**只对 `9c60043` 成立**。若 §5-B1 选了「先合 P1」，合并后的 main 数字会变，
-**必须在本 worktree 上重新实测，不得搬运本文档的数字**（本项目硬约束：基线不可跨 worktree 搬运）。
+**期望**：`537 passed / 2 skipped / 0 failed`（在合并后的 main `f31d0dc` 上实测所得）。
+**⚠️ 注意**：引用前**必须在本 worktree 上重新实测**，不得搬运本文档的数字
+（本项目硬约束：基线不可跨 worktree 搬运）。
 
 ### 7.3 裸 id 读取点枚举（**开工第一步**，防漏网）
 

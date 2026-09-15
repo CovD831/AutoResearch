@@ -1,22 +1,27 @@
 # M11 lane — 拉取说明与待办清单
 
-> **v3（2026-09-15 14:30）**：就绪性审计后修订。**开工前先看 §0 —— 有一个未决的 owner 决策会阻塞你。**
+> **v4（2026-09-15 14:50）**：R-006 P1 已合并进 main，**阻塞解除，可以开工**。见 §0。
+> **v3（2026-09-15 14:30）**：就绪性审计后修订。
 > **本文件是给执行人的第一入口。** 分支里已经包含 R-006 P1 的完整实现，**不要重复实现 revision/head 那一块**。
 
 ---
 
-## 0. ⚠️ 开工前置：等 owner 裁决（未定前不要动手）
+## 0. ✅ 前置已解决：直接从 `main` 切分支
 
-**分支的取舍未定**：R-006 P1（`9c60043`）**还没合并 main，也没有 PR**。
-所以你必须先等 owner 在 `TASK-SPECS.md` §5-B1 里二选一：
+**R-006 P1 已合并进 main**（经保护窗口，`04ce9a9` → `ea1663b` → `f31d0dc`），
+所以**不再需要 `upstream/owner/r006-l1-writer`** —— 那个分支的内容已经在 main 里了。
 
-| 选项 | 你拿到的命令 |
-|---|---|
-| **① 先合 P1，再开 MVP-01** | `git switch -c codex/m11-mvp-01 origin/main`（合并后） |
-| ② MVP-01 直接继承 P1 分支 | `git switch -c codex/m11-mvp-01 origin/owner/r006-l1-writer` |
+```bash
+git fetch origin
+git switch -c codex/m11-mvp-01 origin/main
+git worktree add ../AutoResearch-m11 codex/m11-mvp-01
+```
 
-**两条命令差别很大**：① 的基线数字不是 `537`（合并后 main 会变），② 是 `537`。
-**在 owner 明确之前不要建 worktree** —— 否则可能白做。
+**基线数字**：`537 passed / 2 skipped / 0 failed`
+（在合并后的 main 上实测；若你的 clone 落后于 `f31d0dc`，先 `git pull`）
+
+> 历史记录：合并前曾有二选一（先合 P1 vs MVP-01 继承 P1 分支）。老板 2026-09-15 采纳「先合 P1」，
+> 理由：P1（写入者基建）与 M11（边界 + 检索）性质不同，混一个 PR 会让审查面从 +234 膨胀到 +4536。
 
 ---
 
@@ -158,38 +163,34 @@ grep -rn '"wiki_page"' src/
 
 ## 7. 开工步骤
 
-> ⚠️ **先确认 §0 的 owner 决策已定。**
+> ✅ **§0 的前置已解决** —— 直接从 `origin/main` 切分支。
 >
-> ⚠️ **注意 remote 名称**：本分支在主仓 `CovD831/AutoResearch`，**不在你的 fork 里**。
-> 如果你是在自己的 fork 里开发，`git fetch origin` 拉的是**你的 fork**，**看不到这个分支**。
-> 必须先加 `upstream` 指向主仓（见下 A/B 两种情况）。
+> ℹ️ **remote 说明**：早期版本要求加 `upstream` 指向主仓，那是因为 P1 当时只在主仓的未合并分支上。
+> **现在 P1 已在 main 里**，只要你的 `origin` 指向主仓（或已 fork 同步），直接 `git fetch origin` 即可。
 
-### 情况 A：你在 fork 里开发（**成员 A 的情况**）
+### 主仓 clone（owner / 集成人）
+
+```bash
+git fetch origin
+git switch -c codex/m11-mvp-01 origin/main
+git worktree add ../AutoResearch-m11 codex/m11-mvp-01
+```
+
+### 在 fork 里开发（**成员 A 的情况**）
 
 ```bash
 # 1) 一次性：把主仓加为 upstream（如果已有可跳过）
 git remote add upstream https://github.com/CovD831/AutoResearch.git
-#   检查：git remote -v 应该看到 upstream 指向 CovD831/AutoResearch
 
-# 2) 拉取主仓分支
+# 2) 从主仓 main 拉取（P1 已在其中）
 git fetch upstream
+git switch -c codex/m11-mvp-01 upstream/main
 
-# 3) 基于它切你的工作分支（选 §0 的选项 ②）
-git switch -c codex/m11-mvp-01 upstream/owner/r006-l1-writer
-
-# 4) 建独立 worktree（推荐，避免污染主工作树）
+# 3) 建独立 worktree（推荐）
 git worktree add ../AutoResearch-m11 codex/m11-mvp-01
 ```
 
-### 情况 B：你直接 clone 的**主仓**（owner/集成人）
-
-```bash
-git fetch origin
-git switch -c codex/m11-mvp-01 origin/owner/r006-l1-writer
-git worktree add ../AutoResearch-m11 codex/m11-mvp-01
-```
-
-### 两种情况都要跑的基线
+### 基线核对（**必须先跑，数字不对就别开工**）
 
 ```bash
 cd ../AutoResearch-m11
@@ -199,8 +200,7 @@ PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m
 PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m compileall -q src
 ```
 
-**期望**：`537 passed / 2 skipped / 0 failed`（**仅当选 §0 的选项 ② 时**；选 ① 则以合并后新 main 的实测为准）
-。若不是这个数字，先别开工，来找我。
+**期望**：`537 passed / 2 skipped / 0 failed`。若不是这个数字，先别开工，来找我。
 
 > **v3 修正**：原稿写 `PYTHONPATH=src python -m pytest`，但沙箱内 `python` 指向 3.9.6，
 > 必须用上表的解释器全路径。
