@@ -1,0 +1,347 @@
+{
+  "_provenance": {
+    "source": "https://api.crossref.org/works/<doi>",
+    "captured_at_utc": "2026-09-15T07:46:00Z",
+    "capture_command": "curl -s -H \"User-Agent: AutoResearch-M05/0.1 (mailto:m05@example.invalid)\" \"https://api.crossref.org/works/<doi>\"",
+    "recording": "real live response; fields not under test removed (see _provenance.kept_fields)",
+    "kept_fields": [
+      "DOI",
+      "type",
+      "title",
+      "issued",
+      "container-title",
+      "publisher",
+      "license",
+      "link",
+      "updated-by",
+      "update-to"
+    ],
+    "note": "The two 10.1016 Lancet records were re-captured on this date and matched tests/fixtures/external_sources/crossref_responses.json (B5) byte-for-byte on the relation arrays; that cross-check is the K10-3 direction evidence."
+  },
+  "10.1016/S0140-6736(97)11096-0": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "message": {
+        "DOI": "10.1016/s0140-6736(97)11096-0",
+        "type": "journal-article",
+        "title": [
+          "RETRACTED: Ileal-lymphoid-nodular hyperplasia, non-specific colitis, and pervasive developmental disorder in children"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              1998,
+              2
+            ]
+          ]
+        },
+        "container-title": [
+          "The Lancet"
+        ],
+        "publisher": "Elsevier BV",
+        "license": [
+          {
+            "start": {
+              "date-parts": [
+                [
+                  1998,
+                  2,
+                  1
+                ]
+              ],
+              "date-time": "1998-02-01T00:00:00Z",
+              "timestamp": 886291200000
+            },
+            "content-version": "tdm",
+            "delay-in-days": 0,
+            "URL": "https://www.elsevier.com/tdm/userlicense/1.0/"
+          }
+        ],
+        "link": [
+          {
+            "URL": "https://api.elsevier.com/content/article/PII:S0140673697110960?httpAccept=text/xml",
+            "content-type": "text/xml",
+            "content-version": "vor",
+            "intended-application": "text-mining"
+          },
+          {
+            "URL": "https://api.elsevier.com/content/article/PII:S0140673697110960?httpAccept=text/plain",
+            "content-type": "text/plain",
+            "content-version": "vor",
+            "intended-application": "text-mining"
+          }
+        ],
+        "updated-by": [
+          {
+            "DOI": "10.1016/s0140-6736(04)15715-2",
+            "type": "correction",
+            "label": "Correction",
+            "source": "retraction-watch",
+            "updated": {
+              "date-parts": [
+                [
+                  2004,
+                  3,
+                  6
+                ]
+              ],
+              "date-time": "2004-03-06T00:00:00Z",
+              "timestamp": 1078531200000
+            },
+            "record-id": "17269"
+          },
+          {
+            "DOI": "10.1016/s0140-6736(10)60175-4",
+            "type": "retraction",
+            "label": "Retraction",
+            "source": "retraction-watch",
+            "updated": {
+              "date-parts": [
+                [
+                  2010,
+                  2,
+                  6
+                ]
+              ],
+              "date-time": "2010-02-06T00:00:00Z",
+              "timestamp": 1265414400000
+            },
+            "record-id": "4036"
+          }
+        ]
+      }
+    }
+  },
+  "10.1371/journal.pone.0000308": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "message": {
+        "DOI": "10.1371/journal.pone.0000308",
+        "type": "journal-article",
+        "title": [
+          "Sharing Detailed Research Data Is Associated with Increased Citation Rate"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2007,
+              3,
+              21
+            ]
+          ]
+        },
+        "container-title": [
+          "PLoS ONE"
+        ],
+        "publisher": "Public Library of Science (PLoS)",
+        "license": [
+          {
+            "start": {
+              "date-parts": [
+                [
+                  2007,
+                  3,
+                  21
+                ]
+              ],
+              "date-time": "2007-03-21T00:00:00Z",
+              "timestamp": 1174435200000
+            },
+            "content-version": "unspecified",
+            "delay-in-days": 0,
+            "URL": "http://creativecommons.org/licenses/by/4.0/"
+          }
+        ],
+        "link": [
+          {
+            "URL": "http://dx.plos.org/10.1371/journal.pone.0000308",
+            "content-type": "unspecified",
+            "content-version": "vor",
+            "intended-application": "similarity-checking"
+          }
+        ]
+      }
+    }
+  },
+  "10.1038/nature12373": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "message": {
+        "DOI": "10.1038/nature12373",
+        "type": "journal-article",
+        "title": [
+          "Nanometre-scale thermometry in a living cell"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2013,
+              7,
+              31
+            ]
+          ]
+        },
+        "container-title": [
+          "Nature"
+        ],
+        "publisher": "Springer Science and Business Media LLC",
+        "license": [
+          {
+            "start": {
+              "date-parts": [
+                [
+                  2013,
+                  7,
+                  31
+                ]
+              ],
+              "date-time": "2013-07-31T00:00:00Z",
+              "timestamp": 1375228800000
+            },
+            "content-version": "tdm",
+            "delay-in-days": 0,
+            "URL": "http://www.springer.com/tdm"
+          }
+        ],
+        "link": [
+          {
+            "URL": "http://www.nature.com/articles/nature12373.pdf",
+            "content-type": "application/pdf",
+            "content-version": "vor",
+            "intended-application": "text-mining"
+          },
+          {
+            "URL": "http://www.nature.com/articles/nature12373",
+            "content-type": "text/html",
+            "content-version": "vor",
+            "intended-application": "text-mining"
+          },
+          {
+            "URL": "http://www.nature.com/articles/nature12373.pdf",
+            "content-type": "application/pdf",
+            "content-version": "vor",
+            "intended-application": "similarity-checking"
+          }
+        ]
+      }
+    }
+  },
+  "10.1145/3292500.3330701": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "message": {
+        "DOI": "10.1145/3292500.3330701",
+        "type": "proceedings-article",
+        "title": [
+          "Optuna"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2019,
+              7,
+              25
+            ]
+          ]
+        },
+        "container-title": [
+          "Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery &amp; Data Mining"
+        ],
+        "publisher": "ACM",
+        "license": [
+          {
+            "start": {
+              "date-parts": [
+                [
+                  2019,
+                  7,
+                  25
+                ]
+              ],
+              "date-time": "2019-07-25T00:00:00Z",
+              "timestamp": 1564012800000
+            },
+            "content-version": "vor",
+            "delay-in-days": 0,
+            "URL": "https://www.acm.org/publications/policies/copyright_policy#Background"
+          }
+        ],
+        "link": [
+          {
+            "URL": "https://dl.acm.org/doi/10.1145/3292500.3330701",
+            "content-type": "unspecified",
+            "content-version": "vor",
+            "intended-application": "text-mining"
+          },
+          {
+            "URL": "https://dl.acm.org/doi/pdf/10.1145/3292500.3330701",
+            "content-type": "unspecified",
+            "content-version": "vor",
+            "intended-application": "similarity-checking"
+          }
+        ]
+      }
+    }
+  },
+  "10.1002/asi.4630260504": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "message": {
+        "DOI": "10.1002/asi.4630260504",
+        "type": "journal-article",
+        "title": [
+          "A probabilistic approach to automatic keyword indexing. Part II. An algorithm for probabilistic indexing"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              1975,
+              9
+            ]
+          ]
+        },
+        "container-title": [
+          "Journal of the American Society for Information Science"
+        ],
+        "publisher": "Wiley",
+        "license": [
+          {
+            "start": {
+              "date-parts": [
+                [
+                  2007,
+                  3,
+                  22
+                ]
+              ],
+              "date-time": "2007-03-22T00:00:00Z",
+              "timestamp": 1174521600000
+            },
+            "content-version": "vor",
+            "delay-in-days": 11525,
+            "URL": "http://onlinelibrary.wiley.com/termsAndConditions#vor"
+          }
+        ],
+        "link": [
+          {
+            "URL": "https://api.wiley.com/onlinelibrary/tdm/v1/articles/10.1002%2Fasi.4630260504",
+            "content-type": "unspecified",
+            "content-version": "vor",
+            "intended-application": "text-mining"
+          },
+          {
+            "URL": "https://asistdl.onlinelibrary.wiley.com/doi/pdf/10.1002/asi.4630260504",
+            "content-type": "unspecified",
+            "content-version": "vor",
+            "intended-application": "similarity-checking"
+          }
+        ]
+      }
+    }
+  }
+}
