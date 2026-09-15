@@ -189,15 +189,43 @@
 
 1. **老板裁决契约变更**：是否把 `verification_state`（及 `facts`）补进 R-007 L2 的 K14
    （K14 现状无法机械校验 K14-1，见 L3 §4.1）。本包已就地加法扩展，不需为此返工。
-2. 若许可提交：`src/autoresearch/web_api.py`、`src/autoresearch/api.py`（G-7 头）、
-   `web/`、`tests/test_web_panels.py`、`tests/test_api_and_cli.py`、
-   `docs/tasks/M13-ui/`、`.ai-team/tasks/M13-UI.md` 一并落一次提交。
-   **若按 P6a/P6b 拆分**：上述全部属 P6a；`screenshots/` 的视觉产物（13 html + 7 png + 索引）
-   属 P6b，须在 P6a 之后合并（P6a 单独可绿：`39 passed / 1 skipped`，
-   skip 的是漂移守卫并写明原因）。
+2. ~~若许可提交：一并落一次提交。~~ **已按 P6a/P6b 两部分提交（2026-09-16）** —— 见下方「交付拆分」节。
 3. 合并前若 L-05 已落地：可补 `RELEASE_PENDING` 路径，让 M13-07 的 approve 有活体证据。
 4. L-09 落地后补 M13-06（把 `files` 的 `blocked` 换成真导出）。
 5. 收口时统一派独立审计（本包 `web_api.py` + K14 实现为重点，team-lead 已认领）。
+
+## 交付拆分（P6a / P6b，2026-09-16）
+
+本包分两个提交交付，切法**由实测决定，不按文件名猜**：
+
+| 提交 | 内容 | 文件数 | 单独可绿？ |
+|---|---|---|---|
+| **P6a** | 代码 + 测试 + 生成脚本 + **生成输入**（`projections/` + `raw-api/`） | 48 | ✅ `577 passed / 3 skipped` |
+| **P6b** | **纯视觉产物**（`snapshot-*.html` 13 + `*.png` 7 + `_screenshots.json`） | 21 | 需 P6a |
+
+**合计 69 = 本包全部交付物，不重不漏。**
+
+**切法是怎么定下来的（实测，非推测）**：
+
+| 移走什么 | 测试结果 |
+|---|---|
+| `snapshot-*.html` + `raw-api/` + `projections/` 全移 | **2 failed** |
+| **只移走纯视觉产物** | **1 failed**（只剩漂移守卫） |
+
+→ 由此得两条约束：
+
+1. **`projections/` 必须留 P6a** —— `test_rendered_tab_dots_match_the_projection_state` 读它；
+2. **`raw-api/` 也留 P6a** —— 它是投影的输入，留下它 P6a 才能**独立离线重跑整条生成链**
+   （实测：只留这两者即可重跑 `build_snapshots.py` 恢复全部 13 个 HTML 快照）。
+
+**为拆分做的一处改动**：`test_delivered_snapshots_are_not_stale` 加了**显式 skip 分支**
+（快照缺席时 skip 并写明原因）。
+
+> ⚠️ **这不是把红改绿放行**：**「有快照但漂移」仍然 fail**；只有**空 glob** 才 skip。
+> 即区分「没东西可比」与「比过了且一致」—— **空 glob 不得伪装成漂移检查通过**。
+> 这与本项目「空集不得当满分」的纪律同向。
+
+**合并顺序**：P6a → P6b（P6b 的 base 是 P6a）。
 
 ## Verification
 
