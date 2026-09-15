@@ -1,0 +1,96 @@
+{
+ "panel_id": "approval",
+ "project_id": "litalpha",
+ "sections": [
+  {
+   "facts": {
+    "pending_interrupt": "false",
+    "run_id": "run_5e60708b0ed84ee7",
+    "run_resolution": "run-payload"
+   },
+   "refs": [
+    "litalpha",
+    "run_5e60708b0ed84ee7"
+   ],
+   "title": "审批范围 / scope",
+   "unknown_reason": "run carries no pending interrupt, so there is no approval scope to show (scope is defined by the interrupt payload)",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "basis": "no pending interrupt; newest gate decision shown instead",
+    "gate_score": "35",
+    "gate_status": "revise",
+    "risk_level": "L3",
+    "source": "audit:gate.evaluated"
+   },
+   "refs": [
+    "gate_7856071305234f63"
+   ],
+   "title": "风险等级 / risk level",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  },
+  {
+   "facts": {
+    "evidence_count": "11",
+    "grades": "E0=1,E1=7,E2=1,E3=1,H3=1",
+    "h3_count": "1",
+    "note": "H3 = human-graded; claim text is not copied (K14-2)",
+    "qualifying_evidence_count": "3",
+    "valid_count": "10"
+   },
+   "refs": [
+    "ev_942cd5dda8f043a7",
+    "ev_966de25a265242a5",
+    "ev_c63bf4b8681a4569",
+    "ev_2ce27db1aeda41ac",
+    "ev_5ba65f4951524566",
+    "ev_89637ec5948042a4",
+    "ev_91334cc139c24bb0",
+    "ev_3ea5d9bba5c14b8a",
+    "ev_e9589300f647424e",
+    "ev_52f5619c07534fb9",
+    "ev_a2ef425a1a8d4995"
+   ],
+   "title": "支撑证据 / backing evidence",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  },
+  {
+   "facts": {
+    "approve_endpoint": "POST /runs/{run_id}/resume",
+    "interrupt_count": "0",
+    "pending": "false",
+    "run_id": "run_5e60708b0ed84ee7"
+   },
+   "refs": [
+    "run_5e60708b0ed84ee7"
+   ],
+   "title": "待人工决策 / pending human decision",
+   "unknown_reason": "no pending human interrupt on this run: POST /runs/{run_id}/resume would return 409 ('run is not waiting for a human interrupt')",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "actors": "l08-demo",
+    "attribution": "approve -> evidence.added(human,H3,actor=reviewer); reject -> gate.evaluated(operation=external_manuscript_release); retract -> evidence.invalidated",
+    "decision_event_types": "evidence.invalidated",
+    "human_decision_count": "1"
+   },
+   "refs": [
+    "event_b049e06cbad946b4",
+    "ev_a2ef425a1a8d4995"
+   ],
+   "title": "审批历史 / approval history",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  }
+ ],
+ "verification_state": "unverified"
+}

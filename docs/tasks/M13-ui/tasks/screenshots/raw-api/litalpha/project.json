@@ -1,0 +1,7 @@
+{
+ "idea": "Grade the evidence behind an automated literature review claim.",
+ "path": "<repo>/var/l08-demo/runtime/projects/litalpha",
+ "project_id": "litalpha",
+ "status": "active",
+ "title": "Evidence-graded literature screening"
+}

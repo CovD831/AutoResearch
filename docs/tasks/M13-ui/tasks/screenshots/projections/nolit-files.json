@@ -1,0 +1,19 @@
+{
+ "panel_id": "files",
+ "project_id": "nolit",
+ "sections": [
+  {
+   "facts": {
+    "blocked_by": "K11 AccessPolicy (L-09)",
+    "export_endpoint": "none",
+    "this_package": "M13-04,M13-05,M13-07"
+   },
+   "refs": [],
+   "title": "项目文件夹浏览与导出 / project file browser & export",
+   "unknown_reason": "M13-06 is not implemented in the R-007 L-08 package: it requires K11 AccessPolicy (L-09 acl.py) to decide what may be exported. No file list and no export button are shown, because showing either without the ACL would misrepresent the export surface.",
+   "verification_state": "blocked",
+   "verified": false
+  }
+ ],
+ "verification_state": "blocked"
+}

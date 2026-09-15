@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Response
 
 from autoresearch.application import AutoResearchApplication
 from autoresearch.contracts import (
@@ -83,8 +83,40 @@ def create_api(application: AutoResearchApplication | None = None) -> FastAPI:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @app.get("/projects/{project_id}/evidence")
-    def list_evidence(project_id: str, valid_only: bool = True):
-        return runtime.evidence.list(project_id, valid_only=valid_only)
+    def list_evidence(project_id: str, response: Response, valid_only: bool = True):
+        """List a project's evidence.
+
+        ``valid_only`` defaults to ``True``, so the default response **omits
+        invalidated items**. That default is kept (changing it would silently
+        re-shape what every existing caller receives), but the filtering is made
+        *observable*: this endpoint always reports whether items were dropped,
+        via two response headers.
+
+        Why this matters: an invalidated evidence item is a materially different
+        fact from one that was never recorded -- it means a claim has lost its
+        support. A caller that receives four items cannot tell "this project has
+        four items" from "this project has five and one was withdrawn". Without
+        a signal, the withdrawal is invisible.
+
+        Headers
+        -------
+        ``X-Evidence-Filtered``
+            ``"true"`` when the response omits at least one invalidated item,
+            ``"false"`` otherwise.
+        ``X-Evidence-Omitted``
+            Count of omitted items (``"0"`` when nothing was filtered).
+
+        The body is unchanged -- a JSON array of items -- so no existing caller
+        breaks. A caller that cares can read the headers; a caller that does not
+        sees exactly what it saw before.
+        """
+        items = runtime.evidence.list(project_id, valid_only=valid_only)
+        omitted = 0
+        if valid_only:
+            omitted = len(runtime.evidence.list(project_id, valid_only=False)) - len(items)
+        response.headers["X-Evidence-Filtered"] = "true" if omitted else "false"
+        response.headers["X-Evidence-Omitted"] = str(omitted)
+        return items
 
     @app.post("/evidence/{evidence_id}/invalidate")
     def invalidate_evidence(evidence_id: str, request: EvidenceInvalidationRequest):
