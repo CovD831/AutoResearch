@@ -1,0 +1,105 @@
+{
+ "panel_id": "evidence",
+ "project_id": "nolit",
+ "sections": [
+  {
+   "facts": {
+    "evidence_count": "1",
+    "evidence_types": "human",
+    "grades": "E0=1",
+    "invalid_count": "0",
+    "note": "K14-2: claim/title text is not copied into the panel",
+    "valid_count": "1"
+   },
+   "refs": [
+    "ev_c86d61ec9d954fbf"
+   ],
+   "title": "证据项 / evidence items",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  },
+  {
+   "facts": {
+    "claim_group_count": "1",
+    "evidence_count": "1",
+    "gap": "G-3 no GET /evidence/{id} and no claim-level read model"
+   },
+   "refs": [
+    "ev_c86d61ec9d954fbf"
+   ],
+   "title": "按 claim 归类 / grouped by claim",
+   "unknown_reason": "grouping key is the evidence claim text; K14-2 forbids copying claim content into the panel and there is no endpoint that resolves a claim, so only the group count and the evidence refs are shown",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "available_grouping": "claim,evidence_type,grade",
+    "gap": "G-4 evidence->run/action link not readable"
+   },
+   "refs": [
+    "ev_c86d61ec9d954fbf"
+   ],
+   "title": "按 run·action 归属 / grouped by run·action",
+   "unknown_reason": "EvidenceItem carries no run_id / invocation_id / action field, and no GET endpoint links evidence to a run or to the action that produced it (EvidenceCandidate has run_id but is not exposed by any GET endpoint)",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "gate_decision_count": "0"
+   },
+   "refs": [
+    "nolit"
+   ],
+   "title": "Gate 裁决 / gate decisions",
+   "unknown_reason": "no gate.evaluated event in the audit log: the project has not reached a gate decision yet, or the decision was never persisted",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "audit_report_count": "0",
+    "gate_verdict_count": "0",
+    "note": "verdict text (reasons/findings) is not copied; refs resolve it",
+    "review_ref_count": "0",
+    "reviewer_accept_count": "0"
+   },
+   "refs": [
+    "nolit"
+   ],
+   "title": "审查与裁决 / reviews & verdicts",
+   "unknown_reason": "no audit.report_created / gate.evaluated / reviewer handoff.accepted event for this project",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "review_report_count": "0"
+   },
+   "refs": [],
+   "title": "评审报告 / ReviewReport",
+   "unknown_reason": "ResearchState.review_ids is empty: no ReviewReport recorded",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "invalid_evidence_count": "0",
+    "query": "GET /projects/{id}/evidence?valid_only=false",
+    "retraction_event_count": "0",
+    "state": "no retraction recorded",
+    "write_endpoint": "POST /evidence/{evidence_id}/invalidate"
+   },
+   "refs": [
+    "nolit"
+   ],
+   "title": "回退入口 / retraction",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  }
+ ],
+ "verification_state": "unverified"
+}

@@ -1,0 +1,152 @@
+{
+ "panel_id": "evidence",
+ "project_id": "litalpha",
+ "sections": [
+  {
+   "facts": {
+    "evidence_count": "11",
+    "evidence_types": "experiment,human,knowledge,paper",
+    "grades": "E0=1,E1=7,E2=1,E3=1,H3=1",
+    "invalid_count": "1",
+    "note": "K14-2: claim/title text is not copied into the panel",
+    "valid_count": "10"
+   },
+   "refs": [
+    "ev_942cd5dda8f043a7",
+    "ev_966de25a265242a5",
+    "ev_c63bf4b8681a4569",
+    "ev_2ce27db1aeda41ac",
+    "ev_5ba65f4951524566",
+    "ev_89637ec5948042a4",
+    "ev_91334cc139c24bb0",
+    "ev_3ea5d9bba5c14b8a",
+    "ev_e9589300f647424e",
+    "ev_52f5619c07534fb9",
+    "ev_a2ef425a1a8d4995"
+   ],
+   "title": "证据项 / evidence items",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  },
+  {
+   "facts": {
+    "claim_group_count": "8",
+    "evidence_count": "11",
+    "gap": "G-3 no GET /evidence/{id} and no claim-level read model"
+   },
+   "refs": [
+    "ev_942cd5dda8f043a7",
+    "ev_966de25a265242a5",
+    "ev_c63bf4b8681a4569",
+    "ev_2ce27db1aeda41ac",
+    "ev_5ba65f4951524566",
+    "ev_89637ec5948042a4",
+    "ev_91334cc139c24bb0",
+    "ev_3ea5d9bba5c14b8a",
+    "ev_e9589300f647424e",
+    "ev_52f5619c07534fb9",
+    "ev_a2ef425a1a8d4995"
+   ],
+   "title": "按 claim 归类 / grouped by claim",
+   "unknown_reason": "grouping key is the evidence claim text; K14-2 forbids copying claim content into the panel and there is no endpoint that resolves a claim, so only the group count and the evidence refs are shown",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "available_grouping": "claim,evidence_type,grade",
+    "gap": "G-4 evidence->run/action link not readable"
+   },
+   "refs": [
+    "ev_942cd5dda8f043a7",
+    "ev_966de25a265242a5",
+    "ev_c63bf4b8681a4569",
+    "ev_2ce27db1aeda41ac",
+    "ev_5ba65f4951524566",
+    "ev_89637ec5948042a4",
+    "ev_91334cc139c24bb0",
+    "ev_3ea5d9bba5c14b8a",
+    "ev_e9589300f647424e",
+    "ev_52f5619c07534fb9",
+    "ev_a2ef425a1a8d4995"
+   ],
+   "title": "按 run·action 归属 / grouped by run·action",
+   "unknown_reason": "EvidenceItem carries no run_id / invocation_id / action field, and no GET endpoint links evidence to a run or to the action that produced it (EvidenceCandidate has run_id but is not exposed by any GET endpoint)",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "gate_decision_count": "2",
+    "latest_decision_id": "gate_7856071305234f63",
+    "latest_independent_sources": "3",
+    "latest_operation": "mark_manuscript_evidence_complete",
+    "latest_qualifying_evidence_ids": "ev_942cd5dda8f043a7,ev_966de25a265242a5,ev_c63bf4b8681a4569",
+    "latest_risk_level": "L3",
+    "latest_score": "35",
+    "latest_status": "revise",
+    "source": "audit:gate.evaluated"
+   },
+   "refs": [
+    "gate_6ade0a91999d4ff6",
+    "gate_7856071305234f63"
+   ],
+   "title": "Gate 裁决 / gate decisions",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  },
+  {
+   "facts": {
+    "audit_report_count": "0",
+    "gate_verdict_count": "2",
+    "note": "verdict text (reasons/findings) is not copied; refs resolve it",
+    "review_ref_count": "6",
+    "reviewer_accept_count": "2"
+   },
+   "refs": [
+    "event_79386af40a3e4b2c",
+    "event_fe68444554ae4c8e",
+    "event_4d3cccd4c6894bbc",
+    "event_3910b3ad24d9464d",
+    "gate_6ade0a91999d4ff6",
+    "gate_7856071305234f63"
+   ],
+   "title": "审查与裁决 / reviews & verdicts",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  },
+  {
+   "facts": {
+    "gap": "G-5 no GET /reviews/{id}",
+    "review_report_count": "2"
+   },
+   "refs": [
+    "review_7559138cbd4d4c43",
+    "review_a8f72664201b433d"
+   ],
+   "title": "评审报告 / ReviewReport",
+   "unknown_reason": "ResearchState.review_ids is non-empty but no read endpoint returns a ReviewReport; only the ids are available",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "invalid_evidence_count": "1",
+    "query": "GET /projects/{id}/evidence?valid_only=false",
+    "retraction_event_count": "1",
+    "write_endpoint": "POST /evidence/{evidence_id}/invalidate"
+   },
+   "refs": [
+    "ev_a2ef425a1a8d4995"
+   ],
+   "title": "回退入口 / retraction",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  }
+ ],
+ "verification_state": "unverified"
+}

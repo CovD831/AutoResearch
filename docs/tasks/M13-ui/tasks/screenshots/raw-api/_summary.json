@@ -1,0 +1,278 @@
+{
+ "projects": {
+  "litalpha": {
+   "run_id": "run_5e60708b0ed84ee7",
+   "added_evidence": [
+    "ev_3ea5d9bba5c14b8a",
+    "ev_e9589300f647424e",
+    "ev_52f5619c07534fb9",
+    "ev_a2ef425a1a8d4995"
+   ]
+  },
+  "bare": {
+   "run_id": null
+  },
+  "nolit": {
+   "run_id": "run_5747fc9a5c95496f"
+  }
+ },
+ "writes": [
+  {
+   "purpose": "M13-07 approve/reject",
+   "call": "POST /runs/run_5e60708b0ed84ee7/resume",
+   "body": {
+    "approval": true,
+    "reviewer": "l08-demo",
+    "note": "panel M13-07"
+   },
+   "status": 409,
+   "response": {
+    "detail": "run is not waiting for a human interrupt"
+   }
+  },
+  {
+   "purpose": "M13-07 retract evidence",
+   "call": "POST /evidence/ev_a2ef425a1a8d4995/invalidate",
+   "body": {
+    "reason": "panel M13-07 retraction: source could not be re-verified",
+    "actor": "l08-demo"
+   },
+   "status": 200,
+   "response": {
+    "evidence_id": "ev_a2ef425a1a8d4995",
+    "valid": false
+   }
+  },
+  {
+   "purpose": "audit confirmation after retraction",
+   "call": "GET /projects/litalpha/audit-events",
+   "retraction_events": [
+    {
+     "event_id": "event_b049e06cbad946b4",
+     "event_type": "evidence.invalidated",
+     "actor": "l08-demo",
+     "payload": {
+      "evidence_id": "ev_a2ef425a1a8d4995",
+      "valid": false,
+      "reason": "panel M13-07 retraction: source could not be re-verified",
+      "actor": "l08-demo"
+     },
+     "created_at": "2026-09-15T15:38:58.527184+00:00"
+    }
+   ],
+   "event_type_histogram": {
+    "capability.invocation_finalized": 3,
+    "capability.invocation_reserved": 3,
+    "capability.service_returned": 3,
+    "capability.service_started": 3,
+    "evidence.added": 11,
+    "evidence.invalidated": 1,
+    "gate.evaluated": 2,
+    "handoff.accepted": 6,
+    "handoff.issued": 6,
+    "knowledge.page_added": 5,
+    "manuscript.drafted": 1,
+    "papers.search_completed": 1,
+    "project.created": 1,
+    "run.checkpointed": 1,
+    "run.started": 1,
+    "work_package.updated": 2
+   }
+  }
+ ],
+ "doctor": {
+  "ok": true,
+  "version": "0.1.0",
+  "python_profile": "3.12+",
+  "agents": [
+   "orchestrator",
+   "paper_search",
+   "paper_reader",
+   "writer",
+   "reviewer"
+  ],
+  "agent_count": 5,
+  "settings": {
+   "llm_provider": "offline",
+   "llm_model": null,
+   "llm_base_url_configured": false,
+   "llm_api_key_configured": false,
+   "semantic_scholar_api_key_configured": false,
+   "network_enabled": false,
+   "db_path": "<repo>/var/l08-demo/runtime/autoresearch.sqlite3",
+   "checkpoint_path": "<repo>/var/l08-demo/runtime/checkpoints.sqlite3"
+  },
+  "projects_dir_exists": true,
+  "template_dir_exists": true,
+  "database_ready": true,
+  "checkpoint_database_ready": true,
+  "diagnostic_id": "doctor_b9f35eec6f004b79"
+ },
+ "http_log": [
+  {
+   "method": "GET",
+   "path": "/health",
+   "status": 200
+  },
+  {
+   "method": "POST",
+   "path": "/projects",
+   "status": 201
+  },
+  {
+   "method": "POST",
+   "path": "/runs",
+   "status": 201
+  },
+  {
+   "method": "POST",
+   "path": "/evidence",
+   "status": 201
+  },
+  {
+   "method": "POST",
+   "path": "/evidence",
+   "status": 201
+  },
+  {
+   "method": "POST",
+   "path": "/evidence",
+   "status": 201
+  },
+  {
+   "method": "POST",
+   "path": "/evidence",
+   "status": 201
+  },
+  {
+   "method": "GET",
+   "path": "/projects/litalpha/work-packages",
+   "status": 200
+  },
+  {
+   "method": "PATCH",
+   "path": "/work-packages/wp_6646b59e63304021",
+   "status": 200
+  },
+  {
+   "method": "PATCH",
+   "path": "/work-packages/wp_93fe6c657b494163",
+   "status": 200
+  },
+  {
+   "method": "POST",
+   "path": "/projects",
+   "status": 201
+  },
+  {
+   "method": "POST",
+   "path": "/projects",
+   "status": 201
+  },
+  {
+   "method": "POST",
+   "path": "/runs",
+   "status": 201
+  },
+  {
+   "method": "POST",
+   "path": "/runs/run_5e60708b0ed84ee7/resume",
+   "status": 409
+  },
+  {
+   "method": "POST",
+   "path": "/evidence/ev_a2ef425a1a8d4995/invalidate",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/litalpha/audit-events",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/litalpha/audit-events",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/litalpha",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/litalpha/evidence?valid_only=false",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/litalpha/evidence",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/litalpha/work-packages",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/runs/run_5e60708b0ed84ee7",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/bare/audit-events",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/bare",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/bare/evidence?valid_only=false",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/bare/evidence",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/bare/work-packages",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/nolit/audit-events",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/nolit",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/nolit/evidence?valid_only=false",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/nolit/evidence",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/projects/nolit/work-packages",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/runs/run_5747fc9a5c95496f",
+   "status": 200
+  }
+ ]
+}

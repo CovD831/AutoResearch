@@ -1,0 +1,15 @@
+[
+ {
+  "actor": "user",
+  "created_at": "2026-09-15T15:38:58.476897+00:00",
+  "event_id": "event_22116d54ba4e4ccf",
+  "event_type": "project.created",
+  "payload": {
+   "idea": "Shows what the panels look like when there is no run at all.",
+   "path": "<repo>/var/l08-demo/runtime/projects/bare",
+   "project_id": "bare",
+   "status": "active",
+   "title": "Created but never run"
+  }
+ }
+]

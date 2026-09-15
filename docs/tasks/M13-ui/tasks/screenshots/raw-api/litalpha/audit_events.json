@@ -1,0 +1,996 @@
+[
+ {
+  "actor": "user",
+  "created_at": "2026-09-15T15:38:58.296645+00:00",
+  "event_id": "event_800e4216e7c6411a",
+  "event_type": "project.created",
+  "payload": {
+   "idea": "Grade the evidence behind an automated literature review claim.",
+   "path": "<repo>/var/l08-demo/runtime/projects/litalpha",
+   "project_id": "litalpha",
+   "status": "active",
+   "title": "Evidence-graded literature screening"
+  }
+ },
+ {
+  "actor": "user",
+  "created_at": "2026-09-15T15:38:58.299896+00:00",
+  "event_id": "event_51794fcbfbd7440e",
+  "event_type": "run.started",
+  "payload": {
+   "idea": "Grade the evidence behind an automated literature review claim.",
+   "run_id": "run_5e60708b0ed84ee7"
+  }
+ },
+ {
+  "actor": "orchestrator",
+  "created_at": "2026-09-15T15:38:58.309088+00:00",
+  "event_id": "event_36249609313a4001",
+  "event_type": "evidence.added",
+  "payload": {
+   "checksum": null,
+   "claim": "The user supplied this idea as the starting research intent.",
+   "created_at": "2026-09-15T15:38:58.305704Z",
+   "evidence_id": "ev_942cd5dda8f043a7",
+   "evidence_type": "human",
+   "grade": "E0",
+   "independent_source": "user-intent:litalpha",
+   "locator": "research charter: idea",
+   "metadata": {},
+   "project_id": "litalpha",
+   "source_id": "charter_ad60f37c0af6487c",
+   "source_uri": null,
+   "supersedes": null,
+   "title": "User-provided research idea",
+   "valid": true
+  }
+ },
+ {
+  "actor": "orchestrator",
+  "created_at": "2026-09-15T15:38:58.316197+00:00",
+  "event_id": "event_733dd448433747aa",
+  "event_type": "handoff.issued",
+  "payload": {
+   "artifact_refs": [
+    {
+     "artifact_id": "charter_ad60f37c0af6487c",
+     "checksum": null,
+     "kind": "research_charter",
+     "summary": "Grade the evidence behind an automated literature review claim.",
+     "uri": null
+    }
+   ],
+   "bounded_context": "Grade the evidence behind an automated literature review claim\nGrade the evidence behind an automated literature review claim systematic review\nGrade the evidence behind an automated literature review claim benchmark evaluation",
+   "constraints": [
+    "Do not invent papers",
+    "Keep source IDs and URLs",
+    "Stop cleanly if no records are available"
+   ],
+   "created_at": "2026-09-15T15:38:58.315212Z",
+   "evidence_ids": [
+    "ev_942cd5dda8f043a7"
+   ],
+   "expected_output": "Deduplicated paper IDs with provenance and diagnostics.",
+   "from_agent": "orchestrator",
+   "handoff_id": "handoff_0636125168744978",
+   "objective": "Find and register relevant scholarly records for the scoped idea.",
+   "project_id": "litalpha",
+   "run_id": "run_5e60708b0ed84ee7",
+   "to_agent": "paper_search"
+  }
+ },
+ {
+  "actor": "paper_search",
+  "created_at": "2026-09-15T15:38:58.318042+00:00",
+  "event_id": "event_e6b11e558cef4001",
+  "event_type": "handoff.accepted",
+  "payload": {
+   "handoff_id": "handoff_0636125168744978",
+   "receiver": "paper_search"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.319307+00:00",
+  "event_id": "event_e788dcb100ce4429",
+  "event_type": "capability.invocation_reserved",
+  "payload": {
+   "invocation_id": "q-598e02b1eca163b3",
+   "request_fingerprint": "bef241a792eb7858011aac83f72f66418754558a4a3c2985091563ea2d10ef8c"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.320513+00:00",
+  "event_id": "event_ec7f1892b0244044",
+  "event_type": "capability.service_started",
+  "payload": {
+   "invocation_id": "q-598e02b1eca163b3"
+  }
+ },
+ {
+  "actor": "paper_search",
+  "created_at": "2026-09-15T15:38:58.323260+00:00",
+  "event_id": "event_736ad8dedbef47f1",
+  "event_type": "evidence.added",
+  "payload": {
+   "checksum": null,
+   "claim": "This scholarly record and its supplied abstract exist in the cited source.",
+   "created_at": "2026-09-15T15:38:58.321670Z",
+   "evidence_id": "ev_966de25a265242a5",
+   "evidence_type": "paper",
+   "grade": "E1",
+   "independent_source": "10.1000/lit-a",
+   "locator": "bibliographic record/abstract",
+   "metadata": {
+    "paper_id": "paper_259d17dad9a54577",
+    "source": "user_seed"
+   },
+   "project_id": "litalpha",
+   "source_id": "paper_259d17dad9a54577",
+   "source_uri": "https://example.org/lit-a",
+   "supersedes": null,
+   "title": "Bibliographic record: Retrieval Augmented Research Agents",
+   "valid": true
+  }
+ },
+ {
+  "actor": "knowledge_service",
+  "created_at": "2026-09-15T15:38:58.324996+00:00",
+  "event_id": "event_a6754110273645a4",
+  "event_type": "knowledge.page_added",
+  "payload": {
+   "author": "search_service",
+   "body": "We study RAG for literature review automation.",
+   "created_at": "2026-09-15T15:38:58.323479Z",
+   "effective_at": null,
+   "evidence_ids": [
+    "ev_966de25a265242a5"
+   ],
+   "level": 1,
+   "page_id": "paper_259d17dad9a54577",
+   "partition": "papers",
+   "project_id": "litalpha",
+   "review_status": "draft",
+   "revision": 1,
+   "supersedes": null,
+   "tags": [
+    "user_seed",
+    "2024"
+   ],
+   "title": "Retrieval Augmented Research Agents"
+  }
+ },
+ {
+  "actor": "paper_search",
+  "created_at": "2026-09-15T15:38:58.327132+00:00",
+  "event_id": "event_fbe12aca9fa748b7",
+  "event_type": "evidence.added",
+  "payload": {
+   "checksum": null,
+   "claim": "This scholarly record and its supplied abstract exist in the cited source.",
+   "created_at": "2026-09-15T15:38:58.325777Z",
+   "evidence_id": "ev_c63bf4b8681a4569",
+   "evidence_type": "paper",
+   "grade": "E1",
+   "independent_source": "10.1000/lit-b",
+   "locator": "bibliographic record/abstract",
+   "metadata": {
+    "paper_id": "paper_e902e8ff6ff8465d",
+    "source": "user_seed"
+   },
+   "project_id": "litalpha",
+   "source_id": "paper_e902e8ff6ff8465d",
+   "source_uri": "https://example.org/lit-b",
+   "supersedes": null,
+   "title": "Bibliographic record: Evidence-Graded Claim Verification",
+   "valid": true
+  }
+ },
+ {
+  "actor": "knowledge_service",
+  "created_at": "2026-09-15T15:38:58.329843+00:00",
+  "event_id": "event_c5ecffae75094970",
+  "event_type": "knowledge.page_added",
+  "payload": {
+   "author": "search_service",
+   "body": "Grading evidence for claim support in automated review.",
+   "created_at": "2026-09-15T15:38:58.328469Z",
+   "effective_at": null,
+   "evidence_ids": [
+    "ev_c63bf4b8681a4569"
+   ],
+   "level": 1,
+   "page_id": "paper_e902e8ff6ff8465d",
+   "partition": "papers",
+   "project_id": "litalpha",
+   "review_status": "draft",
+   "revision": 1,
+   "supersedes": null,
+   "tags": [
+    "user_seed",
+    "2023"
+   ],
+   "title": "Evidence-Graded Claim Verification"
+  }
+ },
+ {
+  "actor": "paper_search",
+  "created_at": "2026-09-15T15:38:58.330378+00:00",
+  "event_id": "event_4669ff9a0c214cab",
+  "event_type": "papers.search_completed",
+  "payload": {
+   "diagnostics": [
+    "Network search is disabled; only user-supplied seed papers were processed."
+   ],
+   "paper_ids": [
+    "paper_259d17dad9a54577",
+    "paper_e902e8ff6ff8465d"
+   ],
+   "queries": [
+    "Grade the evidence behind an automated literature review claim"
+   ]
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.331583+00:00",
+  "event_id": "event_68918dca727243d1",
+  "event_type": "capability.service_returned",
+  "payload": {
+   "diagnostics": [
+    "Network search is disabled; only user-supplied seed papers were processed."
+   ],
+   "invocation_id": "q-598e02b1eca163b3",
+   "paper_ids": [
+    "paper_259d17dad9a54577",
+    "paper_e902e8ff6ff8465d"
+   ],
+   "status": "completed"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.332955+00:00",
+  "event_id": "event_35bc8941947543a7",
+  "event_type": "capability.invocation_finalized",
+  "payload": {
+   "diagnostics": [
+    "Network search is disabled; only user-supplied seed papers were processed."
+   ],
+   "invocation_id": "q-598e02b1eca163b3",
+   "paper_ids": [
+    "paper_259d17dad9a54577",
+    "paper_e902e8ff6ff8465d"
+   ],
+   "status": "completed"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.334909+00:00",
+  "event_id": "event_e57e0d1f806d408f",
+  "event_type": "capability.invocation_reserved",
+  "payload": {
+   "invocation_id": "q-322a1ca7ba5a7787",
+   "request_fingerprint": "802518481276a5ce6d13a6208fb1046f52ff222211b7e12061deb62d3d4c5b54"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.336037+00:00",
+  "event_id": "event_4b4dc2a76bac4403",
+  "event_type": "capability.service_started",
+  "payload": {
+   "invocation_id": "q-322a1ca7ba5a7787"
+  }
+ },
+ {
+  "actor": "paper_search",
+  "created_at": "2026-09-15T15:38:58.338494+00:00",
+  "event_id": "event_7a806db5a43545a6",
+  "event_type": "evidence.added",
+  "payload": {
+   "checksum": null,
+   "claim": "This scholarly record and its supplied abstract exist in the cited source.",
+   "created_at": "2026-09-15T15:38:58.337193Z",
+   "evidence_id": "ev_2ce27db1aeda41ac",
+   "evidence_type": "paper",
+   "grade": "E1",
+   "independent_source": "10.1000/lit-a",
+   "locator": "bibliographic record/abstract",
+   "metadata": {
+    "paper_id": "paper_259d17dad9a54577",
+    "source": "user_seed"
+   },
+   "project_id": "litalpha",
+   "source_id": "paper_259d17dad9a54577",
+   "source_uri": "https://example.org/lit-a",
+   "supersedes": null,
+   "title": "Bibliographic record: Retrieval Augmented Research Agents",
+   "valid": true
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.340811+00:00",
+  "event_id": "event_cc312265fa2d49af",
+  "event_type": "capability.service_returned",
+  "payload": {
+   "diagnostics": [
+    "provider failure: ValueError: revision 1 must be > current max 1 for page paper_259d17dad9a54577 (append-only: revisions are never overwritten)"
+   ],
+   "invocation_id": "q-322a1ca7ba5a7787",
+   "paper_ids": [],
+   "status": "failed"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.342140+00:00",
+  "event_id": "event_d5c296dcac4f482a",
+  "event_type": "capability.invocation_finalized",
+  "payload": {
+   "diagnostics": [
+    "provider failure: ValueError: revision 1 must be > current max 1 for page paper_259d17dad9a54577 (append-only: revisions are never overwritten)"
+   ],
+   "invocation_id": "q-322a1ca7ba5a7787",
+   "paper_ids": [],
+   "status": "failed"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.343593+00:00",
+  "event_id": "event_5e796cb4a50b4449",
+  "event_type": "capability.invocation_reserved",
+  "payload": {
+   "invocation_id": "q-ba517064f9d61629",
+   "request_fingerprint": "186f346175be27fe6ab0f126a94ee4a528a10974b311f2bd47e7b3a314cb8bbd"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.344781+00:00",
+  "event_id": "event_9b95e68f5afa459f",
+  "event_type": "capability.service_started",
+  "payload": {
+   "invocation_id": "q-ba517064f9d61629"
+  }
+ },
+ {
+  "actor": "paper_search",
+  "created_at": "2026-09-15T15:38:58.349470+00:00",
+  "event_id": "event_88d1e527cc5d4bc9",
+  "event_type": "evidence.added",
+  "payload": {
+   "checksum": null,
+   "claim": "This scholarly record and its supplied abstract exist in the cited source.",
+   "created_at": "2026-09-15T15:38:58.347228Z",
+   "evidence_id": "ev_5ba65f4951524566",
+   "evidence_type": "paper",
+   "grade": "E1",
+   "independent_source": "10.1000/lit-a",
+   "locator": "bibliographic record/abstract",
+   "metadata": {
+    "paper_id": "paper_259d17dad9a54577",
+    "source": "user_seed"
+   },
+   "project_id": "litalpha",
+   "source_id": "paper_259d17dad9a54577",
+   "source_uri": "https://example.org/lit-a",
+   "supersedes": null,
+   "title": "Bibliographic record: Retrieval Augmented Research Agents",
+   "valid": true
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.351289+00:00",
+  "event_id": "event_a58ec706cd7e4022",
+  "event_type": "capability.service_returned",
+  "payload": {
+   "diagnostics": [
+    "provider failure: ValueError: revision 1 must be > current max 1 for page paper_259d17dad9a54577 (append-only: revisions are never overwritten)"
+   ],
+   "invocation_id": "q-ba517064f9d61629",
+   "paper_ids": [],
+   "status": "failed"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.352682+00:00",
+  "event_id": "event_e1a8015617f74376",
+  "event_type": "capability.invocation_finalized",
+  "payload": {
+   "diagnostics": [
+    "provider failure: ValueError: revision 1 must be > current max 1 for page paper_259d17dad9a54577 (append-only: revisions are never overwritten)"
+   ],
+   "invocation_id": "q-ba517064f9d61629",
+   "paper_ids": [],
+   "status": "failed"
+  }
+ },
+ {
+  "actor": "paper_search",
+  "created_at": "2026-09-15T15:38:58.363275+00:00",
+  "event_id": "event_c926763236154999",
+  "event_type": "handoff.issued",
+  "payload": {
+   "artifact_refs": [
+    {
+     "artifact_id": "paper_259d17dad9a54577",
+     "checksum": null,
+     "kind": "paper_record",
+     "summary": "Retrieval Augmented Research Agents",
+     "uri": "https://example.org/lit-a"
+    },
+    {
+     "artifact_id": "paper_e902e8ff6ff8465d",
+     "checksum": null,
+     "kind": "paper_record",
+     "summary": "Evidence-Graded Claim Verification",
+     "uri": "https://example.org/lit-b"
+    }
+   ],
+   "bounded_context": "papers=2",
+   "constraints": [
+    "Use supplied full text or abstract only",
+    "Attach locators",
+    "Label innovation as hypothesis, not established novelty"
+   ],
+   "created_at": "2026-09-15T15:38:58.361834Z",
+   "evidence_ids": [
+    "ev_966de25a265242a5",
+    "ev_c63bf4b8681a4569",
+    "ev_2ce27db1aeda41ac",
+    "ev_5ba65f4951524566"
+   ],
+   "expected_output": "Reading-card IDs and evidence-bounded innovation candidates.",
+   "from_agent": "paper_search",
+   "handoff_id": "handoff_2f281d32171f4d95",
+   "objective": "Read registered papers, create structured cards, and mine hypotheses.",
+   "project_id": "litalpha",
+   "run_id": "run_5e60708b0ed84ee7",
+   "to_agent": "paper_reader"
+  }
+ },
+ {
+  "actor": "paper_reader",
+  "created_at": "2026-09-15T15:38:58.364864+00:00",
+  "event_id": "event_c8617a0142e84900",
+  "event_type": "handoff.accepted",
+  "payload": {
+   "handoff_id": "handoff_2f281d32171f4d95",
+   "receiver": "paper_reader"
+  }
+ },
+ {
+  "actor": "paper_reader",
+  "created_at": "2026-09-15T15:38:58.368194+00:00",
+  "event_id": "event_2a93998cc3574b94",
+  "event_type": "evidence.added",
+  "payload": {
+   "checksum": null,
+   "claim": "We study RAG for literature review automation.",
+   "created_at": "2026-09-15T15:38:58.366443Z",
+   "evidence_id": "ev_89637ec5948042a4",
+   "evidence_type": "paper",
+   "grade": "E1",
+   "independent_source": "10.1000/lit-a",
+   "locator": "abstract",
+   "metadata": {
+    "extraction": "deterministic",
+    "full_text_used": false,
+    "paper_id": "paper_259d17dad9a54577"
+   },
+   "project_id": "litalpha",
+   "source_id": "paper_259d17dad9a54577",
+   "source_uri": "https://example.org/lit-a",
+   "supersedes": null,
+   "title": "Reading extraction: Retrieval Augmented Research Agents",
+   "valid": true
+  }
+ },
+ {
+  "actor": "knowledge_service",
+  "created_at": "2026-09-15T15:38:58.374974+00:00",
+  "event_id": "event_7f133b82bfd94697",
+  "event_type": "knowledge.page_added",
+  "payload": {
+   "author": "reader_service",
+   "body": "Question: We study RAG for literature review automation.\nMethod: Method not identifiable from the supplied text.\nFindings: We study RAG for literature review automation.\nLimitations: No explicit limitation was extractable; this is an evidence gap.",
+   "created_at": "2026-09-15T15:38:58.369374Z",
+   "effective_at": null,
+   "evidence_ids": [
+    "ev_89637ec5948042a4"
+   ],
+   "level": 2,
+   "page_id": "card_d1d21e0762cb46fe",
+   "partition": "papers",
+   "project_id": "litalpha",
+   "review_status": "draft",
+   "revision": 1,
+   "supersedes": null,
+   "tags": [
+    "reading-card",
+    "user_seed"
+   ],
+   "title": "Reading card: Retrieval Augmented Research Agents"
+  }
+ },
+ {
+  "actor": "paper_reader",
+  "created_at": "2026-09-15T15:38:58.382315+00:00",
+  "event_id": "event_450c5991036e4eb0",
+  "event_type": "evidence.added",
+  "payload": {
+   "checksum": null,
+   "claim": "Grading evidence for claim support in automated review.",
+   "created_at": "2026-09-15T15:38:58.379444Z",
+   "evidence_id": "ev_91334cc139c24bb0",
+   "evidence_type": "paper",
+   "grade": "E1",
+   "independent_source": "10.1000/lit-b",
+   "locator": "abstract",
+   "metadata": {
+    "extraction": "deterministic",
+    "full_text_used": false,
+    "paper_id": "paper_e902e8ff6ff8465d"
+   },
+   "project_id": "litalpha",
+   "source_id": "paper_e902e8ff6ff8465d",
+   "source_uri": "https://example.org/lit-b",
+   "supersedes": null,
+   "title": "Reading extraction: Evidence-Graded Claim Verification",
+   "valid": true
+  }
+ },
+ {
+  "actor": "knowledge_service",
+  "created_at": "2026-09-15T15:38:58.385480+00:00",
+  "event_id": "event_c581e64de4194ff3",
+  "event_type": "knowledge.page_added",
+  "payload": {
+   "author": "reader_service",
+   "body": "Question: Grading evidence for claim support in automated review.\nMethod: Method not identifiable from the supplied text.\nFindings: Grading evidence for claim support in automated review.\nLimitations: No explicit limitation was extractable; this is an evidence gap.",
+   "created_at": "2026-09-15T15:38:58.383717Z",
+   "effective_at": null,
+   "evidence_ids": [
+    "ev_91334cc139c24bb0"
+   ],
+   "level": 2,
+   "page_id": "card_34426bd94a8e48ea",
+   "partition": "papers",
+   "project_id": "litalpha",
+   "review_status": "draft",
+   "revision": 1,
+   "supersedes": null,
+   "tags": [
+    "reading-card",
+    "user_seed"
+   ],
+   "title": "Reading card: Evidence-Graded Claim Verification"
+  }
+ },
+ {
+  "actor": "knowledge_service",
+  "created_at": "2026-09-15T15:38:58.392302+00:00",
+  "event_id": "event_b08089b508624010",
+  "event_type": "knowledge.page_added",
+  "payload": {
+   "author": "reader_service",
+   "body": "{\n  \"innovation_id\": \"innovation_e3b0d70309224276\",\n  \"project_id\": \"litalpha\",\n  \"statement\": \"Test whether the proposed idea (Grade the evidence behind an automated literature review claim.) closes a documented research gap.\",\n  \"rationale\": \"Candidate gap derived from structured reading: cross-paper boundary conditions remain untested. This is a hypothesis, not a confirmed novelty claim.\",\n  \"differentiators\": [\n    \"Explicit evidence lineage from each comparison paper\",\n    \"Falsifiable evaluation rather than novelty-by-wording\",\n    \"Gate-controlled promotion from hypothesis to supported claim\"\n  ],\n  \"evidence_ids\": [\n    \"ev_89637ec5948042a4\",\n    \"ev_91334cc139c24bb0\"\n  ],\n  \"status\": \"hypothesis\",\n  \"falsification_test\": \"Run the planned baseline and ablation work packages; reject the candidate if the claimed benefit is not reproduced or prior work already covers it.\"\n}",
+   "created_at": "2026-09-15T15:38:58.390531Z",
+   "effective_at": null,
+   "evidence_ids": [
+    "ev_89637ec5948042a4",
+    "ev_91334cc139c24bb0"
+   ],
+   "level": 2,
+   "page_id": "innovation_e3b0d70309224276",
+   "partition": "knowledge",
+   "project_id": "litalpha",
+   "review_status": "draft",
+   "revision": 1,
+   "supersedes": null,
+   "tags": [
+    "innovation",
+    "hypothesis"
+   ],
+   "title": "Innovation candidate"
+  }
+ },
+ {
+  "actor": "paper_reader",
+  "created_at": "2026-09-15T15:38:58.393927+00:00",
+  "event_id": "event_4477dbf17a294704",
+  "event_type": "handoff.issued",
+  "payload": {
+   "artifact_refs": [
+    {
+     "artifact_id": "card_d1d21e0762cb46fe",
+     "checksum": null,
+     "kind": "reading_card",
+     "summary": "We study RAG for literature review automation.",
+     "uri": null
+    },
+    {
+     "artifact_id": "card_34426bd94a8e48ea",
+     "checksum": null,
+     "kind": "reading_card",
+     "summary": "Grading evidence for claim support in automated review.",
+     "uri": null
+    },
+    {
+     "artifact_id": "innovation_e3b0d70309224276",
+     "checksum": null,
+     "kind": "innovation_candidate",
+     "summary": "Test whether the proposed idea (Grade the evidence behind an automated literature review claim.) closes a documented research gap.",
+     "uri": null
+    }
+   ],
+   "bounded_context": "cards=2; candidates=1",
+   "constraints": [
+    "A hypothesis is not a novelty finding",
+    "Insufficient evidence must block progression"
+   ],
+   "created_at": "2026-09-15T15:38:58.392614Z",
+   "evidence_ids": [
+    "ev_942cd5dda8f043a7",
+    "ev_966de25a265242a5",
+    "ev_c63bf4b8681a4569",
+    "ev_2ce27db1aeda41ac",
+    "ev_5ba65f4951524566",
+    "ev_89637ec5948042a4",
+    "ev_91334cc139c24bb0"
+   ],
+   "expected_output": "Gate-backed review report with required changes.",
+   "from_agent": "paper_reader",
+   "handoff_id": "handoff_3103beb1bfa24e08",
+   "objective": "Audit reading provenance and decide whether innovation planning may proceed.",
+   "project_id": "litalpha",
+   "run_id": "run_5e60708b0ed84ee7",
+   "to_agent": "reviewer"
+  }
+ },
+ {
+  "actor": "reviewer",
+  "created_at": "2026-09-15T15:38:58.395702+00:00",
+  "event_id": "event_4d3cccd4c6894bbc",
+  "event_type": "handoff.accepted",
+  "payload": {
+   "handoff_id": "handoff_3103beb1bfa24e08",
+   "receiver": "reviewer"
+  }
+ },
+ {
+  "actor": "gate_service",
+  "created_at": "2026-09-15T15:38:58.406634+00:00",
+  "event_id": "event_79386af40a3e4b2c",
+  "event_type": "gate.evaluated",
+  "payload": {
+   "created_at": "2026-09-15T15:38:58.405540Z",
+   "decision_id": "gate_6ade0a91999d4ff6",
+   "independent_sources": 3,
+   "operation": "promote_reading_to_innovation_planning",
+   "project_id": "litalpha",
+   "qualifying_evidence_ids": [
+    "ev_942cd5dda8f043a7",
+    "ev_966de25a265242a5",
+    "ev_c63bf4b8681a4569"
+   ],
+   "reasons": [
+    "all deterministic evidence and closure requirements passed"
+   ],
+   "risk_level": "L2",
+   "score": 35,
+   "status": "pass"
+  }
+ },
+ {
+  "actor": "reviewer",
+  "created_at": "2026-09-15T15:38:58.410426+00:00",
+  "event_id": "event_bd555ff9e4c24cbf",
+  "event_type": "handoff.issued",
+  "payload": {
+   "artifact_refs": [],
+   "bounded_context": "gate=gate_6ade0a91999d4ff6; score=35",
+   "constraints": [
+    "Gate authorizes planning only",
+    "It does not establish novelty or positive results"
+   ],
+   "created_at": "2026-09-15T15:38:58.407547Z",
+   "evidence_ids": [
+    "ev_942cd5dda8f043a7",
+    "ev_966de25a265242a5",
+    "ev_c63bf4b8681a4569"
+   ],
+   "expected_output": "Execution-planned state and writer handoff.",
+   "from_agent": "reviewer",
+   "handoff_id": "handoff_5a220bc7aaf14beb",
+   "objective": "Materialize the accepted hypothesis as execution and writing work.",
+   "project_id": "litalpha",
+   "run_id": "run_5e60708b0ed84ee7",
+   "to_agent": "orchestrator"
+  }
+ },
+ {
+  "actor": "orchestrator",
+  "created_at": "2026-09-15T15:38:58.411706+00:00",
+  "event_id": "event_61be07868c71481d",
+  "event_type": "handoff.accepted",
+  "payload": {
+   "handoff_id": "handoff_5a220bc7aaf14beb",
+   "receiver": "orchestrator"
+  }
+ },
+ {
+  "actor": "orchestrator",
+  "created_at": "2026-09-15T15:38:58.413005+00:00",
+  "event_id": "event_bbd77e5ae57c4858",
+  "event_type": "handoff.issued",
+  "payload": {
+   "artifact_refs": [],
+   "bounded_context": "idea=Grade the evidence behind an automated literature review claim.; papers=2; reading_cards=2",
+   "constraints": [
+    "No fabricated metrics",
+    "Innovation remains a hypothesis until L3 gate passes",
+    "Missing results must stay explicit"
+   ],
+   "created_at": "2026-09-15T15:38:58.411965Z",
+   "evidence_ids": [
+    "ev_942cd5dda8f043a7",
+    "ev_966de25a265242a5",
+    "ev_c63bf4b8681a4569",
+    "ev_2ce27db1aeda41ac",
+    "ev_5ba65f4951524566",
+    "ev_89637ec5948042a4",
+    "ev_91334cc139c24bb0"
+   ],
+   "expected_output": "Local manuscript artifact with evidence IDs and unresolved gaps.",
+   "from_agent": "orchestrator",
+   "handoff_id": "handoff_4e8eab033da3433a",
+   "objective": "Create an internal evidence-bound manuscript draft and expose all missing execution results.",
+   "project_id": "litalpha",
+   "run_id": "run_5e60708b0ed84ee7",
+   "to_agent": "writer"
+  }
+ },
+ {
+  "actor": "writer",
+  "created_at": "2026-09-15T15:38:58.414185+00:00",
+  "event_id": "event_8629fb4f74704352",
+  "event_type": "handoff.accepted",
+  "payload": {
+   "handoff_id": "handoff_4e8eab033da3433a",
+   "receiver": "writer"
+  }
+ },
+ {
+  "actor": "writer",
+  "created_at": "2026-09-15T15:38:58.428944+00:00",
+  "event_id": "event_b7de9c4dd5594faf",
+  "event_type": "manuscript.drafted",
+  "payload": {
+   "manuscript_id": "manuscript_e96e09883e4b45dd",
+   "unresolved_gaps": [
+    "缺少可追溯实验结果；Results 只能保留待填占位，不得声称性能提升。"
+   ]
+  }
+ },
+ {
+  "actor": "writer",
+  "created_at": "2026-09-15T15:38:58.430528+00:00",
+  "event_id": "event_584d9c43ca66496c",
+  "event_type": "handoff.issued",
+  "payload": {
+   "artifact_refs": [
+    {
+     "artifact_id": "manuscript_e96e09883e4b45dd",
+     "checksum": null,
+     "kind": "manuscript",
+     "summary": "gaps=1",
+     "uri": "paper-projects/litalpha/05_writing/MANUSCRIPT_DRAFT.md"
+    }
+   ],
+   "bounded_context": "sections=10",
+   "constraints": [
+    "A readable draft is not equivalent to a validated paper result",
+    "Any unresolved result gap blocks manuscript-ready status"
+   ],
+   "created_at": "2026-09-15T15:38:58.429569Z",
+   "evidence_ids": [
+    "ev_942cd5dda8f043a7",
+    "ev_966de25a265242a5",
+    "ev_c63bf4b8681a4569",
+    "ev_2ce27db1aeda41ac",
+    "ev_5ba65f4951524566",
+    "ev_89637ec5948042a4",
+    "ev_91334cc139c24bb0"
+   ],
+   "expected_output": "Review report and deterministic L3 gate decision.",
+   "from_agent": "writer",
+   "handoff_id": "handoff_e4d6e7d3c67f4719",
+   "objective": "Audit manuscript claims, evidence lineage, gaps, and release readiness.",
+   "project_id": "litalpha",
+   "run_id": "run_5e60708b0ed84ee7",
+   "to_agent": "reviewer"
+  }
+ },
+ {
+  "actor": "reviewer",
+  "created_at": "2026-09-15T15:38:58.431924+00:00",
+  "event_id": "event_3910b3ad24d9464d",
+  "event_type": "handoff.accepted",
+  "payload": {
+   "handoff_id": "handoff_e4d6e7d3c67f4719",
+   "receiver": "reviewer"
+  }
+ },
+ {
+  "actor": "gate_service",
+  "created_at": "2026-09-15T15:38:58.447284+00:00",
+  "event_id": "event_fe68444554ae4c8e",
+  "event_type": "gate.evaluated",
+  "payload": {
+   "created_at": "2026-09-15T15:38:58.445330Z",
+   "decision_id": "gate_7856071305234f63",
+   "independent_sources": 3,
+   "operation": "mark_manuscript_evidence_complete",
+   "project_id": "litalpha",
+   "qualifying_evidence_ids": [
+    "ev_942cd5dda8f043a7",
+    "ev_966de25a265242a5",
+    "ev_c63bf4b8681a4569"
+   ],
+   "reasons": [
+    "evidence score 35 is below required 75",
+    "required work and result lineage are not closed loop"
+   ],
+   "risk_level": "L3",
+   "score": 35,
+   "status": "revise"
+  }
+ },
+ {
+  "actor": "application",
+  "created_at": "2026-09-15T15:38:58.450717+00:00",
+  "event_id": "event_1585c3d8ca3a4c32",
+  "event_type": "run.checkpointed",
+  "payload": {
+   "lifecycle_state": "waiting_evidence",
+   "run_id": "run_5e60708b0ed84ee7",
+   "status": "blocked"
+  }
+ },
+ {
+  "actor": "user",
+  "created_at": "2026-09-15T15:38:58.454659+00:00",
+  "event_id": "event_5ccec66cc1084255",
+  "event_type": "evidence.added",
+  "payload": {
+   "checksum": null,
+   "claim": "A named human expert judged the candidate method reproducible.",
+   "created_at": "2026-09-15T15:38:58.453125Z",
+   "evidence_id": "ev_3ea5d9bba5c14b8a",
+   "evidence_type": "human",
+   "grade": "H3",
+   "independent_source": "human-expert:review-board",
+   "locator": "review board minutes, item 4",
+   "metadata": {},
+   "project_id": "litalpha",
+   "source_id": null,
+   "source_uri": "https://example.org/h3",
+   "supersedes": null,
+   "title": "Human expert assessment of the candidate method",
+   "valid": true
+  }
+ },
+ {
+  "actor": "user",
+  "created_at": "2026-09-15T15:38:58.457072+00:00",
+  "event_id": "event_7fdaa4a9deaa464d",
+  "event_type": "evidence.added",
+  "payload": {
+   "checksum": null,
+   "claim": "The candidate method reproduced its reported metric on a rerun.",
+   "created_at": "2026-09-15T15:38:58.455452Z",
+   "evidence_id": "ev_e9589300f647424e",
+   "evidence_type": "experiment",
+   "grade": "E3",
+   "independent_source": "experiment:local-rerun",
+   "locator": "run receipt 2026-09-15/rerun",
+   "metadata": {},
+   "project_id": "litalpha",
+   "source_id": null,
+   "source_uri": "https://example.org/e3",
+   "supersedes": null,
+   "title": "Closed-loop rerun receipt for the candidate method",
+   "valid": true
+  }
+ },
+ {
+  "actor": "user",
+  "created_at": "2026-09-15T15:38:58.460273+00:00",
+  "event_id": "event_14ff9bca42134701",
+  "event_type": "evidence.added",
+  "payload": {
+   "checksum": null,
+   "claim": "The cited baseline reports the metric the candidate claims to improve.",
+   "created_at": "2026-09-15T15:38:58.457956Z",
+   "evidence_id": "ev_52f5619c07534fb9",
+   "evidence_type": "paper",
+   "grade": "E2",
+   "independent_source": "paper:baseline-2022",
+   "locator": "baseline paper, table 2",
+   "metadata": {},
+   "project_id": "litalpha",
+   "source_id": null,
+   "source_uri": "https://example.org/e2",
+   "supersedes": null,
+   "title": "Peer-reviewed baseline comparison",
+   "valid": true
+  }
+ },
+ {
+  "actor": "user",
+  "created_at": "2026-09-15T15:38:58.462564+00:00",
+  "event_id": "event_916277feda0845fe",
+  "event_type": "evidence.added",
+  "payload": {
+   "checksum": null,
+   "claim": "Internal knowledge records the E0-H3 grading scale used by the gate.",
+   "created_at": "2026-09-15T15:38:58.461203Z",
+   "evidence_id": "ev_a2ef425a1a8d4995",
+   "evidence_type": "knowledge",
+   "grade": "E1",
+   "independent_source": "knowledge:grading-scale",
+   "locator": "knowledge page, section 3",
+   "metadata": {},
+   "project_id": "litalpha",
+   "source_id": null,
+   "source_uri": "https://example.org/e1",
+   "supersedes": null,
+   "title": "Internal knowledge page on evidence grading",
+   "valid": true
+  }
+ },
+ {
+  "actor": "execution_service",
+  "created_at": "2026-09-15T15:38:58.465916+00:00",
+  "event_id": "event_ec9f41c68ce54f91",
+  "event_type": "work_package.updated",
+  "payload": {
+   "evidence_ids": [],
+   "status": "blocked",
+   "work_package_id": "wp_6646b59e63304021"
+  }
+ },
+ {
+  "actor": "execution_service",
+  "created_at": "2026-09-15T15:38:58.469786+00:00",
+  "event_id": "event_1b4013d5f2784b26",
+  "event_type": "work_package.updated",
+  "payload": {
+   "evidence_ids": [
+    "ev_3ea5d9bba5c14b8a"
+   ],
+   "status": "completed",
+   "work_package_id": "wp_93fe6c657b494163"
+  }
+ },
+ {
+  "actor": "l08-demo",
+  "created_at": "2026-09-15T15:38:58.527184+00:00",
+  "event_id": "event_b049e06cbad946b4",
+  "event_type": "evidence.invalidated",
+  "payload": {
+   "actor": "l08-demo",
+   "evidence_id": "ev_a2ef425a1a8d4995",
+   "reason": "panel M13-07 retraction: source could not be re-verified",
+   "valid": false
+  }
+ }
+]

@@ -1,0 +1,107 @@
+[
+ {
+  "acceptance_checks": [
+   "no invented records",
+   "each card has evidence IDs"
+  ],
+  "dependencies": [],
+  "evidence_ids": [],
+  "expected_artifacts": [
+   "search ledger",
+   "paper records",
+   "reading cards"
+  ],
+  "notes": [],
+  "objective": "Search, deduplicate, read, and compare relevant papers.",
+  "project_id": "nolit",
+  "status": "planned",
+  "tasks": [
+   "Run registered queries",
+   "Create reading cards",
+   "Audit locators"
+  ],
+  "title": "WP1 Literature evidence",
+  "work_package_id": "wp_a0b7ac90e6da4a94"
+ },
+ {
+  "acceptance_checks": [
+   "clean install",
+   "reproducible command",
+   "version captured"
+  ],
+  "dependencies": [
+   "WP1 Literature evidence"
+  ],
+  "evidence_ids": [],
+  "expected_artifacts": [
+   "source revision",
+   "environment manifest",
+   "run command"
+  ],
+  "notes": [],
+  "objective": "Turn the candidate contribution into a reproducible implementation.",
+  "project_id": "nolit",
+  "status": "planned",
+  "tasks": [
+   "Define interfaces",
+   "Implement baseline",
+   "Implement candidate method"
+  ],
+  "title": "WP2 Method and implementation",
+  "work_package_id": "wp_3ecbf19288494821"
+ },
+ {
+  "acceptance_checks": [
+   "lineage complete",
+   "no hand-entered result claims"
+  ],
+  "dependencies": [
+   "WP2 Method and implementation"
+  ],
+  "evidence_ids": [],
+  "expected_artifacts": [
+   "run manifests",
+   "raw outputs",
+   "analysis tables"
+  ],
+  "notes": [],
+  "objective": "Test the candidate against baselines and falsification criteria.",
+  "project_id": "nolit",
+  "status": "planned",
+  "tasks": [
+   "Register metrics",
+   "Run baselines",
+   "Run ablations",
+   "Record failures"
+  ],
+  "title": "WP3 Evaluation",
+  "work_package_id": "wp_60cda7f15f6d49de"
+ },
+ {
+  "acceptance_checks": [
+   "all claims traceable",
+   "unresolved gaps visible"
+  ],
+  "dependencies": [
+   "WP1 Literature evidence",
+   "WP3 Evaluation"
+  ],
+  "evidence_ids": [],
+  "expected_artifacts": [
+   "manuscript draft",
+   "review report"
+  ],
+  "notes": [],
+  "objective": "Draft and review only evidence-supported statements.",
+  "project_id": "nolit",
+  "status": "planned",
+  "tasks": [
+   "Outline",
+   "Draft",
+   "Evidence audit",
+   "Revise"
+  ],
+  "title": "WP4 Manuscript",
+  "work_package_id": "wp_d12c3b8f9e614516"
+ }
+]

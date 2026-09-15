@@ -1,0 +1,50 @@
+{
+ "interrupts": [],
+ "project_id": "nolit",
+ "run_id": "run_5747fc9a5c95496f",
+ "state": {
+  "blockers": [
+   "No real paper records are available for reading."
+  ],
+  "diagnostics": [
+   "Network search is disabled; only user-supplied seed papers were processed.",
+   "No papers were found; downstream reading is blocked instead of inventing records.",
+   "Network search is disabled; only user-supplied seed papers were processed.",
+   "No papers were found; downstream reading is blocked instead of inventing records.",
+   "Network search is disabled; only user-supplied seed papers were processed.",
+   "No papers were found; downstream reading is blocked instead of inventing records."
+  ],
+  "evidence_ids": [
+   "ev_c86d61ec9d954fbf"
+  ],
+  "gate_decision_ids": [],
+  "handoff": null,
+  "idea": "Run with no seed papers, so the pipeline blocks instead of inventing.",
+  "innovation_ids": [],
+  "last_agent": "paper_search",
+  "lifecycle_state": "waiting_evidence",
+  "manuscript_id": null,
+  "paper_ids": [],
+  "project_id": "nolit",
+  "reading_card_ids": [],
+  "request_release": false,
+  "review_ids": [],
+  "run_id": "run_5747fc9a5c95496f",
+  "run_status": "blocked",
+  "schema_version": 1,
+  "search_queries": [
+   "Run with no seed papers so the pipeline blocks instead of inventing",
+   "Run with no seed papers so the pipeline blocks instead of inventing systematic review",
+   "Run with no seed papers so the pipeline blocks instead of inventing benchmark evaluation"
+  ],
+  "seed_papers": [],
+  "updated_at": "2026-09-15T15:38:58.519493Z",
+  "work_package_ids": [
+   "wp_a0b7ac90e6da4a94",
+   "wp_3ecbf19288494821",
+   "wp_60cda7f15f6d49de",
+   "wp_d12c3b8f9e614516"
+  ]
+ },
+ "status": "blocked"
+}

@@ -1,0 +1,73 @@
+{
+ "panel_id": "approval",
+ "project_id": "bare",
+ "sections": [
+  {
+   "facts": {
+    "run_resolution": "unresolved"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "审批范围 / scope",
+   "unknown_reason": "endpoint payload not available to the panel: GET /runs/{run_id} (run resolution: unresolved)",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "gap": "G-6 RiskLevel only readable via gate.evaluated"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "风险等级 / risk level",
+   "unknown_reason": "no pending interrupt and no gate.evaluated event: RiskLevel is not exposed by any other read endpoint",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "evidence_count": "0",
+    "grades": "none",
+    "h3_count": "0",
+    "note": "H3 = human-graded; claim text is not copied (K14-2)",
+    "qualifying_evidence_count": "0",
+    "valid_count": "0"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "支撑证据 / backing evidence",
+   "unknown_reason": "no evidence recorded, so no evidence backs any approval request",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {},
+   "refs": [
+    "bare"
+   ],
+   "title": "待人工决策 / pending human decision",
+   "unknown_reason": "endpoint payload not available to the panel: GET /runs/{run_id}",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "actors": "none",
+    "attribution": "approve -> evidence.added(human,H3,actor=reviewer); reject -> gate.evaluated(operation=external_manuscript_release); retract -> evidence.invalidated",
+    "decision_event_types": "none",
+    "human_decision_count": "0"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "审批历史 / approval history",
+   "unknown_reason": "no human approve / reject / retract decision is recorded for this project (looked for evidence.invalidated, evidence.added with evidence_type=human, and gate.evaluated on external_manuscript_release)",
+   "verification_state": "unverified",
+   "verified": false
+  }
+ ],
+ "verification_state": "unverified"
+}

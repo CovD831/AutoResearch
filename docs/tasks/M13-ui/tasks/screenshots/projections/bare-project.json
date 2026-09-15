@@ -1,0 +1,95 @@
+{
+ "panel_id": "project",
+ "project_id": "bare",
+ "sections": [
+  {
+   "facts": {
+    "run_resolution": "unresolved"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "阶段 / stage",
+   "unknown_reason": "endpoint payload not available to the panel: GET /runs/{run_id} (run resolution: unresolved)",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "gate_decision_count": "0"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "Gate 裁决 / gate decisions",
+   "unknown_reason": "no gate.evaluated event in the audit log: the project has not reached a gate decision yet, or the decision was never persisted",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "grades": "none",
+    "invalid_count": "0",
+    "resolved_ref_count": "0",
+    "state_evidence_ref_count": "0",
+    "store_evidence_count": "0"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "证据覆盖 / evidence coverage",
+   "unknown_reason": "no evidence recorded for this project: ResearchState.evidence_ids is empty and GET /projects/{id}/evidence returned []",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "handoff_accepted": "0",
+    "handoff_issued": "0",
+    "source": "audit:handoff.issued,audit:handoff.accepted",
+    "state_handoff_present": "false"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "handoff",
+   "unknown_reason": "no handoff.issued / handoff.accepted event in the audit log and ResearchState.handoff is null",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "status_blocked": "0",
+    "status_completed": "0",
+    "status_in_progress": "0",
+    "status_planned": "0",
+    "work_package_count": "0"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "任务 / work packages",
+   "unknown_reason": "no work packages recorded for this project",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "blocked_work_package_count": "0",
+    "blocker_count": "0",
+    "diagnostic_count": "0",
+    "lifecycle_state": "unknown",
+    "read_scope": "work-packages-only",
+    "run_status": "unknown"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "阻塞 / blockers",
+   "unknown_reason": "ResearchState is not readable (no run for this project), so blockers/diagnostics were never read; only the 0 work package(s) could be checked and none is blocked",
+   "verification_state": "unverified",
+   "verified": false
+  }
+ ],
+ "verification_state": "unverified"
+}
