@@ -24,6 +24,7 @@ from autoresearch.contracts import (
     EvidenceItem,
     EvolutionProposal,
     ExperienceRecord,
+    ExperienceStage,
     Manuscript,
     ManuscriptRevisionRequest,
     ProjectCreate,
@@ -398,6 +399,14 @@ class AutoResearchApplication:
         return self.profile.record(item)
 
     def record_experience(self, item: ExperienceRecord) -> ExperienceRecord:
+        if item.promoted:
+            raise PermissionError(
+                "experience creation cannot set promoted=True; use the promote endpoint"
+            )
+        if item.stage is not ExperienceStage.X0_RAW:
+            raise PermissionError(
+                "experience creation must use stage=x0_raw; use the promotion workflow"
+            )
         return self.experiences.record(item)
 
     def settle_failure_experiences(self, project_id: str) -> SinkSettlement:

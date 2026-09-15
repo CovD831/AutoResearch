@@ -84,4 +84,8 @@ knowledge/search 参数：q、partitions、level、limit、require_evidence。
 | POST | /evolution/proposals | 生成 proposal-only 提案 |
 | POST | /evolution/proposals/{id}/review | 记录审核状态 |
 
+`POST /experiences` 只创建未晋级的 `x0_raw` 原始经验。请求中的 `promoted=true`
+或非 `x0_raw` 的 `stage` 会被拒绝（HTTP 409）；经验晋级必须通过
+`POST /experiences/{id}/promote`。
+
 approved_for_manual_application 不代表系统已经修改任何代码或策略。
