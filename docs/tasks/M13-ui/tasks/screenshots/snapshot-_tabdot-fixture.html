@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>AutoResearch M13 · tab-dot rendering fixture (synthetic)</title>
+<style>
+/* AutoResearch M13 panels -- no framework, no build step.
+ *
+ * The three verification states must be distinguishable without relying on
+ * colour alone: each state gets its own glyph, word, and border style, so a
+ * reader who cannot separate the hues still sees which sections are unfinished.
+ * There is deliberately NO "grey / 暂无" style: a non-verified section always
+ * renders its unknown_reason inline.
+ */
+
+:root {
+  --ink: #16181d;
+  --ink-soft: #5b6270;
+  --line: #d7dbe3;
+  --line-strong: #b3bac7;
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --verified: #146c43;
+  --verified-bg: #e6f4ec;
+  --unverified: #8a5300;
+  --unverified-bg: #fdf1dc;
+  --blocked: #a11a2b;
+  --blocked-bg: #fbe7ea;
+  --accent: #1f4fa8;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+}
+
+code { font-family: var(--mono); font-size: .92em; }
+
+/* ---------------------------------------------------------------- top bar */
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 18px 24px;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+.topbar h1 { margin: 0; font-size: 19px; letter-spacing: -.01em; }
+.topbar__sub { margin: 4px 0 0; color: var(--ink-soft); font-size: 13px; }
+.topbar__controls { display: flex; gap: 10px; align-items: flex-end; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field__label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+.field__input {
+  font: 13px/1.4 var(--mono);
+  padding: 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  min-width: 190px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.btn {
+  font: 600 13px/1 inherit;
+  padding: 9px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { border-color: var(--ink-soft); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn--approve { background: var(--verified-bg); border-color: var(--verified); color: var(--verified); }
+.btn--reject { background: var(--blocked-bg); border-color: var(--blocked); color: var(--blocked); }
+.btn--retract { background: #fff; border-color: var(--unverified); color: var(--unverified); }
+
+/* ---------------------------------------------------------------- banners */
+
+.banner {
+  margin: 14px 24px 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  border: 1px solid;
+}
+.banner--contract { background: #eef2fb; border-color: #c3d0ea; color: #22355c; }
+.banner--snapshot { background: #fdf1dc; border-color: #e3c48d; color: #6b4100; }
+
+/* ------------------------------------------------------------------- tabs */
+
+.tabs { display: flex; gap: 6px; padding: 16px 24px 0; flex-wrap: wrap; }
+.tab {
+  font: 600 13.5px/1 inherit;
+  padding: 9px 15px;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: #eceef2;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.tab[aria-selected="true"] { background: var(--card); color: var(--ink); border-color: var(--line-strong); }
+.tab__dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+.tab__dot--verified { background: var(--verified); }
+.tab__dot--unverified { background: var(--unverified); }
+.tab__dot--blocked { background: var(--blocked); }
+
+/* ----------------------------------------------------------------- legend */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 12px 24px;
+  margin: 0 24px;
+  border: 1px solid var(--line-strong);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  background: var(--card);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.legend__item { display: flex; align-items: center; gap: 8px; }
+
+/* ----------------------------------------------------------------- panels */
+
+.panels { padding: 18px 24px 40px; display: grid; gap: 16px; }
+.placeholder { color: var(--ink-soft); }
+
+.panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.panel__title { margin: 0; font-size: 16px; }
+.panel__meta { font: 12px/1.5 var(--mono); color: var(--ink-soft); }
+
+.section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left-width: 5px;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.section--verified { border-left-color: var(--verified); }
+.section--unverified { border-left-color: var(--unverified); }
+.section--blocked { border-left-color: var(--blocked); }
+/* A verification_state outside K14's three literals. Rendered as its own state
+ * so the renderer never launders a contract violation into a real one. */
+.section--invalid { border-left-color: var(--ink); border-left-style: dashed; }
+
+.section__head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.section__title { margin: 0; font-size: 14.5px; }
+
+/* state chip: glyph + word, so colour is not the only channel */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 11.5px/1 var(--mono);
+  letter-spacing: .04em;
+  padding: 5px 9px;
+  border-radius: 5px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.chip--verified { color: var(--verified); background: var(--verified-bg); border-color: var(--verified); border-style: solid; }
+.chip--unverified { color: var(--unverified); background: var(--unverified-bg); border-color: var(--unverified); border-style: dashed; }
+.chip--blocked { color: var(--blocked); background: var(--blocked-bg); border-color: var(--blocked); border-style: double; }
+.chip--invalid { color: var(--ink); background: #eceef3; border-color: var(--ink); border-style: dashed; }
+.chip__glyph { font-size: 12.5px; }
+
+/* the reason is ALWAYS inline, never a tooltip or title attribute */
+.reason {
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  border-radius: 6px;
+  font-size: 13px;
+  border: 1px dashed;
+}
+.reason--unverified { background: var(--unverified-bg); border-color: var(--unverified); color: #6b4100; }
+.reason--blocked { background: var(--blocked-bg); border-color: var(--blocked); color: #7d1422; }
+.reason--invalid { background: #eceef3; border-color: var(--ink); color: var(--ink); }
+.reason__label { font-weight: 700; margin-right: 6px; }
+
+.facts { display: grid; grid-template-columns: minmax(140px, max-content) 1fr; gap: 3px 14px; margin: 12px 0 0; font-size: 13px; }
+.facts dt { color: var(--ink-soft); font-family: var(--mono); font-size: 12px; }
+.facts dd { margin: 0; font-family: var(--mono); font-size: 12.5px; word-break: break-word; }
+
+.refs { margin: 12px 0 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.refs__label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
+.ref {
+  font: 12px/1 var(--mono);
+  padding: 4px 7px;
+  background: #eceef3;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: #303540;
+}
+.refs__more { font-size: 12px; color: var(--ink-soft); }
+
+/* ------------------------------------------------------- M13-07 interaction */
+
+.actions {
+  margin: 16px 0 0;
+  border-top: 1px dashed var(--line-strong);
+  padding-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+.actions__row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.actions__hint { font-size: 12.5px; color: var(--ink-soft); margin: 0; }
+.actions__endpoint { font: 11.5px/1.4 var(--mono); color: var(--ink-soft); }
+.actions__result {
+  margin: 0;
+  font: 12.5px/1.5 var(--mono);
+  padding: 9px 11px;
+  border-radius: 6px;
+  border: 1px solid var(--line-strong);
+  background: #f2f4f7;
+  white-space: pre-wrap;
+}
+.actions__result--ok { border-color: var(--verified); background: var(--verified-bg); color: #0f5132; }
+.actions__result--err { border-color: var(--blocked); background: var(--blocked-bg); color: #7d1422; }
+
+/* -------------------------------------------------------------------- foot */
+
+.foot { padding: 0 24px 40px; color: var(--ink-soft); font-size: 12px; }
+.foot p { margin: 3px 0; }
+
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar__id">
+    <h1>AutoResearch · M13 面板</h1>
+    <p class="topbar__sub"><strong>渲染夹具（合成数据，不是项目数据）</strong> · project_id=<code>_rendering-fixture</code></p>
+  </div>
+  <div class="topbar__controls">
+    <label class="field">
+      <span class="field__label">project_id</span>
+      <input id="project-input" class="field__input" type="text" value="_rendering-fixture" disabled>
+    </label>
+    <button id="load-btn" class="btn btn--primary" type="button" disabled>载入</button>
+  </div>
+</header>
+
+<div id="snapshot-note" class="banner banner--snapshot" role="note">
+<strong>这是渲染夹具，不是真实项目快照。</strong>
+  用途：<strong>证明四个 tab 状态点按真实投影状态着色，且 <code>verified</code> 与
+  <code>INVALID-STATE</code> 两条路径可达</strong>。为什么需要它：在当前离线环境下，
+  三个真实项目的 12 个面板<strong>没有任何一个</strong>整体达到 <code>verified</code>
+  （实测 7 unverified + 5 blocked + 0 verified），因此 tab 点的第三态
+  <strong>无法用真实数据截图</strong>。下面 4 个面板的状态依次是
+  <code>verified</code> / <code>unverified</code> / <code>blocked</code> /
+  故意畸形的 <code>weird-state</code>（用于验证渲染器不会把它伪装成三态之一）。
+</div>
+
+<div class="banner banner--contract" role="note">
+  <strong>面板不得把未完成写成完成</strong>（M13-04 / L1 §4.2 A5）。
+  每个 section 都带一个 <code>verification_state</code>；非 verified 的 section
+  <strong>必须内联显示原因</strong>，不使用「灰色 / 暂无」这类无法区分
+  <code>unverified</code> 与 <code>blocked</code> 的写法。
+</div>
+
+<nav id="tabs" class="tabs" aria-label="面板"></nav>
+<div id="legend" class="legend"></div>
+<main id="panels" class="panels"><p class="placeholder">正在载入…</p></main>
+
+<footer class="foot">
+<p>夹具由 <code>web/dev/build_snapshots.py</code> 生成；投影内容为合成，仅用于像素级核对渲染器行为。</p>
+</footer>
+
+<script id="panel-payload">
+window.__PANEL_SNAPSHOT__ = {"initial": "project", "fixture": true, "panels": {"project": {"panel_id": "project", "sections": [{"title": "夹具段 A / fixture section (verified)", "refs": ["fix_ref_a"], "verified": true, "unknown_reason": null, "verification_state": "verified", "facts": {"fixture": "true"}}], "verification_state": "verified", "project_id": "_rendering-fixture (SYNTHETIC -- not project data)"}, "evidence": {"panel_id": "evidence", "sections": [{"title": "夹具段 B / fixture section (unverified)", "refs": ["fix_ref_b"], "verified": false, "unknown_reason": "fixture: synthetic reason for an unverified section", "verification_state": "unverified", "facts": {}}], "verification_state": "unverified", "project_id": "_rendering-fixture (SYNTHETIC -- not project data)"}, "files": {"panel_id": "files", "sections": [{"title": "夹具段 C / fixture section (blocked)", "refs": ["fix_ref_c"], "verified": false, "unknown_reason": "fixture: synthetic reason for a blocked section", "verification_state": "blocked", "facts": {}}], "verification_state": "blocked", "project_id": "_rendering-fixture (SYNTHETIC -- not project data)"}, "approval": {"panel_id": "approval", "project_id": "_rendering-fixture (SYNTHETIC -- not project data)", "verification_state": "weird-state", "sections": [{"title": "夹具段 D / malformed section (verification_state=weird-state)", "refs": [], "verified": false, "unknown_reason": "fixture: deliberately malformed state to test the renderer guard", "verification_state": "weird-state", "facts": {"fixture": "true"}}]}}};
+</script>
+<script id="panel-app">
+/* AutoResearch M13 panel renderer.
+ *
+ * Two modes, one code path:
+ *   live      -- GET /ui/panels/{panel_id}?project_id=... (BFF over the 24 endpoints)
+ *   snapshot  -- window.__PANEL_SNAPSHOT__ inlined by web/dev/build_snapshots.py
+ *
+ * The renderer never derives a status of its own and never fills a gap: if a
+ * section is not `verified` it prints the backend's `unknown_reason` verbatim.
+ * There is no code path that renders a "grey / 暂无" placeholder, because that
+ * would collapse `unverified` and `blocked` into one indistinguishable look
+ * (M13-04 / L1 §4.2 A5).
+ *
+ * Two spots used to break that rule and were fixed after adversarial review
+ * (L3 §9.2): the tab status dot was hardcoded to `unverified` for every panel,
+ * and `stateOf()` coerced any unrecognised `verification_state` to `unverified`.
+ * Both were the renderer inventing a status. Now:
+ *   * a tab dot is rendered only for a state the projection actually carries,
+ *     and it is written from the same value the panel header chip uses;
+ *   * an unrecognised state is rendered as `INVALID-STATE`, never as one of the
+ *     three real states.
+ */
+(function () {
+  "use strict";
+
+  var SNAPSHOT = window.__PANEL_SNAPSHOT__ || null;
+  var API_BASE = window.__API_BASE__ || "/api";
+
+  var STATE_LABEL = {
+    verified: { glyph: "\u2713", word: "VERIFIED", note: "数据已解析并核对" },
+    unverified: { glyph: "?", word: "UNVERIFIED", note: "无法解析 —— 原因见下" },
+    blocked: { glyph: "\u2717", word: "BLOCKED", note: "被上游依赖阻塞 —— 原因见下" }
+  };
+
+  //: Any value outside K14's three literals. Rendered as its own label so the
+  //: renderer never launders a contract violation into a legitimate state.
+  var INVALID_STATE = "invalid";
+  STATE_LABEL[INVALID_STATE] = {
+    glyph: "!",
+    word: "INVALID-STATE",
+    note: "投影带了 K14 三态以外的取值 —— 契约违规，按未验证处理"
+  };
+
+  //: tab dot class per state. Deliberately has NO entry for INVALID_STATE: an
+  //: unrecognised state gets no dot rather than a wrong-coloured one.
+  var TAB_DOT_CLASS = {
+    verified: "tab__dot--verified",
+    unverified: "tab__dot--unverified",
+    blocked: "tab__dot--blocked"
+  };
+
+  var PANEL_TITLES = {
+    project: "研究项目",
+    evidence: "证据与审核",
+    files: "项目文件夹",
+    approval: "人工审批"
+  };
+
+  var REFS_SHOWN = 12;
+
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined && text !== null) node.textContent = String(text);
+    return node;
+  }
+
+  //: Map a raw `verification_state` to a render key. This is a *rename*, not a
+  //: default: an unknown value becomes INVALID_STATE and is therefore visibly
+  //: not one of the three real states.
+  function stateOf(value) {
+    return STATE_LABEL[value] && value !== INVALID_STATE ? value : INVALID_STATE;
+  }
+
+  function chip(state) {
+    var key = stateOf(state);
+    var meta = STATE_LABEL[key];
+    var node = el("span", "chip chip--" + key + (key === INVALID_STATE ? " chip--invalid" : ""));
+    node.appendChild(el("span", "chip__glyph", meta.glyph));
+    node.appendChild(el("span", "chip__word", meta.word));
+    node.setAttribute("aria-label", meta.word + " — " + meta.note);
+    return node;
+  }
+
+  function renderSection(section) {
+    var state = stateOf(section.verification_state);
+    var wrap = el("section", "section section--" + state);
+
+    var head = el("div", "section__head");
+    head.appendChild(el("h3", "section__title", section.title));
+    head.appendChild(chip(state));
+    wrap.appendChild(head);
+
+    // K14-3: the reason is inline and verbatim. Never a tooltip, never omitted.
+    if (state !== "verified") {
+      var reason = el("p", "reason reason--" + state);
+      var label = state === "blocked" ? "阻塞原因"
+        : state === INVALID_STATE ? "契约违规" : "未验证原因";
+      reason.appendChild(el("span", "reason__label", label));
+      reason.appendChild(document.createTextNode(
+        section.unknown_reason || "(缺少 unknown_reason — 契约违规)"
+      ));
+      wrap.appendChild(reason);
+    }
+
+    var keys = Object.keys(section.facts || {});
+    if (keys.length) {
+      var dl = el("dl", "facts");
+      keys.forEach(function (key) {
+        dl.appendChild(el("dt", null, key));
+        dl.appendChild(el("dd", null, section.facts[key]));
+      });
+      wrap.appendChild(dl);
+    }
+
+    var refs = section.refs || [];
+    if (refs.length) {
+      var box = el("div", "refs");
+      box.appendChild(el("span", "refs__label", "refs (" + refs.length + ")"));
+      refs.slice(0, REFS_SHOWN).forEach(function (ref) {
+        box.appendChild(el("code", "ref", ref));
+      });
+      if (refs.length > REFS_SHOWN) {
+        box.appendChild(el("span", "refs__more", "+" + (refs.length - REFS_SHOWN) + " more"));
+      }
+      wrap.appendChild(box);
+    }
+    return wrap;
+  }
+
+  // -------------------------------------------------------------- M13-07
+
+  function factLookup(projection, needle, key) {
+    var hit = (projection.sections || []).filter(function (s) {
+      return s.title.indexOf(needle) >= 0;
+    })[0];
+    return hit ? (hit.facts || {})[key] : undefined;
+  }
+
+  function evidenceRefs(projection) {
+    var hit = (projection.sections || []).filter(function (s) {
+      return s.title.indexOf("backing evidence") >= 0 || s.title.indexOf("证据项") >= 0;
+    })[0];
+    return hit ? (hit.refs || []).filter(function (r) { return r.indexOf("ev_") === 0; }) : [];
+  }
+
+  function renderActions(projection) {
+    var box = el("div", "actions");
+    box.appendChild(el("p", "actions__hint", "M13-07 人工审批与打回 —— 每次写入都落到既有端点并写审计"));
+
+    var frozen = !!SNAPSHOT;
+    if (frozen) {
+      box.appendChild(el("p", "actions__result",
+        "静态快照模式：控件按真实状态渲染，但已禁用（页面通过 file:// 打开，没有可写的 API 源）。"));
+    }
+
+    var runId = factLookup(projection, "pending human decision", "run_id");
+    var pending = factLookup(projection, "pending human decision", "pending") === "true";
+    var ev = evidenceRefs(projection);
+
+    // --- approve / reject the pending human interrupt -------------------
+    var row1 = el("div", "actions__row");
+    var reviewer = el("input", "field__input");
+    reviewer.placeholder = "reviewer（写入审计 actor）";
+    var note1 = el("input", "field__input");
+    note1.placeholder = "note";
+    var approve = el("button", "btn btn--approve", "确认 (approve)");
+    var reject = el("button", "btn btn--reject", "拒绝 (reject)");
+    approve.type = "button";
+    reject.type = "button";
+    var canResume = !frozen && pending && !!runId && runId !== "unknown";
+    approve.disabled = !canResume;
+    reject.disabled = !canResume;
+    [reviewer, note1, approve, reject].forEach(function (n) { row1.appendChild(n); });
+    box.appendChild(row1);
+    box.appendChild(el("p", "actions__endpoint",
+      "POST " + API_BASE + "/runs/" + (runId || "{run_id}") + "/resume  body={approval, reviewer, note}" +
+      (pending ? "" : "   ← 当前无待决 interrupt，两个按钮禁用")));
+
+    var out1 = el("pre", "actions__result");
+    out1.hidden = true;
+    box.appendChild(out1);
+    function resume(approval) {
+      call(out1, "POST", API_BASE + "/runs/" + encodeURIComponent(runId) + "/resume",
+        { approval: approval, reviewer: reviewer.value || "unnamed-human", note: note1.value || "" });
+    }
+    approve.addEventListener("click", function () { resume(true); });
+    reject.addEventListener("click", function () { resume(false); });
+
+    // --- retract (打回) an evidence item ---------------------------------
+    var row2 = el("div", "actions__row");
+    var target = el("input", "field__input");
+    target.value = ev[0] || "ev_...";
+    target.placeholder = "evidence_id";
+    var reason = el("input", "field__input");
+    reason.placeholder = "打回原因（必填，写审计）";
+    var retract = el("button", "btn btn--retract", "打回 (invalidate)");
+    retract.type = "button";
+    retract.disabled = frozen;
+    [target, reason, retract].forEach(function (n) { row2.appendChild(n); });
+    box.appendChild(row2);
+    box.appendChild(el("p", "actions__endpoint",
+      "POST " + API_BASE + "/evidence/{evidence_id}/invalidate  body={reason, actor}  —— 这是 M13-05 回退入口的写侧"));
+
+    var out2 = el("pre", "actions__result");
+    out2.hidden = true;
+    box.appendChild(out2);
+    retract.addEventListener("click", function () {
+      call(out2, "POST", API_BASE + "/evidence/" + encodeURIComponent(target.value.trim()) + "/invalidate",
+        { reason: reason.value || "retracted from panel", actor: reviewer.value || "unnamed-human" });
+    });
+
+    return box;
+  }
+
+  function call(out, method, url, body) {
+    out.hidden = false;
+    out.className = "actions__result";
+    out.textContent = method + " " + url + "\n…";
+    fetch(url, {
+      method: method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      return res.text().then(function (text) {
+        var pretty = text;
+        try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch (e) { /* keep raw */ }
+        out.className = "actions__result " + (res.ok ? "actions__result--ok" : "actions__result--err");
+        out.textContent = method + " " + url + "  ->  " + res.status + "\n" + pretty +
+          (res.ok ? "\n\n已写入审计。点「载入」重取面板可见变化。" : "");
+      });
+    }).catch(function (err) {
+      out.className = "actions__result actions__result--err";
+      out.textContent = method + " " + url + "  ->  请求失败\n" + err;
+    });
+  }
+
+  // ------------------------------------------------------------- rendering
+
+  function renderPanel(panelId, projection) {
+    var host = document.getElementById("panels");
+    host.textContent = "";
+    document.querySelectorAll(".tab").forEach(function (tab) {
+      tab.setAttribute("aria-selected", String(tab.dataset.panel === panelId));
+    });
+    // single source of truth: the tab dot is written from the very value the
+    // header chip below renders, so the two can never disagree.
+    syncTabState(panelId, projection.verification_state);
+
+    var head = el("div", "panel__head");
+    var left = el("div");
+    left.appendChild(el("h2", "panel__title", PANEL_TITLES[panelId] || panelId));
+    left.appendChild(el("div", "panel__meta",
+      "panel_id=" + projection.panel_id + " · project_id=" + (projection.project_id || "-")));
+    head.appendChild(left);
+    head.appendChild(chip(projection.verification_state));
+    host.appendChild(head);
+
+    if (Array.isArray(projection.warnings) && projection.warnings.length) {
+      var warn = el("p", "reason reason--unverified");
+      warn.appendChild(el("span", "reason__label", "读取告警"));
+      warn.appendChild(document.createTextNode(projection.warnings.join(" | ")));
+      host.appendChild(warn);
+    }
+
+    (projection.sections || []).forEach(function (section) {
+      host.appendChild(renderSection(section));
+    });
+
+    if (panelId === "approval") {
+      host.appendChild(renderActions(projection));
+    }
+  }
+
+  //: The tab dot is the SAME value the panel header chip renders -- both come
+  //: from `projection.verification_state`, so they cannot disagree.
+  function dotClassFor(state) {
+    return TAB_DOT_CLASS[state] || null;
+  }
+
+  function syncTabState(panelId, state) {
+    var tab = document.querySelector('.tab[data-panel="' + panelId + '"]');
+    if (!tab) return;
+    var cls = dotClassFor(state);
+    var dot = tab.querySelector(".tab__dot");
+    if (!cls) {
+      // Unknown / unrecognised state: show no dot rather than a wrong one.
+      if (dot) dot.remove();
+      tab.removeAttribute("data-dot-state");
+      return;
+    }
+    if (!dot) {
+      dot = el("span", "tab__dot");
+      dot.setAttribute("aria-hidden", "true");
+      tab.insertBefore(dot, tab.firstChild);
+    }
+    dot.className = "tab__dot " + cls;
+    tab.setAttribute("data-dot-state", state);
+    tab.setAttribute("aria-label", (PANEL_TITLES[panelId] || panelId) + " — " + state);
+  }
+
+  function renderTabs(panelIds, onSelect, states) {
+    var host = document.getElementById("tabs");
+    host.textContent = "";
+    var known = states || {};
+    panelIds.forEach(function (panelId) {
+      var tab = el("button", "tab");
+      tab.type = "button";
+      tab.dataset.panel = panelId;
+      tab.appendChild(document.createTextNode(PANEL_TITLES[panelId] || panelId));
+      tab.addEventListener("click", function () { onSelect(panelId); });
+      host.appendChild(tab);
+      // Only a state the projection actually carries gets a dot.
+      if (known[panelId]) syncTabState(panelId, known[panelId]);
+    });
+  }
+
+  function renderLegend() {
+    var host = document.getElementById("legend");
+    host.textContent = "";
+    ["verified", "unverified", "blocked"].forEach(function (state) {
+      var item = el("div", "legend__item");
+      item.appendChild(chip(state));
+      item.appendChild(el("span", null, STATE_LABEL[state].note));
+      host.appendChild(item);
+    });
+  }
+
+  // ------------------------------------------------------------------ boot
+
+  function currentProjectId() {
+    var input = document.getElementById("project-input");
+    return (input && input.value.trim()) || "litalpha";
+  }
+
+  function loadLive(panelId) {
+    var host = document.getElementById("panels");
+    host.textContent = "";
+    host.appendChild(el("p", "placeholder", "载入 " + panelId + " …"));
+    fetch("/ui/panels/" + panelId + "?project_id=" + encodeURIComponent(currentProjectId()))
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function (payload) {
+        payload.project_id = currentProjectId();
+        renderPanel(panelId, payload);
+      })
+      .catch(function (err) {
+        host.textContent = "";
+        var bad = el("p", "reason reason--blocked");
+        bad.appendChild(el("span", "reason__label", "面板载入失败"));
+        bad.appendChild(document.createTextNode(String(err)));
+        host.appendChild(bad);
+      });
+  }
+
+  function bootSnapshot() {
+    document.getElementById("snapshot-note").hidden = false;
+    document.getElementById("load-btn").disabled = true;
+    document.getElementById("project-input").disabled = true;
+    var ids = Object.keys(SNAPSHOT.panels);
+    var initial = SNAPSHOT.initial && ids.indexOf(SNAPSHOT.initial) >= 0 ? SNAPSHOT.initial : ids[0];
+    var states = {};
+    ids.forEach(function (panelId) {
+      states[panelId] = SNAPSHOT.panels[panelId].verification_state;
+    });
+    renderTabs(ids, function (panelId) {
+      renderPanel(panelId, SNAPSHOT.panels[panelId]);
+    }, states);
+    renderLegend();
+    renderPanel(initial, SNAPSHOT.panels[initial]);
+  }
+
+  function selectedPanelId() {
+    var active = document.querySelector(".tab[aria-selected='true']");
+    return active ? active.dataset.panel : null;
+  }
+
+  //: Tabs carry the project's real per-panel states, so the tab bar cannot show
+  //: a state the projection did not report. Re-run whenever the project changes.
+  function loadTabs(projectId, onReady) {
+    fetch("/ui/panels?project_id=" + encodeURIComponent(projectId))
+      .then(function (res) { return res.json(); })
+      .then(function (meta) {
+        var ids = meta.panel_ids || [];
+        renderTabs(ids, loadLive, meta.states || {});
+        onReady(ids);
+      })
+      .catch(function (err) {
+        var host = document.getElementById("panels");
+        host.textContent = "";
+        host.appendChild(el("p", "placeholder", "/ui/panels 不可用：" + err));
+      });
+  }
+
+  function bootLive() {
+    document.getElementById("load-btn").addEventListener("click", function () {
+      var keep = selectedPanelId();
+      loadTabs(currentProjectId(), function (ids) {
+        loadLive(ids.indexOf(keep) >= 0 ? keep : ids[0]);
+      });
+    });
+    renderLegend();
+    loadTabs(currentProjectId(), function (ids) {
+      loadLive(ids[0]);
+    });
+  }
+
+  if (SNAPSHOT) { bootSnapshot(); } else { bootLive(); }
+})();
+
+</script>
+</body>
+</html>
