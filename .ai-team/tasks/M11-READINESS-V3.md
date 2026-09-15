@@ -73,10 +73,17 @@ R-006 P1 was merged into main through the protection window
 
 The task pack was updated in the same change:
 
-- All four `task-package.json` and `lane-manifest.json`: `base_ref` `9c60043` → `f31d0dc`
-(the previous value pointed at an unmerged branch), then corrected once more to `49fcffb`
-after the v3 ledger commit landed — `f31d0dc` is an intermediate commit, and members
-should cut from the current main HEAD.
+- All four `task-package.json` and `lane-manifest.json`: `base_ref` set to the semantic
+reference `main` rather than a literal sha.
+
+**Why not a sha** — this bit us twice in a row. Writing `f31d0dc` made it stale the
+moment this same batch produced another commit; writing `49fcffb` did it again
+(HEAD moved to `158e962`). Any commit that "fixes" a literal sha changes HEAD, so a
+literal sha is *self-invalidating* — it is always one commit behind. Caught by
+re-cloning from GitHub and comparing `base_ref` against the clone's HEAD.
+
+Members should `git fetch` and cut from `origin/main`; the note in each package tells
+them to confirm the tip and re-measure the baseline in their own worktree.
 - `TASK-SPECS.md` → v4: §5-B1 marked resolved with the execution record;
   MVP-01 status changed from "ready but blocked" to "ready, can start".
 - `TASK-QUEUE.md` → v4: blocking banner removed.

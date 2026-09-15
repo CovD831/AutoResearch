@@ -3,7 +3,7 @@
   "owner": "member A",
   "owner_lane": "knowledge",
   "worktree": "../AutoResearch-m11",
-  "base_ref": "49fcffb",
+  "base_ref": "main",
   "branch_prefix": "codex/m11-",
   "task_queue": [
     "M11-MVP-01",
@@ -36,5 +36,6 @@
     "R-006 P2-P7 已暂停，不再作为本 lane 的验收依据",
     "基线数字 537 passed 只对 9c60043 成立，不得跨 worktree 搬运 —— 必须在自己的 worktree 重新实测",
     "node .ai-team/check.mjs 的 --base 应传 P1 的 sha（9c60043），传 main 因该 gate 依赖 base..HEAD 差异而必然 blocked"
-  ]
+  ],
+  "base_ref_note": "base_ref = 当前 main HEAD（不要写死 sha）。R-006 P1 已合并进 main（经保护窗口 2026-09-15；合并提交链 04ce9a9 → ea1663b → f31d0dc）。MVP-01 从 origin/main 切分支即可。**注意：不要在本字段写死 sha** —— 每次为修正它而提交都会让 HEAD 再变一次，形成自指循环"
 }

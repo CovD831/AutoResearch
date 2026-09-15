@@ -10,7 +10,8 @@
 | M11-MVP-03 融合、去重、索引维护 | planned | MVP-02 | 确定性融合、镜像去重、索引重建、融合对比证据 |
 | M11-MVP-04 固定回归与验收证据 | planned | MVP-03 | fixture 语料、词法 vs 混合对比、遗漏分类 |
 
-**`base_ref` = `49fcffb`**（当前 main HEAD）。四包均从此处切分支。
+**`base_ref` = `main`（语义引用，不写死 sha）**。四包均从 `origin/main` 切分支。
+> 不写死 sha 的原因：为修正该字段而提交会让 HEAD 再变一次（自指循环），字面 sha 永远落后一步。
 
 ## 状态定义
 

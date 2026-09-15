@@ -71,7 +71,8 @@
 | 恢复保护后逐项核对 | **12/12 项一致** ✅ |
 | 合并后门禁 | pytest `537 passed` / ruff clean / `check.mjs` `valid` |
 
-**四包 `base_ref` 已更新为 `49fcffb`**（当前 main HEAD）。
+**四包 `base_ref` 已改为语义引用 `main`**（不写死 sha）。
+> **为什么不留字面 sha**：为「修正 base_ref」而提交，本身会让 HEAD 再变一次 → 字面 sha 永远落后一步（自指循环）。实测踩过：写完 `49fcffb` 后 HEAD 变成 `158e962`。
 
 **关于 `owner/r006-l1-writer` 分支**：其内容已全部并入 main，**分支可保留作历史**，但成员不再需要引用它 ——
 `SOURCE-AND-HANDOFF.md` §0 已改为「直接从 `origin/main` 切」。
@@ -351,7 +352,7 @@ PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m
 PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m compileall -q src
 ```
 
-**期望**：`537 passed / 2 skipped / 0 failed`（在合并后的 main 上实测所得，全新克隆复现）。
+**期望**：`537 passed / 2 skipped / 0 failed`（在合并后的 main 上实测，**全新克隆复现**）。
 **⚠️ 注意**：引用前**必须在本 worktree 上重新实测**，不得搬运本文档的数字
 （本项目硬约束：基线不可跨 worktree 搬运）。
 
