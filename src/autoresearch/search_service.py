@@ -184,6 +184,7 @@ class PaperSearchService:
         self.knowledge.add_page(
             WikiPage(
                 page_id=paper.paper_id,
+                author="search_service",
                 project_id=paper.project_id,
                 partition=KnowledgePartition.PAPERS,
                 title=paper.title,
@@ -191,7 +192,6 @@ class PaperSearchService:
                 tags=[paper.source, str(paper.year or "")],
                 evidence_ids=[evidence.evidence_id],
                 level=1,
-                author="search_service",
             )
         )
         return paper, evidence

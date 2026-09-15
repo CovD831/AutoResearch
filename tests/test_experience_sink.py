@@ -24,7 +24,7 @@ from autoresearch.cli import app as cli_app
 from autoresearch.contracts import (
     EvidenceGrade,
     ExperienceRecord,
-    KnowledgePartition,
+    ExperienceStage,
     ProjectCreate,
 )
 from autoresearch.experience_sink import (
@@ -35,6 +35,7 @@ from autoresearch.experience_sink import (
     TECHNIQUE_AUDIT_UNKNOWN_RESOLUTION,
     TECHNIQUE_EVIDENCE_BLOCKED,
 )
+from autoresearch.knowledge import WIKI_PAGE_HEAD_KIND
 from autoresearch.storage import RecordStore
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -366,7 +367,20 @@ def test_merge_never_downgrades_an_existing_promotion_or_grade(runtime, project)
         for raw in _experiences(runtime)
         if raw["problem"] == "candidate lacks evidence classification: evidence_type, grade"
     )
-    elevated = target | {"grade": EvidenceGrade.E2.value, "promoted": True}
+    # D-A6-03: the sink must not downgrade an existing promotion. Under the
+    # §11.3 model "promoted" is derived from stage, so the promoted state is
+    # represented by stage=X4_POLICY. An X4 record must also satisfy the X1+
+    # boundaries and X2+/X3+ regression/counterexample requirements of the
+    # stage-invariant validator, so we supply them here (this is a genuinely
+    # promoted/attributed record).
+    elevated = target | {
+        "grade": EvidenceGrade.E2.value,
+        "stage": ExperienceStage.X4_POLICY.value,
+        "applicable_when": ["when the classification is missing"],
+        "not_applicable_when": ["when evidence grade is already known"],
+        "regression_set_id": "rs-promoted-1",
+        "counterexample_ids": ["cx-promoted-1"],
+    }
     runtime.store.put(
         "experience",
         elevated["experience_id"],
@@ -1107,16 +1121,27 @@ def test_every_settled_record_and_mirror_page_carry_the_failure_tag(runtime, pro
     assert len(records) == UNIQUE_EXPERIENCES
     assert all(FAILURE_TAG in raw["tags"] for raw in records)
 
-    # Enumerate pages (de-duplicated by page_id / head), not the raw version
-    # table -- R-006 L1 / §11.9.
-    pages = runtime.knowledge.list_pages(
-        project_id="demo", partition=KnowledgePartition.EXPERIENCES
+    # C1/§11.9: wiki pages are append-only and keyed by "{page_id}:r{revision}",
+    # so the raw wiki_page rows are REVISIONS, not pages: one experience that was
+    # merged (dedup / recurrence) has r1 + r2. The invariant that must hold is on
+    # the page level, so resolve through the head index.
+    heads = runtime.store.list(WIKI_PAGE_HEAD_KIND, project_id="demo")
+    assert len(heads) == len(records), (
+        "one head per experience; revisions must not multiply heads"
     )
-    assert len(pages) == len(records)
-    for page in pages:
+    for head in heads:
+        page = runtime.knowledge.get_page(head["page_id"])
+        assert page is not None
         # the pre-existing tags survive; the failure label is appended
         assert page.tags[:2] == ["experience", EvidenceGrade.E0.value]
         assert FAILURE_TAG in page.tags
+
+    # Every revision, including superseded ones, must also carry the label --
+    # append-only means r1 is still readable, so it must not be left stale.
+    for revision in runtime.store.list(
+        "wiki_page", project_id="demo", partition="experiences"
+    ):
+        assert FAILURE_TAG in revision["tags"]
 
 
 def test_merge_heals_a_record_written_before_the_tag_existed(runtime, project):
@@ -1163,8 +1188,9 @@ def test_merge_heals_a_record_written_before_the_tag_existed(runtime, project):
     assert merged.grade is EvidenceGrade.E0
     assert merged.promoted is False
 
-    # Resolve the bare experience_id through the head index, not the versioned
-    # table -- R-006 L1 / §11.9.
+    # C1/§11.9: wiki pages are keyed by "{page_id}:r{revision}", so a bare-id
+    # store.get() returns None. Resolve through get_page() (the sanctioned
+    # bare-id entrypoint).
     page = runtime.knowledge.get_page(target["experience_id"])
     assert page is not None
     assert FAILURE_TAG in page.tags

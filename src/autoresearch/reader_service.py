@@ -135,6 +135,7 @@ class PaperReaderService:
         self.knowledge.add_page(
             WikiPage(
                 page_id=card.card_id,
+                author="reader_service",
                 project_id=paper.project_id,
                 partition=KnowledgePartition.PAPERS,
                 title=f"Reading card: {paper.title}",
@@ -146,7 +147,6 @@ class PaperReaderService:
                 tags=["reading-card", paper.source],
                 evidence_ids=card.evidence_ids,
                 level=2,
-                author="reader_service",
             )
         )
         self.knowledge.add_edge(
@@ -208,6 +208,7 @@ class PaperReaderService:
         self.knowledge.add_page(
             WikiPage(
                 page_id=candidate.innovation_id,
+                author="reader_service",
                 project_id=project_id,
                 partition=KnowledgePartition.KNOWLEDGE,
                 title="Innovation candidate",
@@ -215,7 +216,6 @@ class PaperReaderService:
                 tags=["innovation", "hypothesis"],
                 evidence_ids=evidence_ids,
                 level=2,
-                author="reader_service",
             )
         )
         return [candidate]

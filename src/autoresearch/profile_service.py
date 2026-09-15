@@ -22,13 +22,13 @@ class UserProfileService:
         self.knowledge.add_page(
             WikiPage(
                 page_id=item.profile_item_id,
+                author="profile_service",
                 partition=KnowledgePartition.PROFILES,
                 title=f"{item.user_id}: {item.key}",
                 body=item.value,
                 tags=["user-profile", "confirmed" if item.confirmed_by_user else "inferred"],
                 evidence_ids=item.evidence_ids,
                 level=2 if item.confirmed_by_user else 1,
-                author="profile_service",
             )
         )
         return item

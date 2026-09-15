@@ -546,6 +546,16 @@ class ExperienceRecord(BaseModel):
             raise ValueError("X3+ requires non-empty counterexample_ids")
         return self
 
+    @model_validator(mode="after")
+    def _derive_promoted_from_stage(self) -> ExperienceRecord:
+        # §11.3: promoted is derived from stage (X4_POLICY); stage is the single
+        # source of truth and promoted is a backward-compatible projection.
+        # Deriving on every validation guarantees the two can never drift into
+        # the illegal "promoted=True but stage!=X4" state, no matter how the
+        # record is constructed (service call, raw dict, or model_copy).
+        self.promoted = self.stage == ExperienceStage.X4_POLICY
+        return self
+
 
 class Statement(BaseModel):
     """C2: statement-level evidence binding (finer-grained than page-level)."""
