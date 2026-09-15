@@ -3,10 +3,14 @@
   "phase": "M11",
   "owner_lane": "knowledge",
   "status": "planned",
-  "base_ref": "04ce9a9",
+  "base_ref": "9c60043",
   "branch": "codex/m11-mvp-04",
-  "depends_on": ["M11-MVP-03"],
-  "merge_after": ["M11-MVP-03"],
+  "depends_on": [
+    "M11-MVP-03"
+  ],
+  "merge_after": [
+    "M11-MVP-03"
+  ],
   "allowed_paths": [
     "tests/test_m11_regression.py",
     "tests/fixtures/m11_regression/",
@@ -23,7 +27,13 @@
   "contracts_to_satisfy": {
     "fixed_corpus": "every query has a fixed set of expected relevant pages",
     "comparison": "pure-lexical vs hybrid results can be compared",
-    "report_fields": ["hits", "missed_recall", "cross_partition_pollution", "evidence_missing", "duplicate_weighting"],
+    "report_fields": [
+      "hits",
+      "missed_recall",
+      "cross_partition_pollution",
+      "evidence_missing",
+      "duplicate_weighting"
+    ],
     "traceability": "each report keeps query, filters, candidates and final ranking",
     "reproducibility": "same code + corpus + index state yields the same report"
   },
@@ -62,11 +72,16 @@
     "production quality targets"
   ],
   "acceptance_commands": [
-    "PYTHONPATH=src python -m pytest tests/test_m11_regression.py -q -o addopts='' -W error",
-    "PYTHONPATH=src python scripts/m11_regression_report.py",
-    "PYTHONPATH=src python -m pytest -q -o addopts='' -W error",
-    "python -m ruff check src tests",
-    "node .ai-team/check.mjs --base main"
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m pytest tests/test_m11_regression.py -q -o addopts='' -W error",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python scripts/m11_regression_report.py",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m pytest -q -o addopts='' -W error",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m ruff check src tests",
+    "PATH=/Users/abab/.workbuddy/binaries/node/versions/22.22.2-2/bin:$PATH node .ai-team/check.mjs --base 9c60043"
   ],
-  "next_package": null
+  "next_package": null,
+  "base_ref_note": "R-006 P1 的实际内容在 9c60043（比 main 多 2 个 commit）。本包 merge_after ['M11-MVP-03']，实际 base 是上一个包合并后的 sha；保持与 lane-manifest 一致，待 §5-B1 裁决后统一更新",
+  "acceptance_command_notes": [
+    "v2 的 `python -m pytest` 缺 PYTHONPATH=src，且沙箱内 python 指向 3.9.6（仓库需要 3.13）",
+    "v2 的 `node .ai-team/check.mjs --base main` 实测在 main 上也是 Result: blocked（该 gate 依赖 base..HEAD 差异 + 账本存在）。必须传本包的 base sha，且必须先建 .ai-team/tasks/<task>.md 账本"
+  ]
 }

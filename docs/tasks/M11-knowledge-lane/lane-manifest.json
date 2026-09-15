@@ -3,7 +3,7 @@
   "owner": "member A",
   "owner_lane": "knowledge",
   "worktree": "../AutoResearch-m11",
-  "base_ref": "04ce9a9",
+  "base_ref": "9c60043",
   "branch_prefix": "codex/m11-",
   "task_queue": [
     "M11-MVP-01",
@@ -12,17 +12,29 @@
     "M11-MVP-04"
   ],
   "shared_owner": "user/team",
+  "conditional_shared_paths": [
+    "src/autoresearch/contracts.py"
+  ],
+  "frozen_shared_paths": [
+    "src/autoresearch/evolution_service.py",
+    "src/autoresearch/profile_service.py",
+    "src/autoresearch/reader_service.py",
+    "src/autoresearch/search_service.py"
+  ],
   "forbidden_shared_paths": [
     "src/autoresearch/application.py",
-    "src/autoresearch/contracts.py",
     "src/autoresearch/evidence.py",
     "src/autoresearch/gates.py",
     ".project-to-act/",
     ".ai-team/TASK.md"
   ],
   "notes": [
-    "contracts.py 仅在 owner 批准下可改（承载 R-006 C1-C9 契约）",
-    "MVP-01 承接 R-006 P1 已实现成果（wt-l1-writer, 537 passed），不重复实现",
-    "R-006 P2-P7 已暂停，不再作为本 lane 的验收依据"
+    "contracts.py 是「条件允许」（v2 同时列在 allowed 与 forbidden，自相矛盾，无法执行）——判据见 TASK-SPECS.md §5-B2 的 A/B/C 三选一。禁止项：删除或改名既有 RetrievalHit 对外字段、改 C2 Statement / C9 ExperienceInjection、借顺手重构改契约组织方式",
+    "base_ref 由 04ce9a9 改为 9c60043：四个包原写 04ce9a9（= main HEAD），但 R-006 P1 的实际内容在 9c60043（比 main 多 2 个 commit）。待 §5-B1（P1 是否先合 main）裁决后，若选「先合 P1」，本字段改为合并后新 main 的 sha",
+    "frozen_shared_paths 是 v3 新增：这 4 个文件 P1 已经改过（3 处补 author= 必填字段 + evolution_service 的 revision 派生真 bug 修复），本 lane 不得再动 —— 详见 TASK-SPECS.md §6.1",
+    "MVP-01 承接 R-006 P1 已实现成果（9c60043，实测 537 passed / 2 skipped / 0 failed），不重复实现；P1 分支已推送但未合并 main、未开 PR",
+    "R-006 P2-P7 已暂停，不再作为本 lane 的验收依据",
+    "基线数字 537 passed 只对 9c60043 成立，不得跨 worktree 搬运 —— 必须在自己的 worktree 重新实测",
+    "node .ai-team/check.mjs 的 --base 应传 P1 的 sha（9c60043），传 main 因该 gate 依赖 base..HEAD 差异而必然 blocked"
   ]
 }
