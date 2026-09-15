@@ -683,8 +683,19 @@ WikiPage(..., revision=next_revision,
 > 那时 `add_page` 是 upsert，重复写入「成功」是**错误原因造成的假绿**。
 > 这是「判别力验证本身要验证环境」的又一实例。
 
-**合并顺序（不可颠倒）**：`owner/r006-l1-writer`（L-06）→ `owner/r006-l2-stage`（L-07）。
-L-07 **依赖 L-06 的 `get_page()`**：在无 P1 的分支上单独跑会 `AttributeError`（实测 10 failed）。
+**合并顺序（v2 已修正 —— 依赖已解除）**：
+
+> ⚠️ **本节以下原表述「不可颠倒」已作废**（2026-09-15 v2 实测修正）。
+> 原文写「L-07 依赖 L-06 的 `get_page()`，单独合并会 `AttributeError`」——
+> **现已不成立**：L-06 的 P1 已并入 main（`75a2d64`），`get_page()` 就在 main 里；
+> 预演实测 `git merge --no-commit --no-ff origin/owner/r006-l2-stage`（base = 新 main）
+> → 自动合并成功、**549 passed**、v4 任务包未被旧版覆盖。
+>
+> → **L-07 现在可从新 main 直接合并**，不再需要「先 L-06 再 L-07」的栈式顺序。
+> 唯一注意：`evolution_service.py` 上 L-06/L-07 各自独立修了同一个 `record()` revision bug
+> （修法等价），合并时该文件会真冲突，**按 L-07 版本保留**（注释更完整）。
+>
+> 口径统一见 `README.md`、`05-execution-plan.md` §3、`07-lane-kickoff-convention.md` §8。
 
 ---
 
