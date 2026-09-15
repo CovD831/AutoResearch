@@ -102,3 +102,24 @@ Merge dry-run: temporary worktree `git merge --no-commit --no-ff owner/r006-l1-w
 
 **MVP-01 已解锁**：base 是合并后的 main。执行人按 `TASK-SPECS.md` §7 开工，
 第一步跑裸 id 枚举（§7.3）+ 建自己的账本 `.ai-team/tasks/M11-MVP-01.md`。
+
+## Follow-up: R-007 execution plan refreshed to v2
+
+L-06 merged into main, so the R-007 program docs were stale in three places. Updated:
+
+- `05-execution-plan.md` → v2: L-06 row now says "P1 merged into main"; §3 rewritten —
+  L-07's dependency is **no longer a blocker** (dry-run merge from the new main gave
+  549 passed, v4 task pack preserved, base_ref intact). The red "merge order must not
+  be reversed" warning is retired.
+- `06-dispatch-sheet.md` → **new**: which lines can start now, each one's exclusive
+  files and hard no-go zones. Records that L-01..L-04 / L-08 / L-09-front **plus**
+  L-06's MVP-01 are 8 mutually disjoint lines.
+- `README.md` + `02-l1-architecture.md`: stale "pending merge" / "stacked" claims corrected.
+
+Key correction recorded: **L-06's four MVP packages are a serial stack, not a parallel
+lane.** Packages 01/02/03 all edit `knowledge.py`, and the dependency is semantic
+(02's recall builds on 01's boundary; 03's fusion consumes 02's RecallAuditRecord).
+Parallelising them would produce four incompatible sets of assumptions.
+
+Also re-verified: `git merge --no-commit --no-ff origin/owner/r006-l2-stage` on the new
+main merges cleanly with 549 passed, and does NOT revert the v4 task pack (688 lines kept).
