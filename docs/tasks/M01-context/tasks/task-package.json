@@ -1,0 +1,45 @@
+{
+  "task_id": "M01-CONTEXT",
+  "phase": "R-007",
+  "owner_lane": "L-01",
+  "status": "handoff",
+  "base_ref": "8dd8780",
+  "branch": "feat/r007-l01-context",
+  "depends_on": ["R-007 L1/L2 accepted (K5, K6 frozen)"],
+  "merge_after": ["owner approval to commit"],
+  "allowed_paths": [
+    "src/autoresearch/context_assembler.py",
+    "src/autoresearch/migration.py",
+    "tests/test_m01_context_assembler.py",
+    "tests/test_m01_migration.py",
+    "docs/tasks/M01-context/",
+    ".ai-team/tasks/M01-CONTEXT.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/knowledge.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/handoffs.py",
+    "src/autoresearch/state_machine.py",
+    "src/autoresearch/application.py",
+    "src/autoresearch/api.py",
+    "src/autoresearch/cli.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "deliverables": [
+    "K5 ContextBudget / ContextSlice with the four invariants (M01-05)",
+    "graded (tiered) assembly interface: open `kind` + register_kind(tier) + per-kind token/item budgets (M11-04 precondition)",
+    "K6 StateMigration with an explicit unknown-field policy and replayable apply (M01-02)",
+    "M01-06 handoff replay reusing handoffs.py / HandoffEnvelope (no second handoff type)",
+    "negative cases N-1..N-3 asserted on outcome (N-4 documented as not testable at this layer)",
+    "task-local L3, task-package.json and ledger"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest tests/test_m01_*.py -q -o addopts=\"\" -W error",
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
+    "python -m ruff check src tests",
+    "python -m compileall -q src"
+  ],
+  "next_package": "M11-04 (ContextPack graded assembly, L-06 lane) consumes the K5 tier interface"
+}
