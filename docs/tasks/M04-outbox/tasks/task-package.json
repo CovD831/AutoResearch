@@ -1,0 +1,54 @@
+{
+  "task_id": "R007-L03-M04-OUTBOX",
+  "phase": "R007",
+  "owner_lane": "L-03",
+  "status": "handoff",
+  "base_ref": "8dd8780",
+  "branch": "feat/r007-l03-outbox",
+  "depends_on": [],
+  "merge_after": [],
+  "allowed_paths": [
+    "src/autoresearch/outbox.py",
+    "tests/test_m04_outbox.py",
+    "docs/tasks/M04-outbox/",
+    ".ai-team/tasks/M04-OUTBOX.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/storage.py",
+    "src/autoresearch/knowledge.py",
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/evolution_service.py",
+    "src/autoresearch/application.py",
+    "src/autoresearch/api.py",
+    "src/autoresearch/cli.py",
+    "src/autoresearch/migration.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "deliverables": [
+    "K9 OutboxEntry model (8 contract fields + one documented audit extension)",
+    "idempotent delivery over the existing RecordStore idempotency primitives (no new table, no storage.py change)",
+    "K9-1 duplicate delivery rejected with the external side effect happening exactly once",
+    "K9-2 payload_ref is a reference resolved at delivery time; a dangling ref is an observable failure",
+    "K9-3 bounded attempts, exhausted budget turns the entry failed with no further attempts",
+    "I7 crash-window handling: unknown outcome fails closed; a staged result is finalized without re-running the effect",
+    "M04-06 outbox schema migration: empty/legacy database, all-or-nothing rollback, auditable schema version and failure record",
+    "instrumented concurrency tests plus in-suite counterfactual controls establishing their discriminating power",
+    "task-local L3 record with the measured reuse map (API names + line numbers + call sites)",
+    "task-local ledger"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m pytest tests/test_m04_outbox.py -q -o addopts=\"\" -W error",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m pytest -q -o addopts=\"\" -W error",
+    "/Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m ruff check src tests",
+    "/Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m compileall -q src",
+    "node .ai-team/check.mjs --base main"
+  ],
+  "baseline": "537 passed / 2 skipped / 0 failed (measured in this worktree)",
+  "measured_after": "573 passed / 2 skipped / 0 failed",
+  "open_items": [
+    "no production trigger path (application.py / api.py / cli.py are outside this lane's exclusive file set)",
+    "D-L03-02: migrate depends on the private RecordStore._write_record for all-or-nothing writes; owner adjudication requested",
+    "D-L03-06: effector exception is treated as a definite attempt failure (bounded retry); owner adjudication requested"
+  ]
+}
