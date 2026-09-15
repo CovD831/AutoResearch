@@ -110,22 +110,50 @@ list("wiki_page") -> 2 条，page_ids: ['p1','p1']   # 按页去重前是 N 条
 
 ## 7. 开工步骤
 
+> ⚠️ **注意 remote 名称**：本分支在主仓 `CovD831/AutoResearch`，**不在你的 fork 里**。
+> 如果你是在自己的 fork 里开发，`git fetch origin` 拉的是**你的 fork**，**看不到这个分支**。
+> 必须先加 `upstream` 指向主仓（见下 A/B 两种情况）。
+
+### 情况 A：你在 fork 里开发（**成员 A 的情况**）
+
 ```bash
-# 1) 拉取
+# 1) 一次性：把主仓加为 upstream（如果已有可跳过）
+git remote add upstream https://github.com/CovD831/AutoResearch.git
+#   检查：git remote -v 应该看到 upstream 指向 CovD831/AutoResearch
+
+# 2) 拉取主仓分支
+git fetch upstream
+
+# 3) 基于它切你的工作分支
+git switch -c codex/m11-mvp-01 upstream/owner/r006-l1-writer
+
+# 4) 建独立 worktree（推荐，避免污染主工作树）
+git worktree add ../AutoResearch-m11 codex/m11-mvp-01
+```
+
+### 情况 B：你直接 clone 的**主仓**（owner/集成人）
+
+```bash
 git fetch origin
 git switch -c codex/m11-mvp-01 origin/owner/r006-l1-writer
-
-# 2) 建 worktree（推荐，避免污染）
 git worktree add ../AutoResearch-m11 codex/m11-mvp-01
+```
 
-# 3) 跑一遍基线
+### 两种情况都要跑的基线
+
+```bash
 cd ../AutoResearch-m11
 PYTHONPATH=src python -m pytest -q -o addopts="" -W error     # 期望 537 passed / 2 skipped
 python -m ruff check src tests
 python -m compileall -q src
-
-# 4) 开工 —— 先读 docs/tasks/M11-knowledge-lane/TASK-SPECS.md 的 M11-MVP-01
 ```
+
+**期望**：`537 passed / 2 skipped / 0 failed`。若不是这个数字，先别开工，来找我。
+
+### 开工
+
+读 `docs/tasks/M11-knowledge-lane/TASK-SPECS.md` 的 **M11-MVP-01** 一节，
+然后按 `tasks/M11-MVP-01/task-package.json` 的 `allowed_paths` / `forbidden_paths` 动手。
 
 ---
 
