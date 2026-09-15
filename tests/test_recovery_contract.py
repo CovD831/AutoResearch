@@ -174,14 +174,15 @@ def _durable_projection(store: RecordStore):
         )
         for row in store.list("evidence")
     )
+    # Enumerate pages (head-resolved), not the raw version table -- R-006 L1 / §11.9.
     wiki = sorted(
         (
-            row["partition"],
-            row["title"],
-            tuple(row["tags"]),
-            bool(row["evidence_ids"]),
+            row.partition.value,
+            row.title,
+            tuple(row.tags),
+            bool(row.evidence_ids),
         )
-        for row in store.list("wiki_page")
+        for row in KnowledgeService(store).list_pages()
     )
     return {
         "papers": _paper_row_projection(store.list("paper")),
@@ -234,8 +235,9 @@ def test_legacy_and_target_paths_have_parity_report(tmp_path: Path):
         "target_paper_count": len(target_store.list("paper")),
         "legacy_evidence_count": len(legacy_store.list("evidence")),
         "target_evidence_count": len(target_store.list("evidence")),
-        "legacy_wiki_count": len(legacy_store.list("wiki_page")),
-        "target_wiki_count": len(target_store.list("wiki_page")),
+        # Page counts (head-resolved), not version counts -- R-006 L1 / §11.9.
+        "legacy_wiki_count": len(KnowledgeService(legacy_store).list_pages()),
+        "target_wiki_count": len(KnowledgeService(target_store).list_pages()),
         "target_invocation_status": target.receipt.outcome_status,
         "target_idempotency_state": target_store.list_idempotent("paper_search")[0][
             "record"

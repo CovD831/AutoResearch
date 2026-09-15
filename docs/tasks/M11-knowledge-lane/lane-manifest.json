@@ -1,0 +1,28 @@
+{
+  "lane_id": "M11-KNOWLEDGE-LANE",
+  "owner": "member A",
+  "owner_lane": "knowledge",
+  "worktree": "../AutoResearch-m11",
+  "base_ref": "04ce9a9",
+  "branch_prefix": "codex/m11-",
+  "task_queue": [
+    "M11-MVP-01",
+    "M11-MVP-02",
+    "M11-MVP-03",
+    "M11-MVP-04"
+  ],
+  "shared_owner": "user/team",
+  "forbidden_shared_paths": [
+    "src/autoresearch/application.py",
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/gates.py",
+    ".project-to-act/",
+    ".ai-team/TASK.md"
+  ],
+  "notes": [
+    "contracts.py 仅在 owner 批准下可改（承载 R-006 C1-C9 契约）",
+    "MVP-01 承接 R-006 P1 已实现成果（wt-l1-writer, 537 passed），不重复实现",
+    "R-006 P2-P7 已暂停，不再作为本 lane 的验收依据"
+  ]
+}

@@ -146,6 +146,7 @@ class PaperReaderService:
                 tags=["reading-card", paper.source],
                 evidence_ids=card.evidence_ids,
                 level=2,
+                author="reader_service",
             )
         )
         self.knowledge.add_edge(
@@ -214,6 +215,7 @@ class PaperReaderService:
                 tags=["innovation", "hypothesis"],
                 evidence_ids=evidence_ids,
                 level=2,
+                author="reader_service",
             )
         )
         return [candidate]

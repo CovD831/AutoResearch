@@ -21,7 +21,12 @@ from typer.testing import CliRunner
 from autoresearch.api import create_api
 from autoresearch.application import AutoResearchApplication
 from autoresearch.cli import app as cli_app
-from autoresearch.contracts import EvidenceGrade, ExperienceRecord, ProjectCreate
+from autoresearch.contracts import (
+    EvidenceGrade,
+    ExperienceRecord,
+    KnowledgePartition,
+    ProjectCreate,
+)
 from autoresearch.experience_sink import (
     FAILURE_TAG,
     MAPPING_RULES,
@@ -1102,12 +1107,16 @@ def test_every_settled_record_and_mirror_page_carry_the_failure_tag(runtime, pro
     assert len(records) == UNIQUE_EXPERIENCES
     assert all(FAILURE_TAG in raw["tags"] for raw in records)
 
-    pages = runtime.store.list("wiki_page", project_id="demo", partition="experiences")
+    # Enumerate pages (de-duplicated by page_id / head), not the raw version
+    # table -- R-006 L1 / §11.9.
+    pages = runtime.knowledge.list_pages(
+        project_id="demo", partition=KnowledgePartition.EXPERIENCES
+    )
     assert len(pages) == len(records)
     for page in pages:
         # the pre-existing tags survive; the failure label is appended
-        assert page["tags"][:2] == ["experience", EvidenceGrade.E0.value]
-        assert FAILURE_TAG in page["tags"]
+        assert page.tags[:2] == ["experience", EvidenceGrade.E0.value]
+        assert FAILURE_TAG in page.tags
 
 
 def test_merge_heals_a_record_written_before_the_tag_existed(runtime, project):
@@ -1154,8 +1163,11 @@ def test_merge_heals_a_record_written_before_the_tag_existed(runtime, project):
     assert merged.grade is EvidenceGrade.E0
     assert merged.promoted is False
 
-    page = runtime.store.get("wiki_page", target["experience_id"])
-    assert FAILURE_TAG in page["tags"]
+    # Resolve the bare experience_id through the head index, not the versioned
+    # table -- R-006 L1 / §11.9.
+    page = runtime.knowledge.get_page(target["experience_id"])
+    assert page is not None
+    assert FAILURE_TAG in page.tags
 
 
 # ---------------------------------------------------------------------------

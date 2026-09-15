@@ -1,0 +1,81 @@
+{
+  "task_id": "M11-MVP-02",
+  "phase": "M11",
+  "owner_lane": "knowledge",
+  "status": "planned",
+  "base_ref": "04ce9a9",
+  "branch": "codex/m11-mvp-02",
+  "depends_on": ["M11-MVP-01"],
+  "merge_after": ["M11-MVP-01"],
+  "allowed_paths": [
+    "src/autoresearch/knowledge_retrieval.py",
+    "src/autoresearch/recall_audit.py",
+    "src/autoresearch/knowledge.py",
+    "tests/test_knowledge_retrieval.py",
+    "tests/fixtures/knowledge_retrieval/",
+    "docs/tasks/M11-knowledge-lane/",
+    ".ai-team/tasks/M11-MVP-02.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/gates.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/evolution_service.py",
+    "src/autoresearch/profile_service.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "contracts_to_satisfy": {
+    "retrieve_input_signature": "UNCHANGED - (query, *, partitions, level, limit, require_evidence)",
+    "retrieval_hit_fields": "existing fields preserved (record_id, partition, title, snippet, score, evidence_ids, retrieval_level); new fields may be ADDED only",
+    "l0_boundary": "project_id / partition / availability filtered BEFORE any scoring",
+    "require_evidence": "filters BOTH lexical and vector paths (no page without evidence_ids may enter results)",
+    "recall_audit": {
+      "written_per_retrieve": true,
+      "configurable_off": true,
+      "default": "on",
+      "fields": ["audit_id", "project_id", "query", "filters", "candidates", "deduped", "reranked", "final_hits", "stage_timings_ms", "created_at"],
+      "invariant": "final_hits subset-of reranked subset-of deduped subset-of candidates"
+    },
+    "degradation": "when the vector path is unavailable, fall back to lexical AND mark the degradation in retrieval_level - never disguise a fallback as a vector success"
+  },
+  "deliverables": [
+    "lexical path upgraded to real FTS/BM25 (replacing the naive substring _score)",
+    "vector recall path with the same partition boundary as the lexical path",
+    "same-partition graph expansion preserved with its existing semantics",
+    "L0 boundary filtering (project_id / partition / availability)",
+    "RecallAuditRecord written per retrieve with the subset-chain invariant",
+    "explicit degradation state when the vector path is unavailable",
+    "offline fixtures and tests",
+    "task-local ledger, L3 record, progress log and handoff"
+  ],
+  "acceptance": {
+    "positive": [
+      "both lexical and vector paths produce traceable rankings on a fixed fixture",
+      "RecallAuditRecord subset chain holds: final_hits <= reranked <= deduped <= candidates",
+      "existing RetrievalHit fields unchanged for all consumers"
+    ],
+    "negative": [
+      "require_evidence filters BOTH paths",
+      "cross-partition pages never enter results",
+      "vector unavailable -> lexical fallback AND degradation state visible in results"
+    ],
+    "determinism": [
+      "same input + same index state yields the same result"
+    ]
+  },
+  "explicitly_not_in_scope": [
+    "complex reranker",
+    "ContextPack",
+    "real-domain quality claims",
+    "RRF / fusion (belongs to MVP-03)"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest tests/test_knowledge_retrieval.py -q -o addopts='' -W error",
+    "PYTHONPATH=src python -m pytest -q -o addopts='' -W error",
+    "python -m ruff check src tests",
+    "node .ai-team/check.mjs --base main"
+  ],
+  "next_package": "M11-MVP-03"
+}

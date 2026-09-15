@@ -28,6 +28,7 @@ class UserProfileService:
                 tags=["user-profile", "confirmed" if item.confirmed_by_user else "inferred"],
                 evidence_ids=item.evidence_ids,
                 level=2 if item.confirmed_by_user else 1,
+                author="profile_service",
             )
         )
         return item

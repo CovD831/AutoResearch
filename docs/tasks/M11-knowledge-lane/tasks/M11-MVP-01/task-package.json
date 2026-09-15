@@ -1,0 +1,82 @@
+{
+  "task_id": "M11-MVP-01",
+  "phase": "M11",
+  "owner_lane": "knowledge",
+  "status": "ready",
+  "base_ref": "04ce9a9",
+  "branch": "codex/m11-mvp-01",
+  "depends_on": ["M04-01 (landed)", "R-006 P1 (implemented, pending merge)"],
+  "merge_after": [],
+  "allowed_paths": [
+    "src/autoresearch/knowledge.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/contracts.py",
+    "tests/test_knowledge_boundary.py",
+    "tests/test_r006_contracts.py",
+    "tests/fixtures/knowledge_boundary/",
+    "docs/tasks/M11-knowledge-lane/",
+    ".ai-team/tasks/M11-MVP-01.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/evolution_service.py",
+    "src/autoresearch/profile_service.py",
+    "src/autoresearch/reader_service.py",
+    "src/autoresearch/search_service.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/gates.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "contracts_to_satisfy": {
+    "wiki_page_append_only": "record_id = f\"{page_id}:r{revision}\"; new revision must be max+1; old revisions never overwritten",
+    "head_index": "wiki_page_head record maps bare page_id -> {current_revision_id, revision}; version+head written in one transaction",
+    "resolution_entrypoint": "get_page(page_id) / list_pages(...) are the only sanctioned bare-id reads",
+    "bridge_edges_whitelist": [
+      "CITES", "SUPPORTS", "CONTRADICTS", "INVALIDATES", "DERIVED_FROM",
+      "APPLIES_TO", "USES_METHOD", "USES_DATASET", "EVALUATES_ON",
+      "HAS_LIMITATION", "EXTENDS", "IMPROVES", "CREATED_IN", "PREFERS"
+    ],
+    "same_partition_edges": ["SUMMARIZED_BY", "DUPLICATES", "SUPERSEDES"],
+    "list_pages_query_complexity": "O(1) queries - NO per-head store.get (N+1 forbidden)"
+  },
+  "deliverables": [
+    "append-only wiki page writer replacing the upsert-in-place add_page",
+    "wiki_page_head index with atomic version+head write in one transaction",
+    "get_page()/list_pages() as the only bare-id resolution entrypoints",
+    "add_edge and retrieve graph expansion routed through get_page()",
+    "managed bridge-edge whitelist (14 types) + same-partition types (3)",
+    "list_pages rewritten to a single JOIN query (N+1 fix)",
+    "positive AND negative tests for both the revision and the edge semantics",
+    "task-local ledger, L3 record, progress log and handoff"
+  ],
+  "acceptance": {
+    "positive": [
+      "old revision still readable after a new revision is created",
+      "whitelisted bridge-edge type spanning partitions is ACCEPTED",
+      "get_page() resolves a bare page_id that raw store.get('wiki_page', id) cannot",
+      "page source, partition and evidence_ids fully readable"
+    ],
+    "negative": [
+      "directly overwriting an existing revision is REJECTED",
+      "untyped cross-partition GraphEdge is REJECTED",
+      "edge endpoint that does not exist is REJECTED"
+    ],
+    "performance": [
+      "store.get call count during list_pages is a CONSTANT, not N (baseline: old code = 0 gets, 1 list)"
+    ]
+  },
+  "explicitly_not_in_scope": [
+    "Statement (statement-level evidence binding) - deferred until M02-09 needs it",
+    "ContextPack",
+    "vector retrieval or ranking",
+    "production graph database"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest tests/test_knowledge_boundary.py tests/test_r006_contracts.py -q -o addopts='' -W error",
+    "PYTHONPATH=src python -m pytest -q -o addopts='' -W error",
+    "python -m ruff check src tests",
+    "python -m compileall -q src",
+    "node .ai-team/check.mjs --base main"
+  ],
+  "next_package": "M11-MVP-02"
+}

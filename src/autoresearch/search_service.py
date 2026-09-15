@@ -191,6 +191,7 @@ class PaperSearchService:
                 tags=[paper.source, str(paper.year or "")],
                 evidence_ids=[evidence.evidence_id],
                 level=1,
+                author="search_service",
             )
         )
         return paper, evidence

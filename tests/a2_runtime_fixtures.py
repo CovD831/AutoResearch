@@ -332,7 +332,8 @@ def durable_counts(store: RecordStore) -> dict[str, int]:
     return {
         "papers": len(store.list("paper")),
         "evidence": len(store.list("evidence")),
-        "wiki": len(store.list("wiki_page")),
+        # Page count (head-resolved), not raw version count -- R-006 L1 / §11.9.
+        "wiki": len(KnowledgeService(store).list_pages()),
         "audit_events": len(store.events("a2-fixture-project")),
     }
 

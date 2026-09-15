@@ -1,0 +1,72 @@
+{
+  "task_id": "M11-MVP-04",
+  "phase": "M11",
+  "owner_lane": "knowledge",
+  "status": "planned",
+  "base_ref": "04ce9a9",
+  "branch": "codex/m11-mvp-04",
+  "depends_on": ["M11-MVP-03"],
+  "merge_after": ["M11-MVP-03"],
+  "allowed_paths": [
+    "tests/test_m11_regression.py",
+    "tests/fixtures/m11_regression/",
+    "scripts/m11_regression_report.py",
+    "docs/tasks/M11-knowledge-lane/",
+    ".ai-team/tasks/M11-MVP-04.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "role": "independent acceptance package for A7 - test and fixture only, no implementation changes",
+  "contracts_to_satisfy": {
+    "fixed_corpus": "every query has a fixed set of expected relevant pages",
+    "comparison": "pure-lexical vs hybrid results can be compared",
+    "report_fields": ["hits", "missed_recall", "cross_partition_pollution", "evidence_missing", "duplicate_weighting"],
+    "traceability": "each report keeps query, filters, candidates and final ranking",
+    "reproducibility": "same code + corpus + index state yields the same report"
+  },
+  "deliverables": [
+    "fixed fixture corpus",
+    "fixed queries with labelled relevant pages",
+    "lexical vs hybrid comparison output",
+    "miss classification",
+    "retrieval audit record capture",
+    "regression report generator script",
+    "task-local ledger, L3 record, progress log and handoff"
+  ],
+  "acceptance": {
+    "positive": [
+      "fixed queries can be executed repeatedly",
+      "lexical vs hybrid differences are recorded",
+      "index or model change triggers a regression report"
+    ],
+    "negative": [
+      "key negative cases reproduce stably"
+    ],
+    "honesty": [
+      "the report explicitly separates verified items, unverified items and follow-up tasks",
+      "the RecallAuditRecord subset chain must NOT be presented as recall-quality evidence - it only proves the audit record is self-consistent"
+    ]
+  },
+  "forbidden_claims": [
+    "claiming real-domain paper quality from fixture results",
+    "inferring content truth from ranking changes",
+    "writing unmeasured Recall/MRR/nDCG as achieved",
+    "skipping failed, missed or degraded results"
+  ],
+  "explicitly_not_in_scope": [
+    "real-domain gold set",
+    "human blind review",
+    "production quality targets"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest tests/test_m11_regression.py -q -o addopts='' -W error",
+    "PYTHONPATH=src python scripts/m11_regression_report.py",
+    "PYTHONPATH=src python -m pytest -q -o addopts='' -W error",
+    "python -m ruff check src tests",
+    "node .ai-team/check.mjs --base main"
+  ],
+  "next_package": null
+}

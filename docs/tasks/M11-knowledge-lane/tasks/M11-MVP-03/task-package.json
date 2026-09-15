@@ -1,0 +1,76 @@
+{
+  "task_id": "M11-MVP-03",
+  "phase": "M11",
+  "owner_lane": "knowledge",
+  "status": "planned",
+  "base_ref": "04ce9a9",
+  "branch": "codex/m11-mvp-03",
+  "depends_on": ["M11-MVP-02"],
+  "merge_after": ["M11-MVP-02"],
+  "allowed_paths": [
+    "src/autoresearch/knowledge_fusion.py",
+    "src/autoresearch/knowledge_index.py",
+    "src/autoresearch/knowledge.py",
+    "tests/test_knowledge_fusion.py",
+    "tests/fixtures/knowledge_fusion/",
+    "scripts/m11_fusion_comparison.py",
+    "docs/tasks/M11-knowledge-lane/",
+    ".ai-team/tasks/M11-MVP-03.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/evolution_service.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "contracts_to_satisfy": {
+    "deterministic_fusion": "lexical and vector rankings fused by a deterministic rule",
+    "no_double_counting": "the same WikiPage must not gain weight from multiple mirrors",
+    "channel_traceability": "channel in {LEXICAL, VECTOR, GRAPH, FUSED}",
+    "score_breakdown": "when channel == FUSED, score_breakdown MUST be present",
+    "index_is_derived": "the vector index may only be derived from canonical WikiPage content - never a source of truth",
+    "incremental_sync": "new page or new revision is searchable after incremental sync",
+    "index_rebuild": "index can be fully rebuilt from canonical WikiPage content",
+    "degradation": "vector unavailable -> lexical fallback with the degradation state recorded"
+  },
+  "deliverables": [
+    "deterministic fusion over lexical + vector + graph candidates",
+    "mirror de-duplication that never double-counts the same page",
+    "score_breakdown / channel / matched_stage on each RetrievalHit",
+    "index build, incremental sync and full rebuild from canonical content",
+    "index version tracking and detection of version changes",
+    "a comparison report: RRF vs simple weighted fusion vs field filtering",
+    "offline fixtures and tests",
+    "task-local ledger, L3 record, progress log and handoff"
+  ],
+  "acceptance": {
+    "positive": [
+      "same two-path input yields a stable, consistent fused ranking",
+      "duplicate mirrors do NOT increase the score",
+      "a newly added WikiPage becomes searchable",
+      "rebuilding the index from canonical content yields the same results",
+      "index version change is detected",
+      "vector unavailable -> lexical fallback reproducible"
+    ],
+    "decision_evidence": [
+      "MUST produce a lexical-only vs hybrid comparison report and let the EVIDENCE decide the fusion strategy",
+      "RRF must NOT be the default without that evidence - the M11 partitions are SMALL corpora where RRF is known to add little or even hurt"
+    ]
+  },
+  "explicitly_not_in_scope": [
+    "production pgvector",
+    "complex reranker",
+    "cross-project quality evaluation",
+    "automatic policy change"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest tests/test_knowledge_fusion.py -q -o addopts='' -W error",
+    "PYTHONPATH=src python scripts/m11_fusion_comparison.py",
+    "PYTHONPATH=src python -m pytest -q -o addopts='' -W error",
+    "python -m ruff check src tests",
+    "node .ai-team/check.mjs --base main"
+  ],
+  "next_package": "M11-MVP-04"
+}
