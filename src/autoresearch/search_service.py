@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -82,6 +83,85 @@ def independent_source_for(paper: PaperRecord) -> str | None:
     return None
 
 
+def bibliographic_paper_id(paper: PaperRecord) -> str:
+    """Deterministic, project-scoped identity for a bibliographic record (A7 D1).
+
+    Root cause of A7: ``AdapterBackedPaperSearchService._to_record`` built a
+    ``PaperRecord`` without a ``paper_id``, so it took the ``new_id("paper")``
+    default -- a fresh random id on *every* retrieval. The same paper searched
+    twice therefore became two papers, two evidence items and two wiki pages.
+    ``_dedupe_key`` already computes a stable key for a record (``doi:...`` or
+    ``title:...``), but it only fed a within-call ``seen`` set, so it could not
+    stop the cross-call duplication.
+
+    The key is hashed (rather than embedded verbatim) for two reasons: a title
+    key can be arbitrarily long and is not a safe identifier fragment, and
+    ``sha256`` keeps the ``paper_<16 hex>`` shape of ``new_id("paper")`` so ids
+    stay uniform across the codebase. The hash is *deterministic* -- no new
+    randomness is introduced.
+
+    ``project_id`` is part of the digest because the store's primary key is
+    ``(kind, record_id)`` -- see ``storage.RecordStore._initialize`` -- which is
+    **not** project-scoped. A bare ``doi:10.1/x`` identity would make project B's
+    search resolve to project A's wiki page and silently skip B's own write, i.e.
+    cross-project contamination. Scoping the identity to the project keeps two
+    projects' records independent (acceptance scenario 2).
+
+    Collision note: the title branch inherits ``_dedupe_key``'s normalisation
+    (``re.sub(r"\\W+", "", ...)``), under which e.g. ``"A B"`` and ``"AB"``
+    collide. That collision class already exists for within-run dedupe; this
+    function introduces no new one. Records carrying a DOI do not go through the
+    title branch at all.
+    """
+
+    if paper.doi:
+        key = "doi:" + paper.doi.lower().strip()
+    else:
+        key = "title:" + re.sub(r"\W+", "", paper.title.lower())
+    digest = hashlib.sha256(f"{paper.project_id}\x1f{key}".encode()).hexdigest()[:16]
+    return f"paper_{digest}"
+
+
+def _identity_normalized(paper: PaperRecord) -> PaperRecord:
+    """Give ``paper`` a deterministic ``paper_id`` unless it already has one.
+
+    ``model_fields_set`` distinguishes "the caller supplied an id" from "the id
+    came from the ``new_id("paper")`` default". An **explicit** id is respected:
+    a user seed built from their own file keeps the id they chose, and a provider
+    that echoes its own id keeps it. Everything else -- adapter hits, legacy
+    connector hits, freshly rebuilt seeds -- is measured by its bibliographic key
+    so repeated retrieval converges on one record instead of minting a new one.
+    """
+
+    if "paper_id" in paper.model_fields_set:
+        return paper
+    return paper.model_copy(update={"paper_id": bibliographic_paper_id(paper)})
+
+
+def _persisted_bibliographic_evidence(
+    evidence: EvidenceService, paper: PaperRecord
+) -> EvidenceItem | None:
+    """The **valid** E1 item already recorded for ``paper``, or ``None``.
+
+    ``EvidenceService`` exposes no by-``source_id`` lookup (only ``list`` /
+    ``resolve`` / ``get``), so this filters ``list`` by the paper's identity.
+    ``source_id`` is set to ``paper_id`` at write time, which makes it the join
+    key here.
+
+    ``valid_only=True`` is load-bearing (A7 ⑤): an **invalidated** E1 still sits
+    in the table under the same ``source_id``. Treating it as "already persisted"
+    would (a) suppress re-minting forever, so a record invalidated for cause could
+    never be re-established, and (b) hand the invalid item back to the caller as
+    the current record. A record whose evidence was invalidated is *not* persisted
+    any more, so the writer must be free to re-mint it.
+    """
+
+    for item in evidence.list(paper.project_id, valid_only=True):
+        if item.source_id == paper.paper_id:
+            return item
+    return None
+
+
 def persist_bibliographic_record(
     store: RecordStore,
     evidence: EvidenceService,
@@ -104,6 +184,27 @@ def persist_bibliographic_record(
     that pass retrieved hits must either pass ``True`` or check
     ``independent_source_for`` themselves; ``search`` does the latter so that
     ``_persist`` keeps the ``(paper)`` signature A2's crash injection patches.
+
+    Idempotent (A7 D1). The same ``(project, identity)`` is written once: when
+    both the paper's evidence and its wiki page already exist this returns the
+    stored record and writes nothing. Without this, re-persisting would append a
+    second ``WikiPage`` revision at ``revision=1`` and ``KnowledgeService``
+    (*append-only*, ``knowledge.py``) would raise ``ValueError`` -- turning the
+    previous silent duplication into a crash.
+
+    Identity is derived **here**, once, for every path that reaches durable
+    storage (adapter hit, legacy connector hit, user seed). Computing it at each
+    call site is the same "two editors have to remember" pattern that let A1's
+    parity invariant rot, so the derivation lives at the single choke point.
+
+    **Check-then-act is one critical section** (A7 ①). Reading "does this record
+    already exist?" and then writing the three records are separate statements;
+    two threads interleaving between them both see "absent", both write, and the
+    store ends up with two evidence rows (or one thread's ``add_page`` raises
+    ``ValueError`` because the other already put ``revision=1``). ``store.transaction()``
+    holds the store's ``RLock`` for the whole block, so the check and the writes
+    are atomic with respect to other writers sharing this store instance. The
+    nested ``put`` / ``add_page`` calls take the same ``RLock`` re-entrantly.
     """
 
     independent_source = independent_source_for(paper)
@@ -111,52 +212,97 @@ def persist_bibliographic_record(
         return None
     if independent_source is None:
         independent_source = f"user_supplied:{paper.source}"
-    store.put(
-        "paper",
-        paper.paper_id,
-        paper,
-        project_id=paper.project_id,
-        partition=KnowledgePartition.PAPERS.value,
-    )
-    item = evidence.add(
-        EvidenceItem(
+    paper = _identity_normalized(paper)
+
+    with store.transaction():
+        existing_item = _persisted_bibliographic_evidence(evidence, paper)
+        existing_page = knowledge.get_page(paper.paper_id)
+        if existing_item is not None and existing_page is not None:
+            # Fully persisted: D1 says write nothing, so return the stored record
+            # unchanged (the caller's copy differs only in ``retrieved_at``).
+            stored = store.get("paper", paper.paper_id)
+            existing_paper = PaperRecord.model_validate(stored) if stored is not None else paper
+            return existing_paper, existing_item
+
+        # Upsert: a re-write of the same id is harmless, and this also heals a
+        # half-written record (evidence without page, or page without evidence).
+        store.put(
+            "paper",
+            paper.paper_id,
+            paper,
             project_id=paper.project_id,
-            evidence_type=EvidenceType.PAPER,
-            grade=EvidenceGrade.E1,
-            title=f"Bibliographic record: {paper.title}",
-            claim=evidence_claim_for(paper),
-            source_uri=paper.url,
-            source_id=paper.paper_id,
-            locator="bibliographic record/abstract" if paper.abstract else "bibliographic record",
-            independent_source=independent_source,
-            metadata={
-                "paper_id": paper.paper_id,
-                "source": paper.source,
-                "abstract_present": bool(paper.abstract),
-                "user_supplied": independent_source.startswith("user_supplied:"),
-            },
-        ),
-        actor=actor,
-    )
-    knowledge.add_page(
-        WikiPage(
-            page_id=paper.paper_id,
-            project_id=paper.project_id,
-            partition=KnowledgePartition.PAPERS,
-            title=paper.title,
-            body=paper.abstract or "No abstract was supplied.",
-            tags=[paper.source, str(paper.year or "")],
-            evidence_ids=[item.evidence_id],
-            level=1,
-            # The wiki page records which *writer* produced this revision, so it
-            # names the module. Every other writer in the repository does the
-            # same (evolution_service / profile_service / reader_service), and
-            # main's copy of this call site used "search_service" too -- the
-            # page is a bibliographic record, not a per-caller artefact, so the
-            # actor label would be the odd one out here.
-            author="search_service",
+            partition=KnowledgePartition.PAPERS.value,
         )
-    )
+        item = existing_item
+        if item is None:
+            item = evidence.add(
+                EvidenceItem(
+                    project_id=paper.project_id,
+                    evidence_type=EvidenceType.PAPER,
+                    grade=EvidenceGrade.E1,
+                    title=f"Bibliographic record: {paper.title}",
+                    claim=evidence_claim_for(paper),
+                    source_uri=paper.url,
+                    source_id=paper.paper_id,
+                    locator=(
+                        "bibliographic record/abstract"
+                        if paper.abstract
+                        else "bibliographic record"
+                    ),
+                    independent_source=independent_source,
+                    metadata={
+                        "paper_id": paper.paper_id,
+                        "source": paper.source,
+                        "abstract_present": bool(paper.abstract),
+                        "user_supplied": independent_source.startswith("user_supplied:"),
+                    },
+                ),
+                actor=actor,
+            )
+        if existing_page is None:
+            knowledge.add_page(
+                WikiPage(
+                    page_id=paper.paper_id,
+                    project_id=paper.project_id,
+                    partition=KnowledgePartition.PAPERS,
+                    title=paper.title,
+                    body=paper.abstract or "No abstract was supplied.",
+                    tags=[paper.source, str(paper.year or "")],
+                    evidence_ids=[item.evidence_id],
+                    level=1,
+                    # The wiki page records which *writer* produced this revision,
+                    # so it names the module. Every other writer in the repository
+                    # does the same (evolution_service / profile_service /
+                    # reader_service), and main's copy of this call site used
+                    # "search_service" too -- the page is a bibliographic record,
+                    # not a per-caller artefact, so the actor label would be the
+                    # odd one out here. Deliberately NOT unified with the audit
+                    # ``actor`` (A7 D2); pinned by
+                    # ``test_page_author_names_the_module_not_the_caller``.
+                    author="search_service",
+                )
+            )
+        elif item.evidence_id not in existing_page.evidence_ids:
+            # Heal, not overwrite (A7 ④): the page survived but its evidence did
+            # not (deleted, or invalidated -- see ⑤), so a fresh item was minted
+            # above. Without appending a revision the new item would be an orphan
+            # and the page -> evidence chain would point at a dead id. A *new*
+            # revision is the only legal write here: ``add_page`` is append-only.
+            knowledge.add_page(
+                WikiPage(
+                    page_id=existing_page.page_id,
+                    project_id=existing_page.project_id,
+                    partition=existing_page.partition,
+                    title=existing_page.title,
+                    body=existing_page.body,
+                    tags=list(existing_page.tags),
+                    evidence_ids=[*existing_page.evidence_ids, item.evidence_id],
+                    level=existing_page.level,
+                    revision=existing_page.revision + 1,
+                    supersedes=existing_page.revision_id,
+                    author="search_service",
+                )
+            )
     return paper, item
 
 

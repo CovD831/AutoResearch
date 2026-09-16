@@ -119,6 +119,13 @@ class AdapterBackedPaperSearchService:
 
         Every field maps one-to-one; nothing is dropped, and the abstract travels
         with the record so the reader is not reduced to title-only.
+
+        ``paper_id`` is deliberately **not** set here (A7): the identity is
+        derived from the record's stable bibliographic key at the single durable
+        choke point, ``persist_bibliographic_record``, which is reached by the
+        adapter path, the legacy connector path and user seeds alike. Deriving it
+        at each call site is the "two editors have to remember" pattern that let
+        A1's parity invariant rot -- see ``search_service.bibliographic_paper_id``.
         """
 
         return PaperRecord(

@@ -21,13 +21,19 @@ re-runnable in CI without network access or credentials.
 from __future__ import annotations
 
 import json
+import threading
 from uuid import uuid4
 
 import pytest
 
 from autoresearch.adapter_search_service import AdapterBackedPaperSearchService
 from autoresearch.config import Settings
-from autoresearch.contracts import EvidenceGrade, KnowledgePartition, PaperRecord
+from autoresearch.contracts import (
+    EvidenceGrade,
+    KnowledgePartition,
+    PaperRecord,
+    WikiPage,
+)
 from autoresearch.evidence import EvidenceService
 from autoresearch.knowledge import KnowledgeService
 from autoresearch.search_adapters import (
@@ -36,7 +42,11 @@ from autoresearch.search_adapters import (
     SemanticScholarSearchAdapter,
     TransportResponse,
 )
-from autoresearch.search_service import PaperSearchService
+from autoresearch.search_service import (
+    PaperSearchService,
+    bibliographic_paper_id,
+    persist_bibliographic_record,
+)
 from autoresearch.storage import RecordStore
 
 SEMANTIC_SCHOLAR_BODY = json.dumps(
@@ -751,6 +761,352 @@ def test_empty_provenance_no_longer_degrades_to_a_placeholder():
     assert independent_source_for(
         PaperRecord(project_id="p", title="T", source="s", doi="10.1/x")
     ) == "doi:10.1/x"
+
+
+# --------------------------------------------------------------------------- #
+# 8b. A7: bibliographic identity is deterministic, writing is idempotent
+# --------------------------------------------------------------------------- #
+
+
+def test_researching_the_same_paper_does_not_duplicate_the_record(services):
+    """The same paper retrieved three times must be one page and one evidence.
+
+    Before A7 the ``paper_id`` came from the random ``new_id("paper")`` default,
+    so every retrieval minted a new page (3 searches -> 3 wiki pages, 3 evidence
+    items). The fix derives the id from the record's stable bibliographic key and
+    makes the writer skip a record it already holds. This also proves the write
+    does not crash: naively making the id deterministic *without* the skip would
+    append a second ``WikiPage`` revision at ``revision=1`` and the append-only
+    writer would raise.
+    """
+
+    from autoresearch.search_adapters import RetrievedPaper
+
+    service, store, evidence, knowledge = _single_hit_service(
+        services,
+        RetrievedPaper(
+            title="Grid cells", abstract="A.", doi="10.1/same", source_record_id="s1"
+        ),
+    )
+
+    ids = [service.search("p1", [f"q{index}"]).papers[0].paper_id for index in range(3)]
+
+    assert len(set(ids)) == 1, "one paper must keep one identity across searches"
+    assert len(knowledge.list_pages(project_id="p1")) == 1
+    assert len(evidence.list("p1")) == 1
+    assert len(store.list("paper", project_id="p1")) == 1
+
+
+def test_distinct_papers_still_persist_independently(services):
+    """Deterministic identity must not collapse two different papers into one."""
+
+    from autoresearch.search_adapters import RetrievedPaper
+
+    store, evidence, knowledge = services
+
+    class Hits:
+        def retrieve(self, request):
+            return [
+                RetrievedPaper(title="Alpha", doi="10.1/alpha", source_record_id="a"),
+                RetrievedPaper(title="Beta", doi="10.2/beta", source_record_id="b"),
+            ]
+
+        def rate_limit_summary(self):
+            return {}
+
+    service = AdapterBackedPaperSearchService(
+        store, evidence, knowledge, adapters={"s": Hits()}, network_enabled=True
+    )
+
+    outcome = service.search("p1", ["q"])
+
+    assert len(outcome.papers) == 2
+    assert len({paper.paper_id for paper in outcome.papers}) == 2
+    assert len(knowledge.list_pages(project_id="p1")) == 2
+    assert len(evidence.list("p1")) == 2
+
+
+def test_the_same_paper_in_two_projects_stays_independent(services):
+    """Identity must be project-scoped, because the store's key is not.
+
+    ``storage.RecordStore`` keys records by ``(kind, record_id)`` with no project
+    component, and ``KnowledgeService.get_page`` resolves a bare page_id through
+    that global key. A bare ``doi:...`` identity would therefore make project B's
+    search resolve to project A's page and silently skip B's own write -- cross-
+    project leakage. This pins the project component of the derived identity.
+    """
+
+    from autoresearch.search_adapters import RetrievedPaper
+
+    service, store, evidence, knowledge = _single_hit_service(
+        services, RetrievedPaper(title="Shared", doi="10.1/shared", source_record_id="s1")
+    )
+
+    first = service.search("project-a", ["q"]).papers[0].paper_id
+    second = service.search("project-b", ["q"]).papers[0].paper_id
+
+    assert first != second
+    assert len(knowledge.list_pages(project_id="project-a")) == 1
+    assert len(knowledge.list_pages(project_id="project-b")) == 1
+    assert len(store.list("paper", project_id="project-a")) == 1
+    assert len(store.list("paper", project_id="project-b")) == 1
+
+
+def test_page_author_names_the_module_not_the_caller(services):
+    """A deliberate, owner-ruled inconsistency (A7 D2) -- not a defect.
+
+    Two labels describe one write and they are **not** meant to agree:
+
+    * ``WikiPage.author`` names the writing **module** (``"search_service"``). It
+      is the page's provenance, so it must not drift with whichever caller
+      triggered the write. Every other writer in the repository does the same
+      (``evolution_service`` / ``profile_service`` / ``reader_service``), and
+      ``KnowledgeService.add_page`` labels its own audit event the same way.
+    * the audit ``actor`` names the **caller** (``"paper_search"`` by default).
+
+    Owner ruled D2 = do not unify them. If someone later "fixes" the mismatch by
+    making ``author`` track ``actor`` (or vice versa), this test goes red and the
+    rationale is one docstring away.
+    """
+
+    from autoresearch.search_adapters import RetrievedPaper
+
+    store, _, knowledge = services
+    seen_authors: set[str] = set()
+
+    for index, actor in enumerate(("paper_search", "another_caller")):
+        project = f"p-author-{index}"
+        service, _, _, _ = _single_hit_service(
+            services,
+            RetrievedPaper(
+                title=f"Probe {index}",
+                doi=f"10.1/author.{index}",
+                source_record_id=f"s{index}",
+            ),
+        )
+        service.actor = actor
+        outcome = service.search(project, ["q"])
+
+        page = knowledge.get_page(outcome.papers[0].paper_id)
+        assert page is not None
+        seen_authors.add(page.author)
+
+        added = [
+            event for event in store.events(project) if event["event_type"] == "evidence.added"
+        ]
+        assert added and added[-1]["actor"] == actor, (
+            "the audit actor must record *which caller* triggered the write"
+        )
+
+    assert seen_authors == {"search_service"}, (
+        "WikiPage.author must name the writing module and stay constant across callers"
+    )
+
+
+# --------------------------------------------------------------------------- #
+# 8c. A7 audit round 1: race, legacy path, seeds, healing, invalidation
+# --------------------------------------------------------------------------- #
+
+
+def test_concurrent_persist_writes_the_record_once(tmp_path):
+    """The existence check and the writes must be one critical section (A7 ①).
+
+    Before the fix the read at ``existing_*`` and the write at ``store.put``/
+    ``add_page`` were separate statements. Two threads interleaving between them
+    both saw "absent" and both wrote: the store ended up with two evidence rows,
+    or one thread's ``add_page`` raised ``ValueError: revision 1 must be > current
+    max 1`` because the other had already written ``revision=1``. Both outcomes
+    are reproduced by this test on the pre-fix code (measured: ~9/20 rounds clean,
+    the rest duplicated evidence or raised).
+    """
+
+    def run_round(store, evidence, knowledge, barrier, errors):
+        paper = PaperRecord(
+            project_id="p1",
+            title="Concurrent",
+            doi="10.1/concurrent",
+            source="s",
+            source_record_id="s1",
+        )
+
+        def worker():
+            barrier.wait(timeout=10)
+            try:
+                persist_bibliographic_record(
+                    store, evidence, knowledge, paper, actor="paper_search"
+                )
+            except Exception as exc:  # noqa: BLE001 - the assertion is "no exception at all"
+                errors.append(exc)
+
+        threads = [threading.Thread(target=worker) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=10)
+
+    for index in range(20):
+        store = RecordStore(tmp_path / f"race-{index}.sqlite3")
+        evidence = EvidenceService(store)
+        knowledge = KnowledgeService(store)
+        errors: list[Exception] = []
+        barrier = threading.Barrier(2)
+        run_round(store, evidence, knowledge, barrier, errors)
+
+        assert not errors, f"round {index} raised {errors!r}"
+        assert len(evidence.list("p1")) == 1, f"round {index} duplicated evidence"
+        assert len(knowledge.list_pages(project_id="p1")) == 1, f"round {index} duplicated page"
+
+
+def test_the_legacy_connector_path_is_also_idempotent(tmp_path):
+    """The shared writer derives identity, so the legacy path is fixed too (A7 ②).
+
+    ``search_service`` claims the two search paths "produce identical durable
+    facts". The legacy path built ``PaperRecord(... **raw)`` with no ``paper_id``
+    and so kept the random default, breaking that claim for repeated retrieval.
+    """
+
+    class Connector:
+        name = "fixture"
+
+        def search(self, query, limit):
+            return [
+                {
+                    "title": "Legacy paper",
+                    "abstract": "A.",
+                    "doi": "10.1/legacy",
+                    "source_record_id": "l1",
+                }
+            ]
+
+    store = RecordStore(tmp_path / "legacy.sqlite3")
+    service = PaperSearchService(
+        store,
+        EvidenceService(store),
+        KnowledgeService(store),
+        network_enabled=True,
+        connectors=[Connector()],
+    )
+
+    ids = [service.search("p1", [f"q{index}"]).papers[0].paper_id for index in range(3)]
+
+    assert len(set(ids)) == 1
+    assert len(KnowledgeService(store).list_pages(project_id="p1")) == 1
+    assert len(EvidenceService(store).list("p1")) == 1
+
+
+def test_seed_papers_are_idempotent_but_an_explicit_id_is_respected(tmp_path):
+    """A rebuilt seed must converge; an id the user chose must survive (A7 ③).
+
+    The ``user_supplied`` branch passed the caller's record straight through, so
+    a seed rebuilt from the same file on every run minted a new page each time.
+    Identity is therefore derived for seeds too -- but only when the seed carries
+    no explicit id, so a user (or a provider) that names its own id keeps it.
+    """
+
+    store = RecordStore(tmp_path / "seed.sqlite3")
+    evidence = EvidenceService(store)
+    knowledge = KnowledgeService(store)
+    service = AdapterBackedPaperSearchService(
+        store, evidence, knowledge, adapters={}, network_enabled=False
+    )
+
+    def rebuilt_seed():
+        return PaperRecord(
+            project_id="p1",
+            title="Seed paper",
+            doi="10.1/seed",
+            source="manual",
+            source_record_id="m1",
+        )
+
+    ids = [
+        service.search("p1", [], seed_papers=[rebuilt_seed()]).papers[0].paper_id
+        for _ in range(3)
+    ]
+
+    assert len(set(ids)) == 1, "a seed rebuilt from the same content must keep one identity"
+    assert len(knowledge.list_pages(project_id="p1")) == 1
+    assert len(evidence.list("p1")) == 1
+
+    explicit = PaperRecord(
+        paper_id="user-supplied-id",
+        project_id="p2",
+        title="Seed two",
+        doi="10.2/seed2",
+        source="manual",
+        source_record_id="m2",
+    )
+    outcome = service.search("p2", [], seed_papers=[explicit])
+
+    assert outcome.papers[0].paper_id == "user-supplied-id"
+    assert knowledge.get_page("user-supplied-id") is not None
+
+
+def test_a_missing_evidence_is_backfilled_into_the_page(services):
+    """Healing must not leave the page pointing at a dead evidence id (A7 ④).
+
+    When the page survived but its evidence did not, the writer minted a fresh
+    item and stopped there: ``page.evidence_ids`` still named the old, dead id, so
+    the page -> evidence chain was broken by the very act of repairing it.
+    """
+
+    store, evidence, knowledge = services
+    paper = PaperRecord(
+        project_id="p1", title="Orphan", doi="10.1/orphan", source="s", source_record_id="s1"
+    )
+    page_id = bibliographic_paper_id(paper)
+    knowledge.add_page(
+        WikiPage(
+            page_id=page_id,
+            project_id="p1",
+            partition=KnowledgePartition.PAPERS,
+            title=paper.title,
+            body="stale",
+            evidence_ids=["ev-dangling"],
+            author="search_service",
+        )
+    )
+    assert knowledge.get_page(page_id).evidence_ids == ["ev-dangling"]
+
+    _, item = persist_bibliographic_record(store, evidence, knowledge, paper, actor="paper_search")
+
+    page = knowledge.get_page(page_id)
+    assert page is not None
+    assert item.evidence_id in page.evidence_ids, "the new evidence must not be an orphan"
+    assert page.evidence_ids == ["ev-dangling", item.evidence_id]
+    assert page.revision == 2, "append-only: the backfill is a new revision"
+    assert len(knowledge.list_pages(project_id="p1")) == 1
+    assert len(evidence.list("p1")) == 1
+
+
+def test_an_invalidated_evidence_does_not_suppress_a_fresh_record(services):
+    """An invalidated E1 is not "already persisted" (A7 ⑤).
+
+    ``evidence.list`` defaults to ``valid_only=False``, so the existence probe
+    matched an item that had been invalidated and returned early: the record could
+    never be re-established, and the caller received the *invalid* item as the
+    current one.
+    """
+
+    store, evidence, knowledge = services
+    paper = PaperRecord(
+        project_id="p1", title="Invalidated", doi="10.1/inv", source="s", source_record_id="s1"
+    )
+
+    first, original = persist_bibliographic_record(
+        store, evidence, knowledge, paper, actor="paper_search"
+    )
+    evidence.invalidate(original.evidence_id, "fixture: superseded", actor="test")
+
+    _, replacement = persist_bibliographic_record(
+        store, evidence, knowledge, paper, actor="paper_search"
+    )
+
+    assert replacement.evidence_id != original.evidence_id
+    assert replacement.valid is True
+    page = knowledge.get_page(first.paper_id)
+    assert page is not None
+    assert replacement.evidence_id in page.evidence_ids
 
 
 # --------------------------------------------------------------------------- #
