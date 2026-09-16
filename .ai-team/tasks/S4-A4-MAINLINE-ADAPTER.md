@@ -2,8 +2,8 @@
 
 - ID: `S4-A4-MAINLINE-ADAPTER`
 - Title: `S4 mainline retrieval switches to the A5 real adapters`
-- Status: `handoff`
-- Status note: 已提交审查（PR #23，head `9510ac4`）；本 commit 实测 **587 passed / 2 skipped**（base `main@b83cc56` 实测 539）；四门全绿。**合并后再转 `integrated`。**
+- Status: `integrated`
+- Status note: 已提交审查（PR #23，head `9510ac4`）；本 commit 实测 **587 passed / 2 skipped**（base `main@b83cc56` 实测 539）；四门全绿。**已合并 `main@b5853bd`（PR #23，squash）。** 后续验收（accepted）挂 P2/认证层与跨进程并发。
 - Status note（包级设计）: 执行 `D-A5-偏离-1` 选项 (a)。新文件 `src/autoresearch/adapter_search_service.py`（`AdapterBackedPaperSearchService`，满足 `PaperSearchServicePort`）；`_CandidateOnlyAdapter` 新增公开原语 `retrieve()`，限流计数下沉其中，`invoke()` 改为复用；`application.py` 装配切到新服务，`PaperSearchCapabilityAdapter` / `InvocationBoundedSearchPort`（A4 可靠边界）原样保留。基线 `main@04ce9a9` 实测 **509 passed / 2 skipped / 0 error**；本包完成后 **546 passed / 2 skipped / 0 error**（快照 commit `7b15997`；后续 A9/A10 改动使其继续增长，见文末 Integration head）。ruff clean、compileall OK、`check.mjs` valid。判别力实测：装配未切场景下 **2 判据型 failed / 12 passed**。零回归（既有 509 条逐位不变）。
 - Owner: `user/team`
 - Next owner: `user/team`
