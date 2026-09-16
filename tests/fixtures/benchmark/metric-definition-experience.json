@@ -1,0 +1,43 @@
+{
+  "case_metrics": [
+    "hallucination_ratio",
+    "accepted_hallucination_ratio",
+    "evidence_binding_rate"
+  ],
+  "conditions": [
+    "bare_llm",
+    "gate_off",
+    "gate_on",
+    "experience_off",
+    "experience_placeholder",
+    "experience_clean",
+    "experience_noisy",
+    "experience_wrong"
+  ],
+  "definition_version": "2.0-experience",
+  "direction": "lower_is_better",
+  "formula": "hallucination_ratio = unsupported_claims / total_claims, in [0, 1]; a draft with no claims scores 0.0 (deterministic empty, D-F8-01), so the count of such cells must be reported alongside it",
+  "frozen": true,
+  "notes": [
+    "One primary metric only (karpathy constraint 1): hallucination_ratio.",
+    "The corpus and this definition are frozen together; changing either needs a new version.",
+    "hallucination_ratio covers scored cells (completed + blocked). accepted_hallucination_ratio covers ACCEPTED cells only: a non-accepted cell released no content, so it is excluded rather than counted as 0.0 -- counting it would make the score rise the more the mechanism blocks. A condition that accepted nothing reports null, never a perfect score. (Changed in 1.1; 1.0 zeroed a non-accepted cell, which let a live run with acceptance_rate 0.0 report score 100.0.)",
+    "A rate whose denominator is empty is null, not 100.0: \"there was nothing to block\" is not \"blocking was perfect\".",
+    "Unsupported claims are computed against the corpus label binding, so a condition that never retrieves material can never look well bound.",
+    "Version 2.0-experience adds the experience conditions (DESIGN.md §2.4) without changing the frozen metric itself; hallucination_ratio stays the sole primary metric.",
+    "experience_placeholder is a length-matched, content-free control: injecting experience necessarily lengthens the prompt, and prompt length alone moves LLM output. Comparing clean against off would otherwise confound 'the experience content' with 'the prompt got longer' (REVIEW.md B2).",
+    "The experience_* conditions reuse the gate_off enforcement path (retrieval + validation run, nothing blocks). The experience-injection agent is wired via TrustBenchmarkRuntime(condition_agents=...)."
+  ],
+  "primary_metric": "hallucination_ratio",
+  "report_metrics": [
+    "hallucination_ratio",
+    "accepted_hallucination_ratio",
+    "acceptance_rate",
+    "evidence_binding_rate",
+    "fail_closed_block_rate",
+    "false_pass_rate",
+    "false_block_rate",
+    "mechanism_safety_score"
+  ],
+  "unsupported_claim_rule": "A drafted claim is unsupported unless it is bound to a non-empty set of admitted material ids. Each result-like numeric sentence matched by SectionValidator.RESULT_NUMBER_PATTERNS counts as one additional unsupported claim, because an evaluation draft must stay planned-only."
+}
