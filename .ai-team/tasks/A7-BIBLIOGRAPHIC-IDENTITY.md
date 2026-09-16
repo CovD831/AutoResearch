@@ -66,15 +66,34 @@
 
 ## Pending
 
-- 独立审计（改动 3 文件 + 新逻辑分支）。
-- owner 对 **D3**（标识含 project_id）与 **D5**（保留早退 vs 删早退）的裁定。
-- 跨进程并发未闭合（见 L3 §8）；evidence 存在性查询 O(n)。
-- 是否 commit / push / 合并，由 owner 决策；本地工作树未提交。
+- **已在 commit `8500bd3` 落盘**；PR 契约门禁补跑 `valid / 5 changed paths; 1 task ledger(s)`。
+- **待合并**：本分支基于 PR #23 的 head（`9510ac4`），须待 PR #23 合入 main 后再生效；
+  否则本分支的基线悬空。**这是唯一的合并前置条件。**
+- **已裁定（owner）**：
+  - **D3** 标识含 `project_id` —— **背书**。硬依据：`storage.py` 主键 `PRIMARY KEY (kind, record_id)`
+    不含 project，`get_page` 走该全局键；不加会跨项目污染。已独立复现跨项目隔离。
+  - **D5** 保留早退 —— **不删**。删除后 `store.put` upsert 会改写已落库记录的 `retrieved_at`，
+    使「幂等跳过」不再是零写入，与 D1 措辞冲突（两次 `retrieved_at` 相同 = 被保护，已实测）。
+    另：`:211-214` 两个连续 `if independent_source is None` 是**不同语义**（条件早退 / 兜底赋值），非冗余。
+- **另立独立任务（不属 A7，决定不改本分支）**：
+  - **跨进程竞态**：实例级 `RLock` 不覆盖多进程共享 db。**且生产代码内无多进程写作**
+    （全仓 `multiprocessing` / `Process(` / `subprocess` 零命中），属存储层基础设施议题，
+    且需引入 `BEGIN IMMEDIATE` 改 SQLite 隔离级别 —— 动全局存储层，收益远小于风险。
+  - **标题归一化碰撞**：`re.sub(r"\W+", "", title)` 下 `"A B"` 与 `"AB"` 同键，
+    对无 DOI 论文是「静默合并」活限制。属既有归一化类，与 A7 的「重复写」是不同问题。
 
 ## Next step
 
-- 交 team-lead：主理人报用户确认后，由 owner 决定是否进入保护窗口合并。
-- 若 owner 裁定删除早退（D5 另一支），需同步修改 D1 的「不再写入」措辞并重跑 596 基线。
+- 等 **PR #23 合入 main** 后，本分支 rebase 到新 main 并开 PR。
+- 若需处理「跨进程竞态 / 标题碰撞」，另开独立任务（见 Pending 末条），**不在本分支追加**。
+
+## 未解决（如实列出，见 L3 §8，**均为已声明的边界或证据强度缺口，非缺陷**）
+
+- 跨进程竞态未闭合（已另立任务）
+- 并发测试是**概率性**判据型，非确定性
+- 标题归一化碰撞（已另立任务）
+- evidence 存在性查询 O(n)；provider 自带 `paper_id` 不被派生
+- 「evidence 在、page 缺失」这半边自愈无测试（难经公共 API 构造，无记录删除接口）
 
 ## Verification
 
