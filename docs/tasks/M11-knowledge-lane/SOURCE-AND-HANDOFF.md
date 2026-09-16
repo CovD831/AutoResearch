@@ -239,5 +239,32 @@ src/autoresearch/search_service.py
 src/autoresearch/contracts.py
 ```
 
-**完整边界**：`tasks/M11-MVP-01/task-package.json` 的 `allowed_paths` / `conditional_paths` / `frozen_paths` / `forbidden_paths`。
+**owner 事后授权**（`owner_authorizations` —— 成员已在 PR #36 完成后申报，owner 于 2026-09-16 认可）：
+
+| 授权 ID | 路径 | 性质 |
+|---|---|---|
+| `AUTH-M11-MVP-01-01` | `tests/test_r006_l1_writer.py` | **补入 `allowed_paths`**（追溯授权） |
+| `AUTH-M11-MVP-01-02` | `src/autoresearch/contracts.py` | **确认命中 conditional rule B** |
+
+> **`AUTH-M11-MVP-01-01` 的背景（必读，这条不是「顺手放行」）**
+>
+> 任务书要求「新 revision **必须** = max(既有) + 1」（见本包 `contracts_to_satisfy.wiki_page_append_only`
+> 与 `TASK-SPECS.md:178`）。而**继承来的** `tests/test_r006_l1_writer.py` **显式断言了相反的行为**：
+>
+> ```python
+> # Gap is allowed (3 -> 7) as long as it is strictly greater.
+> ```
+>
+> **两条要求互斥**，旧断言必须被替换。这属于本项目**已记录三次**的缺陷族
+> 「**测试固化了缺陷**」（同型：`stays_zero` 断言 `cost.total == 0.0`、
+> `test_malformed_payload` 断言 `rerun.unreadable == 0`、`len(pages) == len(records)` 固化 upsert 语义）。
+> 项目纪律明确写着：**改缺陷时必须查「有没有测试在断言这个错误行为」**——
+> **一条陈旧的断言是绿的，不构成该行为正确的证据。**
+>
+> **流程说明**：成员在 PR 描述里**主动申报**了这处越界（而非隐瞒），这是正确处置。
+> 缺口在**流程**（未事先取得授权），不在**技术判断**。上表即为补上的授权。
+> 授权经 owner 实测复核：删除的断言原文与契约原文均已逐字核对，**冲突为真**。
+
+**完整边界**：`tasks/M11-MVP-01/task-package.json` 的 `allowed_paths` / `conditional_paths` /
+`frozen_paths` / `forbidden_paths` / `owner_authorizations`。
 
