@@ -5,8 +5,13 @@
   "status": "active",
   "base_ref": "04ce9a9",
   "branch": "owner/a8-mainline-adapter",
-  "depends_on": ["S4-A-BENCHMARK-HARNESS integrated (PR #19)", "D-A5-偏离-1 adjudicated"],
-  "merge_after": ["S4-A-BENCHMARK-HARNESS integrated"],
+  "depends_on": [
+    "S4-A-BENCHMARK-HARNESS integrated (PR #19)",
+    "D-A5-偏离-1 adjudicated"
+  ],
+  "merge_after": [
+    "S4-A-BENCHMARK-HARNESS integrated"
+  ],
   "allowed_paths": [
     "src/autoresearch/adapter_search_service.py",
     "src/autoresearch/search_adapters.py",
@@ -17,7 +22,15 @@
     "tests/test_search_adapters.py",
     "tests/fixtures/search_adapters/",
     "docs/tasks/P1-A-runtime-lane/tasks/A8-mainline-adapter/",
-    ".ai-team/tasks/S4-A4-MAINLINE-ADAPTER.md"
+    ".ai-team/tasks/S4-A4-MAINLINE-ADAPTER.md",
+    "docs/rearchitecture/TASK-PACKAGE-REGISTRY.md",
+    "docs/tasks/P1-A-runtime-lane/TASK-QUEUE.md",
+    "docs/tasks/P1-A-runtime-lane/tasks/A5-benchmark-runtime/L3.md",
+    "src/autoresearch/agents/base.py",
+    "src/autoresearch/cli.py",
+    "src/autoresearch/project_service.py",
+    "reviews/A8-A9-ADVERSARIAL-REVIEW.md",
+    "reviews/A8-A9-EXECUTION-REPORT.md"
   ],
   "forbidden_paths": [
     "src/autoresearch/contracts.py",

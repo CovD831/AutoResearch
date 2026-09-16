@@ -2,8 +2,9 @@
 
 - ID: `S4-A5-HANDOFF-BY-REFERENCE`
 - Title: `S4 handoff envelope becomes a reference list instead of a content carrier`
-- Status: `active`
-- Status note: 缺陷由成员真实运行的 44 篇检索暴露（41 张阅读卡 / 164 证据号被 pydantic 拒绝，运行直接崩）。修法是**语义**而非数字：`HandoffEnvelope` 的 `artifact_refs`/`evidence_ids` 由「内容承载量级」重定义为「引用界」（20→500、100→2000，仍有限）；`paper_reader` 不再逐卡嵌入 `findings[0][:300]`；`paper_search` 的硬编码 `[:20]` 改为命名常量 + **可观测告警**，并顺手修掉 `summary=paper.title` 与 `ArtifactRef.summary` 上限 500 不符的同族缺陷。基线（A8 提交 `7b15997`）525 passed → 本包 **532 passed / 2 skipped / 0 error**（新增 7）。**判别力 4 failed，全部判据型。**
+- Status: `handoff`
+- Status note: 已提交审查（PR #23，head `9510ac4`）。验收证据：本 commit 实测 **587 passed / 2 skipped**（base `main@b83cc56` 实测 539）。**合并后再转 `integrated`。**
+- Status note: 缺陷由成员真实运行的 44 篇检索暴露（41 张阅读卡 / 164 证据号被 pydantic 拒绝，运行直接崩）。修法是**语义**而非数字：`HandoffEnvelope` 的 `artifact_refs`/`evidence_ids` 由「内容承载量级」重定义为「引用界」（20→500、100→2000，仍有限）；`paper_reader` 不再逐卡嵌入 `findings[0][:300]`；`paper_search` 的硬编码 `[:20]` 改为命名常量 + **可观测告警**，并顺手修掉 `summary=paper.title` 与 `ArtifactRef.summary` 上限 500 不符的同族缺陷。基线（A8 提交 `7b15997`）525 passed → 本包快照 (`b7635d7`) **532 passed / 2 skipped / 0 error**（新增 7）。**判别力 4 failed，全部判据型。**
 - Owner: `user/team`
 - Next owner: `user/team`
 

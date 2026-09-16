@@ -2,14 +2,15 @@
 
 - ID: `S4-A4-MAINLINE-ADAPTER`
 - Title: `S4 mainline retrieval switches to the A5 real adapters`
-- Status: `active`
-- Status note: 执行 `D-A5-偏离-1` 选项 (a)。新文件 `src/autoresearch/adapter_search_service.py`（`AdapterBackedPaperSearchService`，满足 `PaperSearchServicePort`）；`_CandidateOnlyAdapter` 新增公开原语 `retrieve()`，限流计数下沉其中，`invoke()` 改为复用；`application.py` 装配切到新服务，`PaperSearchCapabilityAdapter` / `InvocationBoundedSearchPort`（A4 可靠边界）原样保留。基线 `main@04ce9a9` 实测 **509 passed / 2 skipped / 0 error**；本包后 **546 passed / 2 skipped / 0 error**（含两轮对抗审查及 A10 的修复判据测试）。ruff clean、compileall OK、`check.mjs` valid。判别力实测：装配未切场景下 **2 判据型 failed / 12 passed**。零回归（既有 509 条逐位不变）。
+- Status: `handoff`
+- Status note: 已提交审查（PR #23，head `9510ac4`）；本 commit 实测 **587 passed / 2 skipped**（base `main@b83cc56` 实测 539）；四门全绿。**合并后再转 `integrated`。**
+- Status note（包级设计）: 执行 `D-A5-偏离-1` 选项 (a)。新文件 `src/autoresearch/adapter_search_service.py`（`AdapterBackedPaperSearchService`，满足 `PaperSearchServicePort`）；`_CandidateOnlyAdapter` 新增公开原语 `retrieve()`，限流计数下沉其中，`invoke()` 改为复用；`application.py` 装配切到新服务，`PaperSearchCapabilityAdapter` / `InvocationBoundedSearchPort`（A4 可靠边界）原样保留。基线 `main@04ce9a9` 实测 **509 passed / 2 skipped / 0 error**；本包完成后 **546 passed / 2 skipped / 0 error**（快照 commit `7b15997`；后续 A9/A10 改动使其继续增长，见文末 Integration head）。ruff clean、compileall OK、`check.mjs` valid。判别力实测：装配未切场景下 **2 判据型 failed / 12 passed**。零回归（既有 509 条逐位不变）。
 - Owner: `user/team`
 - Next owner: `user/team`
 
 ## Goal
 
-把主链路 `run` 的检索从裸 `httpx.get` 匿名 connector（`search_service.SemanticScholarConnector`）切到 A5 交付的真实检索 adapter（`search_adapters.SemanticScholarSearchAdapter`：key 走 header、无 key fail-closed、限流可观测），从而消除真实运行中 "semantic_scholar 匿名必 429" 的失败面。不删除老服务（它是 A1 accepted 的 S1 路径，被 A1/A2 recovery contract 测试直接构造）。
+把主链路 `run` 的检索从裸 `httpx.get` 匿名 connector（`search_service.SemanticScholarConnector`）切到 A5 交付的真实检索 adapter（`search_adapters.SemanticScholarSearchAdapter`：key 走 header、无 key fail-closed、限流可观测），从而消除真实运行中观察到的 **semantic_scholar 429** 失败面 —— 无 key 走共享匿名额度确实**不稳定且已被真实运行观察到** 429（本机 2026-09-11 实测），但官方说明大部分端点允许无 key 访问、仅受共享限流，因此准确表述是「匿名共享额度不适合作为可靠主链路」，而非「匿名必失败」。不删除老服务（它是 A1 accepted 的 S1 路径，被 A1/A2 recovery contract 测试直接构造）。
 
 ## Why a separate package
 
@@ -52,7 +53,16 @@
 | 项 | 命令 | 结果 |
 |---|---|---|
 | 基线（`04ce9a9`，本 worktree 实测） | `pytest -q -o addopts="" -W error` | **509 passed / 2 skipped / 0 error** |
-| 本包全量 | 同上 | **546 passed / 2 skipped / 0 error** |
+| 本包全量（快照 `7b15997`） | 同上 | **546 passed / 2 skipped / 0 error** |
+
+### Integration head（PR #23 合并前）
+
+| 项 | commit | 结果 |
+|---|---|---|
+| base | `main@b83cc56` | **539 passed / 2 skipped**（本 worktree 实测） |
+| PR head | `9510ac4` | **587 passed / 2 skipped**（本 worktree 实测） |
+
+> 包级历史数字属各自提交上的快照，**不要求彼此相同**；上面每行都标了它自己的 commit，便于复算。
 | 聚焦 | `pytest tests/test_adapter_search_service.py` | 20 passed，**全离线** |
 | ruff | `ruff check src tests` | All checks passed |
 | compileall | `compileall -q src` | exit 0 |

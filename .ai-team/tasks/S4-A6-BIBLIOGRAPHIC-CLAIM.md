@@ -2,8 +2,9 @@
 
 - ID: `S4-A6-BIBLIOGRAPHIC-CLAIM`
 - Title: `S4 evidence claims describe the actual material; partial provider failure is visible`
-- Status: `active`
-- Status note: 处置第二轮独立盲审提出的 **F4**（畸形/缺失命中铸成受信任 E1，且 claim 与 wiki 正文自相矛盾）与 **N1**（部分 provider 失败被静默：有 papers 即 COMPLETED）。两项均实测复现为真。修法：提取**共享书目写入函数**（A1 parity 由"两个编辑者记得同步"改为**结构性**保证）+ claim 按实际材料书写 + 不可归属的**检索命中**拒绝铸 E1（用户 seed 不受限）+ `InvocationReceipt.provider_failure` 把部分失败作为**事实**穿过 A4 边界（**不改 `_status()` 既有语义**）。基线 `1488cdd` 538 passed → **548 passed / 2 skipped / 0 error**（两轮：546 后经第 3 轮独立审查再修）。**判别力两轮合计 11 failed，全部判据型**（5 + 6）。
+- Status: `handoff`
+- Status note: 已提交审查（PR #23，head `9510ac4`）。验收证据：本 commit 实测 **587 passed / 2 skipped**（base `main@b83cc56` 实测 539）。**合并后再转 `integrated`。**
+- Status note: 处置第二轮独立盲审提出的 **F4**（畸形/缺失命中铸成受信任 E1，且 claim 与 wiki 正文自相矛盾）与 **N1**（部分 provider 失败被静默：有 papers 即 COMPLETED）。两项均实测复现为真。修法：提取**共享书目写入函数**（A1 parity 由"两个编辑者记得同步"改为**结构性**保证）+ claim 按实际材料书写 + 不可归属的**检索命中**拒绝铸 E1（用户 seed 不受限）+ `InvocationReceipt.provider_failure` 把部分失败作为**事实**穿过 A4 边界（**不改 `_status()` 既有语义**）。基线 `1488cdd` 538 passed → 本包快照 **548 passed / 2 skipped / 0 error**（两轮：546 后经第 3 轮独立审查再修）。**判别力两轮合计 11 failed，全部判据型**（5 + 6）。
 - Owner: `user/team`
 - Next owner: `user/team`
 
