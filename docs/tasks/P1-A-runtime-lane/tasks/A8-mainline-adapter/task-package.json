@@ -1,0 +1,66 @@
+{
+  "task_id": "S4-A4-MAINLINE-ADAPTER",
+  "phase": "S4",
+  "owner_lane": "runtime",
+  "status": "active",
+  "base_ref": "04ce9a9",
+  "branch": "owner/a8-mainline-adapter",
+  "depends_on": [
+    "S4-A-BENCHMARK-HARNESS integrated (PR #19)",
+    "D-A5-偏离-1 adjudicated"
+  ],
+  "merge_after": [
+    "S4-A-BENCHMARK-HARNESS integrated"
+  ],
+  "allowed_paths": [
+    "src/autoresearch/adapter_search_service.py",
+    "src/autoresearch/search_adapters.py",
+    "src/autoresearch/application.py",
+    "src/autoresearch/agents/paper_search.py",
+    "src/autoresearch/config.py",
+    "tests/test_adapter_search_service.py",
+    "tests/test_search_adapters.py",
+    "tests/fixtures/search_adapters/",
+    "docs/tasks/P1-A-runtime-lane/tasks/A8-mainline-adapter/",
+    ".ai-team/tasks/S4-A4-MAINLINE-ADAPTER.md",
+    "docs/rearchitecture/TASK-PACKAGE-REGISTRY.md",
+    "docs/tasks/P1-A-runtime-lane/TASK-QUEUE.md",
+    "docs/tasks/P1-A-runtime-lane/tasks/A5-benchmark-runtime/L3.md",
+    "src/autoresearch/agents/base.py",
+    "src/autoresearch/cli.py",
+    "src/autoresearch/project_service.py",
+    "reviews/A8-A9-ADVERSARIAL-REVIEW.md",
+    "reviews/A8-A9-EXECUTION-REPORT.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/invocation_contracts.py",
+    "src/autoresearch/capability.py",
+    "src/autoresearch/capability_registry.py",
+    "src/autoresearch/search_service.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/gates.py",
+    "src/autoresearch/writing_service.py",
+    "src/autoresearch/storage.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "deliverables": [
+    "an AdapterBackedPaperSearchService satisfying PaperSearchServicePort, dispatching through the A5 real retrieval adapters instead of the anonymous bare httpx.get connector",
+    "a public retrieve() primitive on _CandidateOnlyAdapter so the mainline can obtain RetrievedPaper (with abstract) while invoke() keeps its candidate-only contract",
+    "rate-limit accounting moved down into retrieve() so both invoke() and the mainline share the limit-monitor surface",
+    "retrieve() -> PaperRecord persistence with the same side-effect semantics as the legacy path (paper record + E1 EvidenceItem + WikiPage), so downstream reading is not degraded to title-only",
+    "application.py wiring switched to the adapter-backed service while PaperSearchCapabilityAdapter (A4 reliable boundary) stays in place",
+    "fail-closed semantics: missing Semantic Scholar key must not silently fall back to the anonymous pool",
+    "real-run acceptance evidence showing the mainline no longer produces anonymous 429 for semantic_scholar",
+    "task-local ledger, L3 record and handoff note"
+  ],
+  "acceptance_commands": [
+    "python -m pytest tests/test_adapter_search_service.py tests/test_search_adapters.py",
+    "python -m pytest tests",
+    "python -m ruff check src tests",
+    "python -m compileall -q src",
+    "node .ai-team/check.mjs --base main"
+  ],
+  "next_package": "S4-A5-HANDOFF-BY-REFERENCE"
+}

@@ -146,6 +146,12 @@ def status(
             raise typer.BadParameter(f"unknown run: {run_id}")
         if checkpoint:
             record = {**record, "checkpoint": runtime.graph_state(run_id)}
+        # Warnings are non-blocking, so the run reads as successful -- which is
+        # exactly why they have to be surfaced here rather than left for someone
+        # to find by reading the raw record. stderr keeps stdout a parseable JSON
+        # document for scripts.
+        for warning in record.get("warnings") or []:
+            typer.echo(f"warning: {warning}", err=True)
         _echo(record)
     finally:
         runtime.close()
