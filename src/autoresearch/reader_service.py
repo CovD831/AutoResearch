@@ -70,7 +70,11 @@ class PaperReaderService:
         if not source_text:
             source_text = paper.title
         sentences = self._sentences(source_text)
-        findings = sentences[:3] or ["No extractable finding was present in the supplied text."]
+        # Extraction failure is expressed as an empty findings list, never a
+        # sentinel string. A sentinel string would be indistinguishable from a
+        # real finding downstream and would be written into Related Work as a
+        # legitimate literature entry (O16 缺陷 A).
+        findings = sentences[:3]
         method = self._pick(
             sentences,
             ("method", "approach", "we propose", "experiment", "方法", "提出"),
@@ -100,7 +104,13 @@ class PaperReaderService:
                 evidence_type=EvidenceType.PAPER,
                 grade=grade,
                 title=f"Reading extraction: {paper.title}",
-                claim=findings[0],
+                # When no finding was extractable the evidence claim states the
+                # bibliographic fact only; it must not fabricate a finding.
+                claim=(
+                    findings[0]
+                    if findings
+                    else "This bibliographic record was supplied but no finding was extractable."
+                ),
                 source_uri=paper.url or paper.full_text_path,
                 source_id=paper.paper_id,
                 locator=", ".join(locators[:5]) or "abstract",

@@ -47,10 +47,24 @@ class WritingService:
     def _citations(cards: list[ReadingCard]) -> str:
         if not cards:
             return "尚无可引用阅读卡。"
-        return "\n".join(
-            f"- [{card.paper_id}] {card.findings[0]} (locator: {', '.join(card.locators[:3])})"
-            for card in cards
-        )
+        # Dedup key = findings[0] text (O16 决策 2 / 缺陷 B): identical findings
+        # collapse, matching the plan.claims dedup. Cards with no extractable
+        # finding are skipped here; they are surfaced as gaps, not as literature.
+        seen: set[str] = set()
+        lines: list[str] = []
+        for card in cards:
+            if not card.findings:
+                continue
+            finding = card.findings[0]
+            if finding in seen:
+                continue
+            seen.add(finding)
+            lines.append(
+                f"- [{card.paper_id}] {finding} (locator: {', '.join(card.locators[:3])})"
+            )
+        if not lines:
+            return "尚无可引用阅读卡。"
+        return "\n".join(lines)
 
     def draft(
         self,
@@ -76,6 +90,15 @@ class WritingService:
             gaps.append("阅读卡不足两篇，相关工作覆盖度尚未闭环。")
         if not innovations:
             gaps.append("尚无经阅读 Agent 形成的创新候选。")
+        # Extraction failure is a substantive limitation (O16 决策 3): a card with
+        # no extractable finding must be visible to the reader, so it is recorded
+        # as a gap rather than silently dropped from Related Work.
+        failed_cards = [card for card in cards if not card.findings]
+        if failed_cards:
+            gaps.append(
+                f"{len(failed_cards)} 篇文献未能抽取出可用的发现（仅题录）；"
+                "其内容未纳入 Related Work。"
+            )
 
         innovation_text = (
             "\n".join(
@@ -84,11 +107,21 @@ class WritingService:
             )
             or "尚未形成创新候选。"
         )
-        references = "\n".join(
-            f"- [{paper.paper_id}] {paper.title}. {paper.year or 'n.d.'}. "
-            f"{paper.doi or paper.url or paper.source}"
-            for paper in papers
-        )
+        references_lines: list[str] = []
+        seen_titles: set[str] = set()
+        for paper in papers:
+            # Dedup key = normalized title (O16 决策 2 / 缺陷 B): preprint and
+            # published version of the same work share a title and collapse to one
+            # entry. Normalization strips surrounding whitespace and folds case.
+            normalized_title = " ".join(paper.title.split()).casefold()
+            if normalized_title in seen_titles:
+                continue
+            seen_titles.add(normalized_title)
+            references_lines.append(
+                f"- [{paper.paper_id}] {paper.title}. {paper.year or 'n.d.'}. "
+                f"{paper.doi or paper.url or paper.source}"
+            )
+        references = "\n".join(references_lines)
         results = (
             "\n".join(f"- {item.claim} [{item.evidence_id}]" for item in experiment_evidence)
             if experiment_evidence
@@ -136,6 +169,9 @@ class WritingService:
             project_id=project_id,
             actor="writer",
         )
+        # O16 决策 1 (c): DRAFT_v1 is the immutable first-draft archive; DRAFT is
+        # the always-current pointer. On draft both carry the same content.
+        self.write_project_file(manuscript, filename="MANUSCRIPT_DRAFT_v1.md")
         self.write_project_file(manuscript)
         return manuscript
 
@@ -671,10 +707,10 @@ class WritingService:
             project_id=revised.project_id,
             actor="writer",
         )
-        self.write_project_file(
-            revised,
-            filename=f"MANUSCRIPT_REVISION_{revised.manuscript_id}.md",
-        )
+        # O16 决策 1 (c): revise overwrites the current-draft pointer and no
+        # longer writes a new MANUSCRIPT_REVISION_<id>.md file. DRAFT_v1 remains
+        # the untouched first-draft archive.
+        self.write_project_file(revised)
         return revised
 
     def write_project_file(
