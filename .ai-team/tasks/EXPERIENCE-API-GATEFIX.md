@@ -2,16 +2,18 @@
 
 - ID: `EXPERIENCE-API-GATEFIX-2026-09-15`
 - Title: `Block self-promoted experience creation`
-- Status: `reviewing`
+- Status: `integrated`
+- Status note: merged to `main@81a35dd` via owner integration PR #34 (squash); PR #24 closed. Acceptance evidence is fresh; promotion to `accepted` awaits the P2 / authentication-layer Gate.
 - Owner: `user/team`
-- Next owner: `repository maintainer`
+- Next owner: `P2 (stage ladder) / authentication layer`
 
 ## Goal
 
 Close the external API path that allowed a caller to create an experience with
-`promoted=true`, an elevated maturity stage, or a self-declared evidence grade
-without using the promotion workflow. Keep internal experience settlement and
-existing promotion behavior unchanged.
+`promoted=true` or an elevated maturity stage without using the promotion
+workflow. Keep internal experience settlement and existing promotion behavior
+unchanged. A caller-declared `grade` is deliberately NOT restricted here -- see
+D-A7-02.
 
 ## Acceptance scenarios
 
@@ -98,6 +100,10 @@ fails loudly if someone re-adds the harmful guard.
 - Added API regression coverage for rejection, no-write behavior, and normal creation.
 - Documented the external experience creation contract, including the carried debt.
 - Manually verified `409 Conflict` followed by an empty experience search result.
+- Integrated: squash-merged as `81a35dd` on 2026-09-16 after the member branch
+  (`codex/experience-api-gatefix` @ `e327f1a`) was merged onto `main@8dd8780`
+  with no conflicts. The member's guard was adopted verbatim; no new guard was
+  added. The owner applied the D-A7-02 revert and the scope-accuracy wording.
 
 ## Pending
 
@@ -115,7 +121,8 @@ approval pass.
 
 ## Verification
 
-- [x] `pytest -o addopts="" -q` — 539 passed, 2 skipped (at `main@8dd8780` the baseline is 537; +2 net).
+- [x] `main@81a35dd` `pytest -o addopts="" -q` — 539 passed, 2 skipped (measured in `/tmp/verify-main`).
+- [x] `main@8dd8780` baseline `pytest -o addopts="" -q` — 537 passed, 2 skipped (measured in `/tmp/rev-base`); +2 net.
 - [x] `ruff check src tests` — passed.
 - [x] `compileall -q src` — passed.
 - [x] `check_pr_contract.py --base <main sha>` — valid.
@@ -125,7 +132,13 @@ approval pass.
 ## Handoff note
 
 Member A's implementation commit is `036265f`; the ledger commit is `e327f1a`.
-The guard extension (D-A7-02) and the accurate scope wording were applied by the
-owner on `owner/experience-gate-integration`, superseding the member PR so the
-cross-fork branch could be integrated. `promoted`/`stage` guards are the
-member's; the `grade` guard and the carried-debt documentation are the owner's.
+The member branch is cross-fork (`Luminary-s1/AutoResearch`), so the owner could
+not push to it and integrated through `owner/experience-gate-integration` ->
+PR #34 -> squash `81a35dd`. `promoted`/`stage` guards are the member's, adopted
+verbatim. The owner's contribution is scope accuracy plus the D-A7-02 revert
+(the `grade` guard was written, measured as making promotion gate 2 unreachable,
+and withdrawn). PR #24 is closed with a thank-you note.
+
+Known limitations carried forward (do not describe as verified):
+- D-A7-01 -- promotion gates are caller-declared; no authentication layer.
+- The `/evidence` candidate-vs-direct-admission issue is untouched.
