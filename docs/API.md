@@ -84,4 +84,23 @@ knowledge/search 参数：q、partitions、level、limit、require_evidence。
 | POST | /evolution/proposals | 生成 proposal-only 提案 |
 | POST | /evolution/proposals/{id}/review | 记录审核状态 |
 
+`POST /experiences` 只创建未晋级的 `x0_raw` 原始经验。请求中的 `promoted=true`
+或非 `x0_raw` 的 `stage` 会被拒绝（HTTP 409）；经验晋级必须通过
+`POST /experiences/{id}/promote`。
+
+**边界说明（D-A7-01，尚未关闭）**：以上守卫只关闭「创建端点直接写入 `promoted`
+字段」这一条路径。`promote()` 的四道门槛（`recurrence_count >= 2` ∧
+`grade ∈ {E2,E3,H3}` ∧ `reviewer_approved` ∧ `human_approved`）**全部由调用方
+在请求体中声明**，系统尚无认证层，因此两次普通 POST 仍可自晋级。
+
+**注意不要用「创建端点只允许 `grade=E0`」来修它。** 该做法看着与封 `promoted`
+同型，实际会让 **gate 2 经整个公共 API 不可达**：全仓没有任何其他代码给
+*经验*记录授予非 `E0` 等级（所有非 `E0` 的 grade 写入都落在
+`EvidenceItem` / `EvidenceCandidate` 上），`ExperienceSink` 又按设计恒写 `E0`
+（D-A6-03）。加了它会**静默废掉晋级能力**，而不是加固它。
+
+正确修法：按 R006 §11.11 交付 P2 的 stage 阶梯（`promoted` 从 `stage` 派生，
+`advance_stage`）+ 认证化的批准写入（`AutoResearch_详细计划书.md:100`：
+「人工批准只能由已认证的项目角色写入」）。
+
 approved_for_manual_application 不代表系统已经修改任何代码或策略。

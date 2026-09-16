@@ -24,6 +24,7 @@ from autoresearch.contracts import (
     EvidenceItem,
     EvolutionProposal,
     ExperienceRecord,
+    ExperienceStage,
     Manuscript,
     ManuscriptRevisionRequest,
     ProjectCreate,
@@ -398,6 +399,38 @@ class AutoResearchApplication:
         return self.profile.record(item)
 
     def record_experience(self, item: ExperienceRecord) -> ExperienceRecord:
+        """Create an experience from an external caller.
+
+        The external boundary may only create the sink's natural output: an
+        unpromoted ``x0_raw`` record. Both ``promoted`` and ``stage`` feed the
+        promotion workflow, so accepting either here would let a caller skip a
+        step of it by declaration.
+
+        **Deliberately NOT guarded: ``grade``.** Restricting the creation
+        boundary to ``grade=E0`` looks like the same fix, and it is not. Nothing
+        else in the repository raises an *experience* record's grade -- every
+        non-``E0`` grade write targets ``EvidenceItem`` / ``EvidenceCandidate``
+        (verified across ``graph.py``, ``benchmark.py``, ``reader_writer_ports.py``,
+        ``external_sources.py``, ``audit_evidence.py``), and ``ExperienceSink``
+        pins ``E0`` by design (D-A6-03, ``experience_sink.py``). So an ``E0``-only
+        creation guard would make promotion gate 2 (``grade in {E2,E3,H3}``)
+        **unreachable through the entire public API** -- silently disabling
+        promotion rather than securing it. Raising the grade needs an explicit
+        adjudicated path; until that exists, leaving gate 2 caller-declarable is
+        the lesser defect. See D-A7-01 / D-A7-02.
+
+        Internal settlement calls ``ExperienceService.record()`` directly and is
+        unaffected -- required, because a re-settle must carry an already-promoted
+        record's ``grade``/``promoted`` forward (D-A6-03).
+        """
+        if item.promoted:
+            raise PermissionError(
+                "experience creation cannot set promoted=True; use the promote endpoint"
+            )
+        if item.stage is not ExperienceStage.X0_RAW:
+            raise PermissionError(
+                "experience creation must use stage=x0_raw; use the promotion workflow"
+            )
         return self.experiences.record(item)
 
     def settle_failure_experiences(self, project_id: str) -> SinkSettlement:
