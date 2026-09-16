@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, model_validator
@@ -95,6 +95,105 @@ class ClaimStatus(StrEnum):
     HYPOTHESIS = "hypothesis"
     SUPPORTED = "supported"
     REFUTED = "refuted"
+
+
+# ---------------------------------------------------------------------------
+# R-006 knowledge & experience boundary contracts (L2, C1-C9)
+# ---------------------------------------------------------------------------
+
+
+class ReviewStatus(StrEnum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    SUPERSEDED = "superseded"
+
+
+class StatementStatus(StrEnum):
+    SUPPORTED = "supported"
+    CONTRADICTED = "contradicted"
+    NEEDS_REVIEW = "needs_review"
+
+
+class GraphEdgeKind(StrEnum):
+    # Same-partition (equivalence / containment) edges.
+    SUMMARIZED_BY = "summarized_by"
+    DUPLICATES = "duplicates"
+    SUPERSEDES = "supersedes"
+    # Managed bridge edges -- permitted to cross partitions (C3/C4 whitelist).
+    CITES = "cites"
+    DERIVED_FROM = "derived_from"
+    SUPPORTS = "supports"
+    CONTRADICTS = "contradicts"
+    APPLIES_TO = "applies_to"
+    INVALIDATES = "invalidates"
+
+
+class GraphNodeKind(StrEnum):
+    PAPER = "paper"
+    CLAIM = "claim"
+    METHOD = "method"
+    DATASET = "dataset"
+    METRIC = "metric"
+    EXPERIENCE = "experience"
+    DECISION = "decision"
+    CONCEPT = "concept"
+    WIKI_PAGE = "wiki_page"
+
+
+class ExperienceStage(StrEnum):
+    X0_RAW = "x0_raw"
+    X1_ATTRIBUTED = "x1_attributed"
+    X2_REPRODUCED = "x2_reproduced"
+    X3_CROSS_PROJECT = "x3_cross_project"
+    X4_POLICY = "x4_policy"
+
+
+class ProfileTier(StrEnum):
+    EXPLICIT = "explicit"
+    INFERRED = "inferred"
+    CONFIRMED = "confirmed"
+
+
+class RetrievalChannel(StrEnum):
+    LEXICAL = "lexical"
+    VECTOR = "vector"  # 【P4 后生效】当前仓库无向量实现，此枚举值不可达
+    GRAPH = "graph"
+    FUSED = "fused"
+
+
+class InjectionChannel(StrEnum):
+    EVIDENCE = "evidence"
+    EXPERIENTIAL = "experiential"
+
+
+# Bridge edge types that are permitted to cross partitions (C3/C4 whitelist).
+BRIDGE_KINDS: frozenset[GraphEdgeKind] = frozenset(
+    {
+        GraphEdgeKind.CITES,
+        GraphEdgeKind.DERIVED_FROM,
+        GraphEdgeKind.SUPPORTS,
+        GraphEdgeKind.CONTRADICTS,
+        GraphEdgeKind.APPLIES_TO,
+        GraphEdgeKind.INVALIDATES,
+    }
+)
+# Edge types that may only connect nodes within the same partition.
+SAME_PARTITION_KINDS: frozenset[GraphEdgeKind] = frozenset(
+    {
+        GraphEdgeKind.SUMMARIZED_BY,
+        GraphEdgeKind.DUPLICATES,
+        GraphEdgeKind.SUPERSEDES,
+    }
+)
+
+
+# Experience-stage ordering used by the C5 stage-gate validators. The enum is
+# declared in promotion order, so its declaration order is the canonical rank.
+_STAGE_ORDER: tuple[ExperienceStage, ...] = tuple(ExperienceStage)
+
+
+def _stage_rank(stage: ExperienceStage) -> int:
+    return _STAGE_ORDER.index(stage)
 
 
 class ArtifactRef(BaseModel):
@@ -357,6 +456,24 @@ class WikiPage(BaseModel):
     evidence_ids: list[str] = Field(default_factory=list)
     level: int = Field(default=1, ge=0, le=3)
     created_at: datetime = Field(default_factory=utc_now)
+    # --- C1: page-level revision (append-only; revision_id is the storage key) ---
+    revision: int = Field(default=1, ge=1)
+    supersedes: str | None = None
+    author: str  # required: who wrote this revision (service/agent id); no default
+    review_status: ReviewStatus = ReviewStatus.DRAFT
+    effective_at: datetime | None = None
+
+    @property
+    def revision_id(self) -> str:
+        # C1 / §11.1: f"{page_id}:r{revision}" -- used as the storage record_id.
+        return f"{self.page_id}:r{self.revision}"
+
+    @model_validator(mode="after")
+    def _published_requires_effective_at(self) -> WikiPage:
+        # I2/C1: a PUBLISHED revision must carry an effective time.
+        if self.review_status == ReviewStatus.PUBLISHED and self.effective_at is None:
+            raise ValueError("effective_at is required when review_status is PUBLISHED")
+        return self
 
 
 class GraphEdge(BaseModel):
@@ -364,7 +481,7 @@ class GraphEdge(BaseModel):
     project_id: str | None = None
     partition: KnowledgePartition
     source_id: str
-    relation: str
+    relation: GraphEdgeKind  # C3/C4: typed; managed bridge + same-partition kinds
     target_id: str
     evidence_ids: list[str] = Field(default_factory=list)
 
@@ -377,6 +494,19 @@ class RetrievalHit(BaseModel):
     score: float
     evidence_ids: list[str] = Field(default_factory=list)
     retrieval_level: str
+    # --- C7: score breakdown + retrieval channel + matched stage ---
+    score_breakdown: dict[str, float] = Field(default_factory=dict)
+    channel: RetrievalChannel = RetrievalChannel.LEXICAL
+    matched_stage: str = "L1"
+
+    @model_validator(mode="after")
+    def _fused_requires_breakdown(self) -> RetrievalHit:
+        # C7: a FUSED hit must expose its per-channel score provenance so the
+        # fusion source stays traceable. (Current FUSED path only merges LEXICAL
+        # + GRAPH; VECTOR is unreachable until P4 -- §11.8.)
+        if self.channel == RetrievalChannel.FUSED and not self.score_breakdown:
+            raise ValueError("score_breakdown is required when channel is FUSED")
+        return self
 
 
 class UserProfileItem(BaseModel):
@@ -388,6 +518,17 @@ class UserProfileItem(BaseModel):
     source: str
     confirmed_by_user: bool = False
     evidence_ids: list[str] = Field(default_factory=list)
+    # --- C6: three-tier profile + sensitivity flag ---
+    tier: ProfileTier = ProfileTier.INFERRED
+    sensitive: bool = False
+    expires_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def _confirmed_requires_user(self) -> UserProfileItem:
+        # C6 invariant 3: a CONFIRMED tier must have been confirmed by the user.
+        if self.tier == ProfileTier.CONFIRMED and not self.confirmed_by_user:
+            raise ValueError("confirmed_by_user must be True when tier is CONFIRMED")
+        return self
 
 
 class ExperienceRecord(BaseModel):
@@ -401,6 +542,97 @@ class ExperienceRecord(BaseModel):
     evidence_ids: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     promoted: bool = False
+    # --- C5: maturity stage + applicability boundaries + validity + regression ---
+    stage: ExperienceStage = ExperienceStage.X0_RAW
+    applicable_when: list[str] = Field(default_factory=list)
+    not_applicable_when: list[str] = Field(default_factory=list)
+    counterexample_ids: list[str] = Field(default_factory=list)
+    raw_trace_refs: list[str] = Field(default_factory=list)
+    valid_from: datetime = Field(default_factory=utc_now)
+    valid_until: datetime | None = None
+    regression_set_id: str | None = None
+
+    @model_validator(mode="after")
+    def _check_stage_invariants(self) -> ExperienceRecord:
+        # C5 / §11.5 stage gates (field-level, machine-checkable now).
+        # X0 is intentionally allowed to have empty boundaries -- that is the
+        # sink's natural output. The external-record checks (sandbox reproduction
+        # record existence, cross-project evidence) are P3 deliverables and are
+        # intentionally NOT enforced here.
+        rank = _stage_rank(self.stage)
+        if rank >= _stage_rank(ExperienceStage.X1_ATTRIBUTED) and (
+            not self.applicable_when or not self.not_applicable_when
+        ):
+            raise ValueError(
+                "X1+ requires non-empty applicable_when and not_applicable_when"
+            )
+        if rank >= _stage_rank(ExperienceStage.X2_REPRODUCED) and not self.regression_set_id:
+            raise ValueError("X2+ requires a non-empty regression_set_id")
+        if rank >= _stage_rank(ExperienceStage.X3_CROSS_PROJECT) and not self.counterexample_ids:
+            raise ValueError("X3+ requires non-empty counterexample_ids")
+        return self
+
+
+class Statement(BaseModel):
+    """C2: statement-level evidence binding (finer-grained than page-level)."""
+
+    statement_id: str = Field(default_factory=lambda: new_id("stmt"))
+    page_id: str
+    page_revision: int
+    text: str
+    evidence_ids: list[str] = Field(default_factory=list)
+    status: StatementStatus
+    status_changed_at: datetime = Field(default_factory=utc_now)
+
+
+class RecallAuditRecord(BaseModel):
+    """C8: L8 recall audit trail -- every retrieve writes one."""
+
+    audit_id: str = Field(default_factory=lambda: new_id("recall"))
+    project_id: str
+    query: str
+    filters: dict[str, Any] = Field(default_factory=dict)
+    candidates: list[str] = Field(default_factory=list)
+    deduped: list[str] = Field(default_factory=list)
+    reranked: list[str] = Field(default_factory=list)
+    final_hits: list[str] = Field(default_factory=list)
+    # 【P4 后生效】仅当向量通道落地后才会含向量级耗时；当前仓库无向量实现。
+    stage_timings_ms: dict[str, float] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=utc_now)
+
+    @model_validator(mode="after")
+    def _check_subset_chain(self) -> RecallAuditRecord:
+        # C8 invariant 2: final_hits ⊆ reranked ⊆ deduped ⊆ candidates.
+        if not set(self.final_hits).issubset(self.reranked):
+            raise ValueError("final_hits must be a subset of reranked")
+        if not set(self.reranked).issubset(self.deduped):
+            raise ValueError("reranked must be a subset of deduped")
+        if not set(self.deduped).issubset(self.candidates):
+            raise ValueError("deduped must be a subset of candidates")
+        return self
+
+
+class ExperienceInjectionItem(BaseModel):
+    """C9: one experience carried in the experiential (non-fact) channel."""
+
+    experience_id: str
+    stage: ExperienceStage
+    tier_weight: float = 1.0  # bounds / 公式留 P6 (§11.7)
+    applicable_when: list[str] = Field(default_factory=list)
+    not_applicable_when: list[str] = Field(default_factory=list)
+    counterexample_ids: list[str] = Field(default_factory=list)
+
+
+class ExperienceInjection(BaseModel):
+    """C9: experiential-channel payload -- can never carry fact (I1).
+
+    ``channel`` is a constant literal type, not a free enum field, so the type
+    system itself guarantees this object cannot represent the EVIDENCE channel.
+    """
+
+    channel: Literal[InjectionChannel.EXPERIENTIAL] = InjectionChannel.EXPERIENTIAL
+    records: list[ExperienceInjectionItem] = Field(default_factory=list)
+    rendered_guidance: str = ""
 
 
 class EvolutionProposal(BaseModel):

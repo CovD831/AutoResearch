@@ -10,21 +10,63 @@ from autoresearch.contracts import (
 )
 from autoresearch.storage import RecordStore
 
+# R-006 L1 / §11.9: a bare page_id is resolved through a dedicated head index
+# record rather than through the versioned ``wiki_page`` table. The version
+# table is append-only (one row per revision_id), so a bare id never matches.
+WIKI_PAGE_HEAD_KIND = "wiki_page_head"
+
 
 class KnowledgeService:
-    """Partitioned Wiki + graph store with bounded multi-level retrieval."""
+    """Partitioned Wiki + graph store with bounded multi-level retrieval.
+
+    Page storage is append-only (R-006 L1 / §11.9): every page revision is
+    written under ``record_id = f"{page_id}:r{revision}"`` and the current
+    revision for a bare ``page_id`` is tracked by a ``wiki_page_head`` index
+    record. ``get_page`` / ``list_pages`` are the only sanctioned ways to read
+    a page by its bare id; the raw ``wiki_page`` table enumerates *versions*
+    and is only for audit / migration.
+    """
 
     def __init__(self, store: RecordStore):
         self.store = store
 
     def add_page(self, page: WikiPage) -> WikiPage:
-        self.store.put(
-            "wiki_page",
-            page.page_id,
-            page,
-            project_id=page.project_id,
-            partition=page.partition.value,
-        )
+        # Append-only revision writer (I2 / §11.9). A new revision must be
+        # strictly greater than the current max; the writer refuses to
+        # overwrite an existing revision.
+        head = self.store.get(WIKI_PAGE_HEAD_KIND, page.page_id)
+        current_max = head["revision"] if head else 0
+        if page.revision <= current_max:
+            raise ValueError(
+                f"revision {page.revision} must be > current max {current_max} "
+                f"for page {page.page_id} (append-only: revisions are never "
+                f"overwritten)"
+            )
+        revision_id = page.revision_id
+        head_payload = {
+            "page_id": page.page_id,
+            "current_revision_id": revision_id,
+            "revision": page.revision,
+        }
+        # Atomic: version + head in one transaction so a crash can never leave
+        # the head pointing at a missing version (or vice versa).
+        with self.store.transaction() as connection:
+            self.store._write_record(
+                connection,
+                "wiki_page",
+                revision_id,
+                page,
+                project_id=page.project_id,
+                partition=page.partition.value,
+            )
+            self.store._write_record(
+                connection,
+                WIKI_PAGE_HEAD_KIND,
+                page.page_id,
+                head_payload,
+                project_id=page.project_id,
+                partition=page.partition.value,
+            )
         self.store.append_event(
             "knowledge.page_added",
             page,
@@ -33,12 +75,54 @@ class KnowledgeService:
         )
         return page
 
+    def get_page(self, page_id: str) -> WikiPage | None:
+        """Resolve a bare page_id to its current revision (§11.9 head index)."""
+
+        head = self.store.get(WIKI_PAGE_HEAD_KIND, page_id)
+        if head is None:
+            return None
+        version = self.store.get("wiki_page", head["current_revision_id"])
+        if version is None:
+            # Crash / corruption left the head pointing at a missing version.
+            # The head is authoritative: we never surface a dangling version,
+            # and a missing version means the page is effectively absent.
+            return None
+        return WikiPage(**version)
+
+    def list_pages(
+        self,
+        project_id: str | None = None,
+        partition: KnowledgePartition | None = None,
+    ) -> list[WikiPage]:
+        """Enumerate pages, de-duplicated by page_id and resolved to head.
+
+        This is the page-level analogue of ``store.list("wiki_page")``; the raw
+        ``wiki_page`` table enumerates *versions* (one row per revision) and is
+        only for audit / migration (§11.9).
+        """
+
+        heads = self.store.list(
+            WIKI_PAGE_HEAD_KIND,
+            project_id=project_id,
+            partition=partition.value if partition is not None else None,
+        )
+        pages: list[WikiPage] = []
+        for head in heads:
+            version = self.store.get("wiki_page", head["current_revision_id"])
+            if version is None:
+                # Skip a corrupt head (see get_page) rather than crash.
+                continue
+            pages.append(WikiPage(**version))
+        return pages
+
     def add_edge(self, edge: GraphEdge) -> GraphEdge:
-        source = self.store.get("wiki_page", edge.source_id)
-        target = self.store.get("wiki_page", edge.target_id)
+        # Endpoints must be resolved through the head index, not the versioned
+        # table (§11.9: a bare page_id no longer matches a wiki_page row).
+        source = self.get_page(edge.source_id)
+        target = self.get_page(edge.target_id)
         if source is None or target is None:
             raise ValueError("graph edge endpoints must exist")
-        if source["partition"] != edge.partition or target["partition"] != edge.partition:
+        if source.partition != edge.partition or target.partition != edge.partition:
             raise ValueError("cross-partition graph edges are not allowed")
         self.store.put(
             "graph_edge",
@@ -76,7 +160,8 @@ class KnowledgeService:
 
         candidate_pages: dict[str, dict] = {}
         for partition in partitions:
-            for raw in self.store.list("wiki_page", partition=partition.value):
+            for page in self.list_pages(partition=partition):
+                raw = page.model_dump()
                 score = self._score(raw, terms)
                 if score > 0 and (not require_evidence or raw.get("evidence_ids")):
                     raw["_score"] = score
@@ -90,15 +175,16 @@ class KnowledgeService:
                     neighbors[edge["target_id"]].add(edge["source_id"])
             for page_id in list(candidate_pages):
                 for neighbor_id in neighbors[page_id]:
-                    neighbor = self.store.get("wiki_page", neighbor_id)
+                    neighbor = self.get_page(neighbor_id)
                     if neighbor is None:
                         continue
-                    if KnowledgePartition(neighbor["partition"]) not in partitions:
+                    nraw = neighbor.model_dump()
+                    if KnowledgePartition(nraw["partition"]) not in partitions:
                         continue
-                    if require_evidence and not neighbor.get("evidence_ids"):
+                    if require_evidence and not nraw.get("evidence_ids"):
                         continue
-                    neighbor["_score"] = max(candidate_pages[page_id]["_score"] * 0.35, 0.1)
-                    candidate_pages.setdefault(neighbor_id, neighbor)
+                    nraw["_score"] = max(candidate_pages[page_id]["_score"] * 0.35, 0.1)
+                    candidate_pages.setdefault(neighbor_id, nraw)
 
         ordered = sorted(
             candidate_pages.values(),

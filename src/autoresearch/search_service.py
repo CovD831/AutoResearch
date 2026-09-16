@@ -148,6 +148,7 @@ def persist_bibliographic_record(
             tags=[paper.source, str(paper.year or "")],
             evidence_ids=[item.evidence_id],
             level=1,
+            author=actor,
         )
     )
     return paper, item

@@ -1,0 +1,133 @@
+{
+  "task_id": "M11-MVP-01",
+  "phase": "M11",
+  "owner_lane": "knowledge",
+  "status": "ready",
+  "status_note": "ready 指的是「依赖已满足」；开工前 owner 必须先裁决 TASK-SPECS.md §5-B1（R-006 P1 是否先合 main），否则产出可能合不回 main",
+  "base_ref": "main",
+  "base_ref_note": "base_ref = 当前 main HEAD（不写死 sha）。R-006 P1 已并入 main（经保护窗口 2026-09-15），本包从 origin/main 切分支即可。开工前先 git fetch && git log --oneline -1 确认是最新，并在自己的 worktree 重测基线（537 passed 是合并时点的数字，不跨 worktree 搬运）",
+  "branch": "codex/m11-mvp-01",
+  "depends_on": [
+    "M04-01 (landed)",
+    "R-006 P1 (implemented at 9c60043, pending merge)"
+  ],
+  "merge_after": [],
+  "allowed_paths": [
+    "src/autoresearch/knowledge.py",
+    "src/autoresearch/storage.py",
+    "tests/test_knowledge_boundary.py",
+    "tests/test_r006_contracts.py",
+    "tests/test_governance_services.py",
+    "tests/fixtures/knowledge_boundary/",
+    "docs/tasks/M11-knowledge-lane/",
+    ".ai-team/tasks/M11-MVP-01.md"
+  ],
+  "conditional_paths": {
+    "src/autoresearch/contracts.py": {
+      "rule": "default deny; must match one of A/B/C below",
+      "A": "adding NEW fields (e.g. RetrievalHit.channel / score_breakdown / matched_stage)",
+      "B": "fixing an existing contract field with a failing case proving it is broken",
+      "C": "adding a new contract model that does NOT belong to C2 Statement or C9 ExperienceInjection",
+      "forbidden": [
+        "deleting or renaming existing RetrievalHit public fields",
+        "modifying C2 Statement or C9 ExperienceInjection definitions (out of M11 scope)",
+        "refactor-only changes (moving or reorganising contracts) - must be a separate PR"
+      ],
+      "evidence_required": "PR description must list which rule (A/B/C) each hunk matches",
+      "authority": "TASK-SPECS.md section 5-B2"
+    }
+  },
+  "frozen_paths": {
+    "reason": "R-006 P1 already modified these; M11 must NOT touch them again. Read and run tests are fine; edits need owner confirmation. See TASK-SPECS.md section 6.1",
+    "paths": [
+      "src/autoresearch/evolution_service.py",
+      "src/autoresearch/profile_service.py",
+      "src/autoresearch/reader_service.py",
+      "src/autoresearch/search_service.py"
+    ]
+  },
+  "forbidden_paths": [
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/gates.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "contracts_to_satisfy": {
+    "wiki_page_append_only": "record_id = f\"{page_id}:r{revision}\"; new revision must be max+1; old revisions never overwritten",
+    "head_index": "wiki_page_head record maps bare page_id -> {current_revision_id, revision}; version+head written in one transaction",
+    "resolution_entrypoint": "get_page(page_id) / list_pages(...) are the only sanctioned bare-id reads",
+    "bridge_edges_whitelist": [
+      "CITES",
+      "SUPPORTS",
+      "CONTRADICTS",
+      "INVALIDATES",
+      "DERIVED_FROM",
+      "APPLIES_TO",
+      "USES_METHOD",
+      "USES_DATASET",
+      "EVALUATES_ON",
+      "HAS_LIMITATION",
+      "EXTENDS",
+      "IMPROVES",
+      "CREATED_IN",
+      "PREFERS"
+    ],
+    "same_partition_edges": [
+      "SUMMARIZED_BY",
+      "DUPLICATES",
+      "SUPERSEDES"
+    ],
+    "list_pages_query_complexity": "O(1) queries - NO per-head store.get (N+1 forbidden)",
+    "existing_rejection_assertion_stays_green": "tests/test_governance_services.py:114 test_partitioned_wiki_graph_retrieval (assertion at line 154) must stay green. NOTE: ValidationError is a subclass of ValueError, so this test being green does NOT prove the whitelist works - it only proves the rejection side is intact. Both sides must be tested."
+  },
+  "deliverables": [
+    "append-only wiki page writer replacing the upsert-in-place add_page",
+    "wiki_page_head index with atomic version+head write in one transaction",
+    "get_page()/list_pages() as the only bare-id resolution entrypoints",
+    "add_edge and retrieve graph expansion routed through get_page()",
+    "managed bridge-edge whitelist (14 types) + same-partition types (3)",
+    "list_pages rewritten to a single JOIN query (N+1 fix)",
+    "positive AND negative tests for both the revision and the edge semantics",
+    "CONSTRUCTED: tests/test_knowledge_boundary.py (does not exist yet)",
+    "CONSTRUCTED: tests/fixtures/knowledge_boundary/ (does not exist yet)",
+    "CONSTRUCTED: .ai-team/tasks/M11-MVP-01.md (does not exist yet; REQUIRED for the check.mjs gate)"
+  ],
+  "acceptance": {
+    "positive": [
+      "old revision still readable after a new revision is created",
+      "whitelisted bridge-edge type spanning partitions is ACCEPTED",
+      "get_page() resolves a bare page_id that raw store.get('wiki_page', id) cannot",
+      "page source, partition and evidence_ids fully readable"
+    ],
+    "negative": [
+      "directly overwriting an existing revision is REJECTED",
+      "untyped cross-partition GraphEdge is REJECTED",
+      "edge endpoint that does not exist is REJECTED"
+    ],
+    "regression": [
+      "tests/test_governance_services.py:114 existing rejection assertion stays green"
+    ],
+    "performance": [
+      "store.get call count during list_pages is a CONSTANT, not N (baseline: old code = 0 gets / 1 list / 0.71ms; P1 current = 200 gets / 60ms at 200 pages)"
+    ]
+  },
+  "explicitly_not_in_scope": [
+    "Statement (statement-level evidence binding) - deferred until M02-09 needs it",
+    "ContextPack",
+    "vector retrieval or ranking",
+    "production graph database"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m pytest tests/test_knowledge_boundary.py tests/test_r006_contracts.py tests/test_governance_services.py -q -o addopts='' -W error",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m pytest -q -o addopts='' -W error",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m ruff check src tests",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m compileall -q src",
+    "PATH=/Users/abab/.workbuddy/binaries/node/versions/22.22.2-2/bin:$PATH node .ai-team/check.mjs --base 9c60043"
+  ],
+  "acceptance_command_notes": [
+    "v2 的 `python -m pytest` 缺 PYTHONPATH=src，且沙箱内 python 指向 3.9.6（仓库需要 3.13）",
+    "v2 的 `node .ai-team/check.mjs --base main` 实测在 main 上也是 Result: blocked（该 gate 依赖 base..HEAD 差异 + 账本存在）。必须传 P1 的 sha，且必须先建 .ai-team/tasks/M11-MVP-01.md 账本",
+    "list_pages 的 200 pages/60ms 与旧版 0.71ms 均为 2026-09-15 在 wt-l1-writer 实测所得，引用时须注明 worktree"
+  ],
+  "next_package": "M11-MVP-02"
+}

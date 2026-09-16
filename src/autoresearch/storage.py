@@ -38,6 +38,47 @@ class RecordStore:
         finally:
             connection.close()
 
+    @contextmanager
+    def transaction(self) -> Iterator[sqlite3.Connection]:
+        """Open a connection with the store lock held; commits on clean exit.
+
+        Used by callers that must write several records atomically (e.g. a
+        wiki-page version together with its head index) so a crash can never
+        leave the index pointing at a missing version.
+        """
+
+        with self._lock, self.connection() as connection:
+            yield connection
+
+    def _write_record(
+        self,
+        connection: sqlite3.Connection,
+        kind: str,
+        record_id: str,
+        value: BaseModel | dict[str, Any],
+        *,
+        project_id: str | None = None,
+        partition: str | None = None,
+    ) -> None:
+        """Write a single record on ``connection`` (upsert on primary key)."""
+
+        now = utc_now().isoformat()
+        payload = self._json(value)
+        connection.execute(
+            """
+            INSERT INTO records
+                (kind, record_id, project_id, partition_name, payload_json,
+                 created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(kind, record_id) DO UPDATE SET
+                project_id=excluded.project_id,
+                partition_name=excluded.partition_name,
+                payload_json=excluded.payload_json,
+                updated_at=excluded.updated_at
+            """,
+            (kind, record_id, project_id, partition, payload, now, now),
+        )
+
     def _initialize(self) -> None:
         with self.connection() as connection:
             connection.executescript(
@@ -91,22 +132,14 @@ class RecordStore:
         project_id: str | None = None,
         partition: str | None = None,
     ) -> None:
-        now = utc_now().isoformat()
-        payload = self._json(value)
         with self._lock, self.connection() as connection:
-            connection.execute(
-                """
-                INSERT INTO records
-                    (kind, record_id, project_id, partition_name, payload_json,
-                     created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(kind, record_id) DO UPDATE SET
-                    project_id=excluded.project_id,
-                    partition_name=excluded.partition_name,
-                    payload_json=excluded.payload_json,
-                    updated_at=excluded.updated_at
-                """,
-                (kind, record_id, project_id, partition, payload, now, now),
+            self._write_record(
+                connection,
+                kind,
+                record_id,
+                value,
+                project_id=project_id,
+                partition=partition,
             )
 
     def get(self, kind: str, record_id: str) -> dict[str, Any] | None:

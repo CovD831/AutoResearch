@@ -1,0 +1,87 @@
+{
+  "task_id": "M11-MVP-04",
+  "phase": "M11",
+  "owner_lane": "knowledge",
+  "status": "planned",
+  "base_ref": "main",
+  "branch": "codex/m11-mvp-04",
+  "depends_on": [
+    "M11-MVP-03"
+  ],
+  "merge_after": [
+    "M11-MVP-03"
+  ],
+  "allowed_paths": [
+    "tests/test_m11_regression.py",
+    "tests/fixtures/m11_regression/",
+    "scripts/m11_regression_report.py",
+    "docs/tasks/M11-knowledge-lane/",
+    ".ai-team/tasks/M11-MVP-04.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "role": "independent acceptance package for A7 - test and fixture only, no implementation changes",
+  "contracts_to_satisfy": {
+    "fixed_corpus": "every query has a fixed set of expected relevant pages",
+    "comparison": "pure-lexical vs hybrid results can be compared",
+    "report_fields": [
+      "hits",
+      "missed_recall",
+      "cross_partition_pollution",
+      "evidence_missing",
+      "duplicate_weighting"
+    ],
+    "traceability": "each report keeps query, filters, candidates and final ranking",
+    "reproducibility": "same code + corpus + index state yields the same report"
+  },
+  "deliverables": [
+    "fixed fixture corpus",
+    "fixed queries with labelled relevant pages",
+    "lexical vs hybrid comparison output",
+    "miss classification",
+    "retrieval audit record capture",
+    "regression report generator script",
+    "task-local ledger, L3 record, progress log and handoff"
+  ],
+  "acceptance": {
+    "positive": [
+      "fixed queries can be executed repeatedly",
+      "lexical vs hybrid differences are recorded",
+      "index or model change triggers a regression report"
+    ],
+    "negative": [
+      "key negative cases reproduce stably"
+    ],
+    "honesty": [
+      "the report explicitly separates verified items, unverified items and follow-up tasks",
+      "the RecallAuditRecord subset chain must NOT be presented as recall-quality evidence - it only proves the audit record is self-consistent"
+    ]
+  },
+  "forbidden_claims": [
+    "claiming real-domain paper quality from fixture results",
+    "inferring content truth from ranking changes",
+    "writing unmeasured Recall/MRR/nDCG as achieved",
+    "skipping failed, missed or degraded results"
+  ],
+  "explicitly_not_in_scope": [
+    "real-domain gold set",
+    "human blind review",
+    "production quality targets"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m pytest tests/test_m11_regression.py -q -o addopts='' -W error",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python scripts/m11_regression_report.py",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m pytest -q -o addopts='' -W error",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m ruff check src tests",
+    "PATH=/Users/abab/.workbuddy/binaries/node/versions/22.22.2-2/bin:$PATH node .ai-team/check.mjs --base 9c60043"
+  ],
+  "next_package": null,
+  "base_ref_note": "base_ref = 当前 main HEAD（不写死 sha）。R-006 P1 已并入 main（经保护窗口 2026-09-15），本包从 origin/main 切分支即可。开工前先 git fetch && git log --oneline -1 确认是最新，并在自己的 worktree 重测基线（537 passed 是合并时点的数字，不跨 worktree 搬运）",
+  "acceptance_command_notes": [
+    "v2 的 `python -m pytest` 缺 PYTHONPATH=src，且沙箱内 python 指向 3.9.6（仓库需要 3.13）",
+    "v2 的 `node .ai-team/check.mjs --base main` 实测在 main 上也是 Result: blocked（该 gate 依赖 base..HEAD 差异 + 账本存在）。必须传本包的 base sha，且必须先建 .ai-team/tasks/<task>.md 账本"
+  ]
+}

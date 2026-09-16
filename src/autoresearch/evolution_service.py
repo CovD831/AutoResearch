@@ -24,6 +24,12 @@ class ExperienceService:
             project_id=experience.project_id,
             partition=KnowledgePartition.EXPERIENCES.value,
         )
+        # The mirror is append-only: a re-settled experience appends a new
+        # revision (revision = max + 1, supersedes the previous) instead of
+        # overwriting it -- I2 / §11.9.
+        existing = self.knowledge.get_page(experience.experience_id)
+        revision = existing.revision + 1 if existing is not None else 1
+        supersedes = existing.revision_id if existing is not None else None
         self.knowledge.add_page(
             WikiPage(
                 page_id=experience.experience_id,
@@ -34,6 +40,9 @@ class ExperienceService:
                 tags=["experience", experience.grade.value, *experience.tags],
                 evidence_ids=experience.evidence_ids,
                 level=1 if not experience.promoted else 2,
+                author="evolution_service",
+                revision=revision,
+                supersedes=supersedes,
             )
         )
         return experience

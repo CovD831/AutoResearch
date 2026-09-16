@@ -252,10 +252,10 @@ def test_persistence_side_effects_match_the_legacy_contract(services):
     assert items, "a paper must be backed by an evidence item"
     assert items[0].grade == EvidenceGrade.E1
 
-    page = store.get("wiki_page", paper.paper_id)
+    page = service.knowledge.get_page(paper.paper_id)
     assert page is not None, "the legacy path wrote a wiki page per paper"
-    assert page["partition"] == KnowledgePartition.PAPERS.value
-    assert page["evidence_ids"]
+    assert page.partition == KnowledgePartition.PAPERS
+    assert page.evidence_ids
 
 
 def test_duplicate_hits_are_deduped_by_doi(services):
@@ -673,10 +673,10 @@ def test_claim_does_not_assert_an_abstract_that_is_absent(services):
 
     outcome = service.search("p1", ["q"])
     item = evidence.list("p1", valid_only=True)[0]
-    page = knowledge.store.get("wiki_page", outcome.papers[0].paper_id)
+    page = knowledge.get_page(outcome.papers[0].paper_id)
 
     assert "abstract" not in item.claim.lower()
-    assert page["body"] == "No abstract was supplied."
+    assert page.body == "No abstract was supplied."
     assert item.metadata["abstract_present"] is False
 
 

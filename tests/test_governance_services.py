@@ -119,6 +119,7 @@ def test_partitioned_wiki_graph_retrieval(runtime: AutoResearchApplication, proj
             title="Evidence gates in research",
             body="A paper about provenance and gates.",
             evidence_ids=["ev-paper"],
+            author="test_governance_services",
         )
     )
     card = runtime.knowledge.add_page(
@@ -128,6 +129,7 @@ def test_partitioned_wiki_graph_retrieval(runtime: AutoResearchApplication, proj
             title="Reading card",
             body="Summarizes the evidence gate paper.",
             evidence_ids=["ev-paper"],
+            author="test_governance_services",
         )
     )
     experience = runtime.knowledge.add_page(
@@ -136,6 +138,7 @@ def test_partitioned_wiki_graph_retrieval(runtime: AutoResearchApplication, proj
             partition=KnowledgePartition.EXPERIENCES,
             title="Evidence gate debugging",
             body="An internal technique.",
+            author="test_governance_services",
         )
     )
     runtime.knowledge.add_edge(

@@ -1,0 +1,41 @@
+{
+  "lane_id": "M11-KNOWLEDGE-LANE",
+  "owner": "member A",
+  "owner_lane": "knowledge",
+  "worktree": "../AutoResearch-m11",
+  "base_ref": "main",
+  "branch_prefix": "codex/m11-",
+  "task_queue": [
+    "M11-MVP-01",
+    "M11-MVP-02",
+    "M11-MVP-03",
+    "M11-MVP-04"
+  ],
+  "shared_owner": "user/team",
+  "conditional_shared_paths": [
+    "src/autoresearch/contracts.py"
+  ],
+  "frozen_shared_paths": [
+    "src/autoresearch/evolution_service.py",
+    "src/autoresearch/profile_service.py",
+    "src/autoresearch/reader_service.py",
+    "src/autoresearch/search_service.py"
+  ],
+  "forbidden_shared_paths": [
+    "src/autoresearch/application.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/gates.py",
+    ".project-to-act/",
+    ".ai-team/TASK.md"
+  ],
+  "notes": [
+    "base_ref = 49fcffb（当前 main HEAD）：R-006 P1 已合并进 main（经保护窗口，2026-09-15）。MVP-01 从这里切分支。注意 f31d0dc 是本次的中间提交，不要引用它作 base",
+    "contracts.py 是「条件允许」（v2 同时列在 allowed 与 forbidden，自相矛盾，无法执行）——判据见 TASK-SPECS.md §5-B2 的 A/B/C 三选一。禁止项：删除或改名既有 RetrievalHit 对外字段、改 C2 Statement / C9 ExperienceInjection、借顺手重构改契约组织方式",
+    "frozen_shared_paths 是 v3 新增：这 4 个文件 P1 已经改过（3 处补 author= 必填字段 + evolution_service 的 revision 派生真 bug 修复），本 lane 不得再动 —— 详见 TASK-SPECS.md §6.1",
+    "MVP-01 承接 R-006 P1 已实现成果（9c60043，实测 537 passed / 2 skipped / 0 failed），不重复实现；P1 分支已推送但未合并 main、未开 PR",
+    "R-006 P2-P7 已暂停，不再作为本 lane 的验收依据",
+    "基线数字 537 passed 只对 9c60043 成立，不得跨 worktree 搬运 —— 必须在自己的 worktree 重新实测",
+    "node .ai-team/check.mjs 的 --base 应传 P1 的 sha（9c60043），传 main 因该 gate 依赖 base..HEAD 差异而必然 blocked"
+  ],
+  "base_ref_note": "base_ref = 当前 main HEAD（不要写死 sha）。R-006 P1 已合并进 main（经保护窗口 2026-09-15；合并提交链 04ce9a9 → ea1663b → f31d0dc）。MVP-01 从 origin/main 切分支即可。**注意：不要在本字段写死 sha** —— 每次为修正它而提交都会让 HEAD 再变一次，形成自指循环"
+}

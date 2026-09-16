@@ -173,7 +173,10 @@ def create_api(application: AutoResearchApplication | None = None) -> FastAPI:
 
     @app.post("/experiences", status_code=201)
     def add_experience(item: ExperienceRecord):
-        return runtime.record_experience(item)
+        try:
+            return runtime.record_experience(item)
+        except PermissionError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @app.post("/experiences/{experience_id}/promote")
     def promote_experience(
