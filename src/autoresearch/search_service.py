@@ -148,7 +148,13 @@ def persist_bibliographic_record(
             tags=[paper.source, str(paper.year or "")],
             evidence_ids=[item.evidence_id],
             level=1,
-            author=actor,
+            # The wiki page records which *writer* produced this revision, so it
+            # names the module. Every other writer in the repository does the
+            # same (evolution_service / profile_service / reader_service), and
+            # main's copy of this call site used "search_service" too -- the
+            # page is a bibliographic record, not a per-caller artefact, so the
+            # actor label would be the odd one out here.
+            author="search_service",
         )
     )
     return paper, item
