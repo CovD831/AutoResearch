@@ -658,8 +658,14 @@ def test_concurrent_cold_start_retries_wal_transition(
         stores = list(pool.map(lambda _: RecordStore(database), range(2)))
 
     assert len(stores) == 2
-    with real_connect(database) as connection:
+    # ``with sqlite3.Connection`` commits but never closes, so the connection
+    # would leak and surface as a ResourceWarning at GC time -- which the
+    # project's ``pytest -W error`` gate turns into an error. Close it here.
+    connection = real_connect(database)
+    try:
         assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+    finally:
+        connection.close()
 
 
 class _FailingHeadWriteStore(RecordStore):

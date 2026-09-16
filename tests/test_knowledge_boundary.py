@@ -109,8 +109,13 @@ def _run_offline_fixture(database: Path, payload: dict) -> dict:
         "retrieval_partitions": [hit.partition.value for hit in hits],
         "evidence_row_count": len(evidence_rows),
         "wiki_row_count": len(wiki_rows),
+        # Kind isolation: no *evidence record* may surface as a wiki row. A wiki
+        # page legitimately cites evidence via ``evidence_ids`` (both fixture
+        # pages do), so citing is not leakage -- the row's *identity* is what
+        # must not collide with the evidence id.
         "evidence_in_wiki_rows": any(
-            row.get("evidence_id") == evidence_id or row.get("page_id") == evidence_id
+            row.get("record_id") == evidence_id
+            or row.get("page_id") == evidence_id
             for row in wiki_rows
         ),
         "evidence_in_retrieval": any(hit.record_id == evidence_id for hit in hits),
