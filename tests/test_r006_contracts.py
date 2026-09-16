@@ -57,7 +57,22 @@ def test_enums_instantiable():
 
 def test_bridge_and_same_partition_kind_partitions():
     assert BRIDGE_KINDS.isdisjoint(SAME_PARTITION_KINDS)
-    assert len(BRIDGE_KINDS) == 6
+    assert {
+        GraphEdgeKind.CITES,
+        GraphEdgeKind.SUPPORTS,
+        GraphEdgeKind.CONTRADICTS,
+        GraphEdgeKind.INVALIDATES,
+        GraphEdgeKind.DERIVED_FROM,
+        GraphEdgeKind.APPLIES_TO,
+        GraphEdgeKind.USES_METHOD,
+        GraphEdgeKind.USES_DATASET,
+        GraphEdgeKind.EVALUATES_ON,
+        GraphEdgeKind.HAS_LIMITATION,
+        GraphEdgeKind.EXTENDS,
+        GraphEdgeKind.IMPROVES,
+        GraphEdgeKind.CREATED_IN,
+        GraphEdgeKind.PREFERS,
+    } == BRIDGE_KINDS
     assert len(SAME_PARTITION_KINDS) == 3
     assert GraphEdgeKind.CITES in BRIDGE_KINDS
     assert GraphEdgeKind.SUMMARIZED_BY in SAME_PARTITION_KINDS

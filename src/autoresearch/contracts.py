@@ -126,6 +126,14 @@ class GraphEdgeKind(StrEnum):
     CONTRADICTS = "contradicts"
     APPLIES_TO = "applies_to"
     INVALIDATES = "invalidates"
+    USES_METHOD = "uses_method"
+    USES_DATASET = "uses_dataset"
+    EVALUATES_ON = "evaluates_on"
+    HAS_LIMITATION = "has_limitation"
+    EXTENDS = "extends"
+    IMPROVES = "improves"
+    CREATED_IN = "created_in"
+    PREFERS = "prefers"
 
 
 class GraphNodeKind(StrEnum):
@@ -175,6 +183,14 @@ BRIDGE_KINDS: frozenset[GraphEdgeKind] = frozenset(
         GraphEdgeKind.CONTRADICTS,
         GraphEdgeKind.APPLIES_TO,
         GraphEdgeKind.INVALIDATES,
+        GraphEdgeKind.USES_METHOD,
+        GraphEdgeKind.USES_DATASET,
+        GraphEdgeKind.EVALUATES_ON,
+        GraphEdgeKind.HAS_LIMITATION,
+        GraphEdgeKind.EXTENDS,
+        GraphEdgeKind.IMPROVES,
+        GraphEdgeKind.CREATED_IN,
+        GraphEdgeKind.PREFERS,
     }
 )
 # Edge types that may only connect nodes within the same partition.

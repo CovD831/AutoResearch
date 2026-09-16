@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterable
+from enum import StrEnum
 
 from autoresearch.contracts import (
+    BRIDGE_KINDS,
+    SAME_PARTITION_KINDS,
     GraphEdge,
+    GraphEdgeKind,
     KnowledgePartition,
     RetrievalHit,
     WikiPage,
@@ -14,6 +19,55 @@ from autoresearch.storage import RecordStore
 # record rather than through the versioned ``wiki_page`` table. The version
 # table is append-only (one row per revision_id), so a bare id never matches.
 WIKI_PAGE_HEAD_KIND = "wiki_page_head"
+
+
+class GraphEdgeRelationPolicy(StrEnum):
+    BRIDGE = "bridge"
+    SAME_PARTITION = "same_partition"
+
+
+class GraphEdgeRelationRegistry:
+    """Classify typed graph relations without hard-coding policy in add_edge."""
+
+    def __init__(
+        self,
+        *,
+        bridge_kinds: Iterable[GraphEdgeKind] = (),
+        same_partition_kinds: Iterable[GraphEdgeKind] = (),
+    ) -> None:
+        self._policies: dict[GraphEdgeKind, GraphEdgeRelationPolicy] = {}
+        for relation in bridge_kinds:
+            self.register_bridge(relation)
+        for relation in same_partition_kinds:
+            self.register_same_partition(relation)
+
+    @classmethod
+    def core(cls) -> GraphEdgeRelationRegistry:
+        return cls(
+            bridge_kinds=BRIDGE_KINDS,
+            same_partition_kinds=SAME_PARTITION_KINDS,
+        )
+
+    def register(
+        self,
+        relation: GraphEdgeKind,
+        policy: GraphEdgeRelationPolicy,
+    ) -> None:
+        existing = self._policies.get(relation)
+        if existing is not None and existing is not policy:
+            raise ValueError(
+                f"graph edge relation {relation.value} is already registered as {existing.value}"
+            )
+        self._policies[relation] = policy
+
+    def register_bridge(self, relation: GraphEdgeKind) -> None:
+        self.register(relation, GraphEdgeRelationPolicy.BRIDGE)
+
+    def register_same_partition(self, relation: GraphEdgeKind) -> None:
+        self.register(relation, GraphEdgeRelationPolicy.SAME_PARTITION)
+
+    def policy_for(self, relation: GraphEdgeKind) -> GraphEdgeRelationPolicy | None:
+        return self._policies.get(relation)
 
 
 class KnowledgeService:
@@ -27,31 +81,38 @@ class KnowledgeService:
     and is only for audit / migration.
     """
 
-    def __init__(self, store: RecordStore):
+    def __init__(
+        self,
+        store: RecordStore,
+        relation_registry: GraphEdgeRelationRegistry | None = None,
+    ):
         self.store = store
+        self.relation_registry = (
+            relation_registry
+            if relation_registry is not None
+            else GraphEdgeRelationRegistry.core()
+        )
 
     def add_page(self, page: WikiPage) -> WikiPage:
-        # Append-only revision writer (I2 / §11.9). A new revision must be
-        # strictly greater than the current max; the writer refuses to
-        # overwrite an existing revision.
-        head = self.store.get(WIKI_PAGE_HEAD_KIND, page.page_id)
-        current_max = head["revision"] if head else 0
-        if page.revision <= current_max:
-            raise ValueError(
-                f"revision {page.revision} must be > current max {current_max} "
-                f"for page {page.page_id} (append-only: revisions are never "
-                f"overwritten)"
-            )
+        # The head read, contiguous-revision check, immutable version insert,
+        # and head update share one immediate transaction. A concurrent writer
+        # therefore validates against the committed head, never a stale one.
         revision_id = page.revision_id
         head_payload = {
             "page_id": page.page_id,
             "current_revision_id": revision_id,
             "revision": page.revision,
         }
-        # Atomic: version + head in one transaction so a crash can never leave
-        # the head pointing at a missing version (or vice versa).
         with self.store.transaction() as connection:
-            self.store._write_record(
+            head = self.store._read_record(connection, WIKI_PAGE_HEAD_KIND, page.page_id)
+            current_max = head["revision"] if head else 0
+            expected_revision = current_max + 1
+            if page.revision != expected_revision:
+                raise ValueError(
+                    f"expected revision {expected_revision} for page {page.page_id}, "
+                    f"got {page.revision}"
+                )
+            self.store._insert_record(
                 connection,
                 "wiki_page",
                 revision_id,
@@ -101,19 +162,11 @@ class KnowledgeService:
         only for audit / migration (§11.9).
         """
 
-        heads = self.store.list(
-            WIKI_PAGE_HEAD_KIND,
+        versions = self.store.list_current_wiki_pages(
             project_id=project_id,
             partition=partition.value if partition is not None else None,
         )
-        pages: list[WikiPage] = []
-        for head in heads:
-            version = self.store.get("wiki_page", head["current_revision_id"])
-            if version is None:
-                # Skip a corrupt head (see get_page) rather than crash.
-                continue
-            pages.append(WikiPage(**version))
-        return pages
+        return [WikiPage(**version) for version in versions]
 
     def add_edge(self, edge: GraphEdge) -> GraphEdge:
         # Endpoints must be resolved through the head index, not the versioned
@@ -122,8 +175,18 @@ class KnowledgeService:
         target = self.get_page(edge.target_id)
         if source is None or target is None:
             raise ValueError("graph edge endpoints must exist")
-        if source.partition != edge.partition or target.partition != edge.partition:
-            raise ValueError("cross-partition graph edges are not allowed")
+        if source.partition != edge.partition:
+            raise ValueError("graph edge partition must match the source partition")
+        policy = self.relation_registry.policy_for(edge.relation)
+        if policy is None:
+            raise ValueError(f"graph edge relation {edge.relation.value} is not registered")
+        if (
+            policy is GraphEdgeRelationPolicy.SAME_PARTITION
+            and target.partition != source.partition
+        ):
+            raise ValueError(
+                f"same-partition graph edge relation {edge.relation.value} cannot cross partitions"
+            )
         self.store.put(
             "graph_edge",
             edge.edge_id,

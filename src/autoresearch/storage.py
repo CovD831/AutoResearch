@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -20,6 +21,9 @@ class StaleIdempotencyWriteError(RuntimeError):
 class RecordStore:
     """SQLite repository with append-only audit events and generic typed records."""
 
+    _INITIALIZE_TIMEOUT_SECONDS = 30.0
+    _INITIALIZE_RETRY_INTERVAL_SECONDS = 0.01
+
     def __init__(self, path: Path | str):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -30,7 +34,6 @@ class RecordStore:
     def connection(self) -> Iterator[sqlite3.Connection]:
         connection = sqlite3.connect(self.path, timeout=30, check_same_thread=False)
         connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA journal_mode=WAL")
         connection.execute("PRAGMA foreign_keys=ON")
         try:
             yield connection
@@ -40,15 +43,57 @@ class RecordStore:
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
-        """Open a connection with the store lock held; commits on clean exit.
+        """Open an immediate write transaction; commit on clean exit.
 
         Used by callers that must write several records atomically (e.g. a
         wiki-page version together with its head index) so a crash can never
-        leave the index pointing at a missing version.
+        leave the index pointing at a missing version. BEGIN IMMEDIATE also
+        serializes writers across independent RecordStore instances before
+        they read state used to validate a write.
         """
 
         with self._lock, self.connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
             yield connection
+
+    @staticmethod
+    def _read_record(
+        connection: sqlite3.Connection,
+        kind: str,
+        record_id: str,
+    ) -> dict[str, Any] | None:
+        row = connection.execute(
+            "SELECT payload_json FROM records WHERE kind=? AND record_id=?",
+            (kind, record_id),
+        ).fetchone()
+        return json.loads(row["payload_json"]) if row else None
+
+    def _insert_record(
+        self,
+        connection: sqlite3.Connection,
+        kind: str,
+        record_id: str,
+        value: BaseModel | dict[str, Any],
+        *,
+        project_id: str | None = None,
+        partition: str | None = None,
+    ) -> None:
+        """Insert an immutable record and reject an existing primary key."""
+
+        now = utc_now().isoformat()
+        payload = self._json(value)
+        try:
+            connection.execute(
+                """
+                INSERT INTO records
+                    (kind, record_id, project_id, partition_name, payload_json,
+                     created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (kind, record_id, project_id, partition, payload, now, now),
+            )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(f"record already exists: {kind}/{record_id}") from exc
 
     def _write_record(
         self,
@@ -80,42 +125,54 @@ class RecordStore:
         )
 
     def _initialize(self) -> None:
-        with self.connection() as connection:
-            connection.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS records (
-                    kind TEXT NOT NULL,
-                    record_id TEXT NOT NULL,
-                    project_id TEXT,
-                    partition_name TEXT,
-                    payload_json TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    PRIMARY KEY (kind, record_id)
-                );
-                CREATE INDEX IF NOT EXISTS idx_records_project
-                    ON records(project_id, kind);
-                CREATE INDEX IF NOT EXISTS idx_records_partition
-                    ON records(partition_name, kind);
-                CREATE TABLE IF NOT EXISTS audit_events (
-                    event_id TEXT PRIMARY KEY,
-                    project_id TEXT,
-                    event_type TEXT NOT NULL,
-                    actor TEXT NOT NULL,
-                    payload_json TEXT NOT NULL,
-                    created_at TEXT NOT NULL
-                );
-                CREATE INDEX IF NOT EXISTS idx_audit_project
-                    ON audit_events(project_id, created_at);
-                CREATE TABLE IF NOT EXISTS idempotency (
-                    scope TEXT NOT NULL,
-                    idempotency_key TEXT NOT NULL,
-                    result_json TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    PRIMARY KEY (scope, idempotency_key)
-                );
-                """
-            )
+        deadline = time.monotonic() + self._INITIALIZE_TIMEOUT_SECONDS
+        while True:
+            try:
+                with self.connection() as connection:
+                    # WAL is persistent for the database file. Configure it as
+                    # initialization state instead of renegotiating it on every
+                    # connection, and retry only the concurrent-startup lock.
+                    connection.execute("PRAGMA journal_mode=WAL")
+                    connection.executescript(
+                        """
+                        CREATE TABLE IF NOT EXISTS records (
+                            kind TEXT NOT NULL,
+                            record_id TEXT NOT NULL,
+                            project_id TEXT,
+                            partition_name TEXT,
+                            payload_json TEXT NOT NULL,
+                            created_at TEXT NOT NULL,
+                            updated_at TEXT NOT NULL,
+                            PRIMARY KEY (kind, record_id)
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_records_project
+                            ON records(project_id, kind);
+                        CREATE INDEX IF NOT EXISTS idx_records_partition
+                            ON records(partition_name, kind);
+                        CREATE TABLE IF NOT EXISTS audit_events (
+                            event_id TEXT PRIMARY KEY,
+                            project_id TEXT,
+                            event_type TEXT NOT NULL,
+                            actor TEXT NOT NULL,
+                            payload_json TEXT NOT NULL,
+                            created_at TEXT NOT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_audit_project
+                            ON audit_events(project_id, created_at);
+                        CREATE TABLE IF NOT EXISTS idempotency (
+                            scope TEXT NOT NULL,
+                            idempotency_key TEXT NOT NULL,
+                            result_json TEXT NOT NULL,
+                            created_at TEXT NOT NULL,
+                            PRIMARY KEY (scope, idempotency_key)
+                        );
+                        """
+                    )
+                return
+            except sqlite3.OperationalError as exc:
+                if "locked" not in str(exc).lower() or time.monotonic() >= deadline:
+                    raise
+                time.sleep(self._INITIALIZE_RETRY_INTERVAL_SECONDS)
 
     @staticmethod
     def _json(value: BaseModel | dict[str, Any]) -> str:
@@ -144,11 +201,7 @@ class RecordStore:
 
     def get(self, kind: str, record_id: str) -> dict[str, Any] | None:
         with self.connection() as connection:
-            row = connection.execute(
-                "SELECT payload_json FROM records WHERE kind=? AND record_id=?",
-                (kind, record_id),
-            ).fetchone()
-        return json.loads(row["payload_json"]) if row else None
+            return self._read_record(connection, kind, record_id)
 
     def list(
         self,
@@ -169,6 +222,38 @@ class RecordStore:
         query += " ORDER BY created_at, record_id"
         with self.connection() as connection:
             rows = connection.execute(query, params).fetchall()
+        return [json.loads(row["payload_json"]) for row in rows]
+
+    def list_current_wiki_pages(
+        self,
+        *,
+        project_id: str | None = None,
+        partition: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Read current WikiPage revisions with one head-to-version join."""
+
+        clauses = ["head.kind=?"]
+        params: list[Any] = ["wiki_page_head"]
+        if project_id is not None:
+            clauses.append("head.project_id=?")
+            params.append(project_id)
+        if partition is not None:
+            clauses.append("head.partition_name=?")
+            params.append(partition)
+        query = """
+            SELECT version.payload_json
+            FROM records AS head
+            JOIN records AS version
+              ON version.kind=?
+             AND version.record_id = json_extract(
+                    head.payload_json,
+                    '$.current_revision_id'
+                 )
+            WHERE {clauses}
+            ORDER BY head.created_at, head.record_id
+        """.format(clauses=" AND ".join(clauses))
+        with self.connection() as connection:
+            rows = connection.execute(query, ["wiki_page", *params]).fetchall()
         return [json.loads(row["payload_json"]) for row in rows]
 
     def search(
