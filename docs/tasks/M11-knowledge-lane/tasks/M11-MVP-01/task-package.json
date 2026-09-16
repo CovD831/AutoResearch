@@ -18,9 +18,36 @@
     "tests/test_knowledge_boundary.py",
     "tests/test_r006_contracts.py",
     "tests/test_governance_services.py",
+    "tests/test_r006_l1_writer.py",
     "tests/fixtures/knowledge_boundary/",
     "docs/tasks/M11-knowledge-lane/",
     ".ai-team/tasks/M11-MVP-01.md"
+  ],
+  "owner_authorizations": [
+    {
+      "id": "AUTH-M11-MVP-01-01",
+      "date": "2026-09-16",
+      "authority": "owner",
+      "path": "tests/test_r006_l1_writer.py",
+      "retroactive": true,
+      "what": "Add this inherited test file to allowed_paths, and authorize the edit the implementer already made to it.",
+      "why": "The task book requires every new revision to equal max(existing)+1 (contracts_to_satisfy.wiki_page_append_only, and TASK-SPECS.md:178). The inherited test asserted the opposite behaviour explicitly: '# Gap is allowed (3 -> 7) as long as it is strictly greater.' The two requirements are mutually exclusive, so the inherited assertion had to be replaced.",
+      "why_not_a_defect": "This is the project's recorded 'tests can fossilise a defect' family - the same shape as stays_zero (asserting cost.total == 0.0), test_malformed_payload (asserting rerun.unreadable == 0) and len(pages) == len(records) (fossilising upsert semantics). The team rule is explicit: when fixing a defect, check whether a test asserts the wrong behaviour. A stale assertion being green is not evidence the behaviour is correct.",
+      "process_note": "The implementer declared this deviation in the PR description instead of concealing it, which is the correct handling. The gap was procedural (no prior grant), not technical. This entry closes that gap.",
+      "verified_by_owner": "git diff of the PR showed the removed assertion '# Gap is allowed (3 -> 7) as long as it is strictly greater' and the contract text 'revision = max(existing) + 1'; the conflict is real, not inferred."
+    },
+    {
+      "id": "AUTH-M11-MVP-01-02",
+      "date": "2026-09-16",
+      "authority": "owner",
+      "path": "src/autoresearch/contracts.py",
+      "retroactive": true,
+      "rule_matched": "B",
+      "what": "Confirm that the implementer's contracts.py change satisfies conditional rule B (fixing an existing contract field with a failing case proving it is broken).",
+      "why": "TASK-SPECS.md:185-187 names exactly 14 managed bridge-edge kinds. main carried only 6 of them, so the existing GraphEdgeKind contract was incomplete and a whitelisted CITES edge across partitions was rejected. The change adds the 8 missing enum values and their BRIDGE_KINDS classification.",
+      "change_shape": "purely additive - GraphEdgeKind gains 8 members, BRIDGE_KINDS gains 8 entries; no existing member removed or renamed, no C2/C9 touch.",
+      "verified_by_owner": "owner read the PR diff: additions only, +/- ratio purely additive, and the 8 names match the task book's 14-item list verbatim."
+    }
   ],
   "conditional_paths": {
     "src/autoresearch/contracts.py": {

@@ -1,0 +1,110 @@
+{
+  "schema": "m11-knowledge-boundary/v1",
+  "evidence": {
+    "evidence_id": "ev-isolated",
+    "project_id": "offline-demo",
+    "evidence_type": "paper",
+    "grade": "E2",
+    "title": "Boundary marker evidence",
+    "claim": "The boundary marker is supported by a fixed offline source.",
+    "source_uri": "https://example.invalid/offline-source",
+    "source_id": "paper-offline-001",
+    "locator": "section 2",
+    "checksum": "sha256:offline-boundary-fixture",
+    "independent_source": "offline-fixture-source",
+    "valid": true,
+    "supersedes": null,
+    "created_at": "2026-09-16T00:00:00Z",
+    "metadata": {
+      "fixture": true
+    }
+  },
+  "pages": [
+    {
+      "page_id": "wiki-visible",
+      "project_id": "offline-demo",
+      "partition": "knowledge",
+      "title": "Boundary marker knowledge",
+      "body": "A visible boundary marker page for the offline scenario.",
+      "tags": [
+        "boundary",
+        "visible"
+      ],
+      "evidence_ids": [
+        "ev-isolated"
+      ],
+      "level": 1,
+      "created_at": "2026-09-16T00:00:00Z",
+      "revision": 1,
+      "supersedes": null,
+      "author": "m11_fixture",
+      "review_status": "draft",
+      "effective_at": null
+    },
+    {
+      "page_id": "wiki-hidden",
+      "project_id": "offline-demo",
+      "partition": "papers",
+      "title": "Boundary marker paper",
+      "body": "A boundary marker page outside the selected retrieval partition.",
+      "tags": [
+        "boundary",
+        "hidden"
+      ],
+      "evidence_ids": [
+        "ev-isolated"
+      ],
+      "level": 1,
+      "created_at": "2026-09-16T00:00:00Z",
+      "revision": 1,
+      "supersedes": null,
+      "author": "m11_fixture",
+      "review_status": "draft",
+      "effective_at": null
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "edge-offline",
+      "project_id": "offline-demo",
+      "partition": "knowledge",
+      "source_id": "wiki-visible",
+      "relation": "cites",
+      "target_id": "wiki-hidden",
+      "evidence_ids": [
+        "ev-isolated"
+      ]
+    }
+  ],
+  "query": {
+    "text": "boundary marker",
+    "partitions": [
+      "knowledge"
+    ],
+    "level": 2,
+    "limit": 10,
+    "require_evidence": true
+  },
+  "expected": {
+    "evidence_ids": [
+      "ev-isolated"
+    ],
+    "wiki_revision_ids": [
+      "wiki-hidden:r1",
+      "wiki-visible:r1"
+    ],
+    "graph_edge_ids": [
+      "edge-offline"
+    ],
+    "retrieval_hit_ids": [
+      "wiki-visible"
+    ],
+    "retrieval_partitions": [
+      "knowledge"
+    ],
+    "evidence_row_count": 1,
+    "wiki_row_count": 2,
+    "evidence_in_wiki_rows": false,
+    "evidence_in_retrieval": false
+  }
+}
