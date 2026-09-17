@@ -75,6 +75,14 @@ criteria it reviews against.
   defects are ignored too. `NONE` is therefore an accepted result.
 - **D-CI-7**: `codex-version` is deliberately unpinned, because the `:read-only`
   permission profile requires CLI `>= 0.138.0`.
+- **D-CI-8**: Keep `effort: max` and accept a long runtime. Depth is worth the
+  latency; the goal is that a long review terminates with a landing, not that
+  reviews are short. `timeout-minutes: 45` bounds a runaway, it does not pace the
+  review.
+- **D-CI-9**: Separate three things the first version conflated -- **depth** (keep),
+  **noise** (tighten, per the false-positive budget) and **wandering** (stop; the
+  only actual runaway). The run that produced nothing for 35 minutes was wandering,
+  not depth.
 
 ## Completed
 
@@ -88,6 +96,20 @@ criteria it reviews against.
   `rg` searches inside the repository. Duration 116 s; 238,737 tokens.
 - Second revision of the guide aligns it with Google / Microsoft / GitHub / OWASP
   practice and closes six gaps the first version had.
+
+## Completed (continued)
+
+- **Observed a runaway and bounded it.** The third run of this job spent 35 minutes
+  and produced nothing, against 116 seconds for a simple diff in the same job. The
+  cause was not depth: nothing told the reviewer when to stop looking. Constraints
+  were added for exploration (no opening a file without a concrete suspicion, no
+  re-verifying, skip generated artefacts and caches), for landing (stop and report
+  when a run goes long), for report size (8 findings, remainder as a count), and a
+  requirement that behavioural claims cite a `file:line`.
+- **Measured the timeout behaviour rather than assuming it.** A `timeout-minutes: 30`
+  job was cancelled at exactly 35 minutes, so GitHub's cancellation is cooperative
+  and a step blocked on an external HTTP call notices late. The limit was raised to
+  45 minutes and the measurement recorded in the workflow comment.
 
 ## Pending
 
