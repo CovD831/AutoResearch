@@ -1,0 +1,35 @@
+== A. symbol-only shim ==
+  real implementation : PASS (43 passed)
+  shim run            : 42 failed, 1 passed in 0.10s
+       34  NotImplementedError (weak: API reached, body absent)
+        7  Failed: DID NOT RAISE (strong: names the missing guarantee)
+        1  ValidationError from the shim's own field declarations (binds to the extension being optional)
+  distinct failures classified: 42
+  ImportError/AttributeError count: 0
+
+== B. behaviour rollback mutations ==
+  M1 remove the K5-2 validator
+      test_truncated_slice_must_record_dropped_refs: Failed: DID NOT RAISE ValidationError
+  M2 drop the RefId type/length guard
+      test_refs_reject_non_string_and_over_long_ids: Failed: DID NOT RAISE ValidationError
+  M3 treat unmeasured token cost as 0
+      test_unmeasured_token_cost_is_not_treated_as_free: AssertionError: assert ['ev1'] == []
+  M4 stop recording dropped refs (K5-1/N-1)
+      test_over_budget_falls_back_to_splitting_and_records_dropped_refs: pydantic_core._pydantic_core.ValidationError: 1 validation error for ContextSlice
+  M5 ignore the per-kind token tier
+      test_per_kind_token_tier_is_honoured: AssertionError: assert [] == ['ev2']
+  M6 give unknown_field_policy a silent default
+      test_unknown_field_policy_must_be_stated: Failed: DID NOT RAISE ValidationError
+  M7 remove the to_version strict-increase check (K6-3)
+      test_to_version_must_strictly_increase: Failed: DID NOT RAISE ValidationError
+  M8 make reject policy fail open
+      test_reject_policy_raises_on_an_unknown_field: Failed: DID NOT RAISE UnknownFieldError
+  M9 drop the state_version bridge guard
+      test_bridge_rejects_objects_without_an_integer_version: Failed: DID NOT RAISE ValueError
+  M10 ignore the output reserve (reserved_ratio)
+      test_output_reserve_excludes_an_item_by_naming_it: AssertionError: assert ['ev1', 'ev2'] == ['ev1']
+  M11 make the per-kind fallback 0 instead of the global budget
+      test_max_tokens_per_kind_is_optional_and_none_is_k5_equivalent: AssertionError: assert 0 == 80
+  judgment-type failures: 11/11
+
+restored, focused suite: PASS (43 passed)
