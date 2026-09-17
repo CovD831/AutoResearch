@@ -3,7 +3,10 @@
 - ID: `M02-PREFETCH`
 - Title: `R-007 L-02：证据前置检索 PrefetchRecord（K7）+ 失效传播 InvalidationPropagation（K8）`
 - Status: `handoff`
-- Status note: 2026-09-15 L-02 lane worktree（`feat/r007-l02-prefetch`，base `main@8dd8780`）。K7-2 / K7-3 / K8 全部实现并自测；K7-1 按 L2 §K7 的 B1 修正**只做代码结构层补偿、不写通过断言**。K1 `run_id` 以 **duck-typing** 接线（L-05 的 `run_manifest.py` 已落地但仍是其分支上的 untracked 文件、不在 main → import 会让本分支不可导入）。K8 传播拆出 `plan()`/`record()` 两步接缝（D-L02-10，L-04 写前校验需求），`propagate()` 对外行为不变。自查另修两处：跨分区误传播（D-L02-09）、突变残留在 live worktree 停留（D-L02-11，已改为隔离副本内做突变）。**交付态已还原并核验**：`45 passed` / `582 passed, 2 skipped` / ruff clean / 残留扫描 0。本包对既有文件零改动（全部新增）。**尚未 commit、未 push、未开 PR**。
+- Status note: 2026-09-15 L-02 lane worktree（`feat/r007-l02-prefetch`，base `main@8dd8780`）。K7-2 / K7-3 / K8 全部实现并自测；K7-1 按 L2 §K7 的 B1 修正**只做代码结构层补偿、不写通过断言**。K1 `run_id` 以 **duck-typing** 接线（L-05 的 `run_manifest.py` 已落地但仍是其分支上的 untracked 文件、不在 main → import 会让本分支不可导入）。K8 传播拆出 `plan()`/`record()` 两步接缝（D-L02-10，L-04 写前校验需求），`propagate()` 对外行为不变。自查另修两处：跨分区误传播（D-L02-09）、突变残留在 live worktree 停留（D-L02-11，已改为隔离副本内做突变）。**交付态已还原并核验**：`50 passed` / `587 passed, 2 skipped` / ruff clean / 残留扫描 0。
+本包对既有文件零改动（全部新增）。
+**提交状态：已 commit `fb81880`、已 push 分支 `feat/r007-l02-prefetch`、已开 PR #28**
+（此前本行写「尚未 commit、未 push、未开 PR」，是提交前的历史状态）。
 - Owner: `impl-l02-prefetch`
 - Next owner: `team-lead`
 

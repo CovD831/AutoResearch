@@ -211,11 +211,24 @@ class StoreClaimGraph:
         return neighbours
 
     def claims_for_evidence(self, evidence_id: str) -> list[str]:
-        """First hop: nodes reachable from the invalidated evidence."""
+        """First hop: nodes reachable from the invalidated evidence.
+
+        K8-2 scopes propagation to *claims* and gates. The earlier version
+        excluded only ``gate_prefixes`` and accepted anything else, so an
+        ordinary neighbour (an artifact, a record id) read as a claim and
+        K8 would invent an affected_claim list with the wrong shape.
+
+        ``claim_prefixes`` is the configured contract for what counts as a
+        claim; ``gate_prefixes`` is the symmetric "this is definitely a
+        gate, skip it here". Require both: a neighbour qualifies as a
+        claim only if it matches a claim prefix.
+        """
 
         claims: list[str] = []
         for node_id in self._neighbours(evidence_id):
-            if node_id == evidence_id or self._matches(node_id, self.gate_prefixes):
+            if node_id == evidence_id:
+                continue
+            if not self._matches(node_id, self.claim_prefixes):
                 continue
             if node_id not in claims:
                 claims.append(node_id)

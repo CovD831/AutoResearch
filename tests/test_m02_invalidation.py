@@ -396,3 +396,103 @@ def test_undecidable_source_status_is_not_read_as_a_retraction(status: SourceSta
     """'We could not tell' is neither a retraction nor a clean bill of health."""
 
     assert reason_from_source_status(status) is None
+
+
+# ---------------------------------------------------------------------------
+# K8-2 (contract drill-down): the first hop accepts only claim nodes
+# ---------------------------------------------------------------------------
+
+
+def test_a_non_claim_neighbour_does_not_fall_into_the_affected_claims(tmp_path: Path) -> None:
+    """K8-2 scope is claims + gates. An ordinary neighbour is neither."""
+
+    service = _service(tmp_path)
+    service.store.put(
+        "graph_edge",
+        "e1",
+        _edge("artifact-not-a-claim", "ev-1"),
+        partition="papers",
+    )
+
+    with pytest.raises(BrokenPropagationError):
+        service.propagate(
+            source_evidence_id="ev-1",
+            reason=InvalidationReason.RETRACTED,
+        )
+    assert service.store.list(INVALIDATION_KIND) == []
+
+
+def test_only_non_claim_neighbours_still_leaves_the_chain_broken(tmp_path: Path) -> None:
+    """Several ordinary neighbours add up to no claim."""
+
+    service = _service(tmp_path)
+    for index, node in enumerate(("artifact-a", "artifact-b", "run-7")):
+        service.store.put(
+            "graph_edge",
+            f"e{index}",
+            _edge(node, "ev-1", evidence_ids=["ev-1"]),
+            partition="papers",
+        )
+
+    with pytest.raises(BrokenPropagationError):
+        service.propagate(
+            source_evidence_id="ev-1",
+            reason=InvalidationReason.RETRACTED,
+        )
+    assert service.store.list(INVALIDATION_KIND) == []
+
+
+def test_a_custom_claim_prefix_is_honoured(tmp_path: Path) -> None:
+    """The prefix is configuration, not a constant.
+
+    A repository that names claims differently is allowed to inject its
+    own ``ClaimGraph``; what it is not allowed is for the default to
+    silently accept anything that happens to look like an id.
+    """
+
+    from autoresearch.invalidation import StoreClaimGraph
+
+    service = _service(tmp_path)
+    service.graph = StoreClaimGraph(
+        service.store,
+        claim_prefixes=("thesis_",),
+    )
+    service.store.put(
+        "graph_edge",
+        "e1",
+        _edge("thesis_one", "gate_release", evidence_ids=["ev-1"]),
+        partition="papers",
+    )
+    service.store.put(
+        "graph_edge",
+        "e2",
+        _edge("claim_alpha", "gate_release", evidence_ids=["ev-1"]),
+        partition="papers",
+    )
+
+    plan = service.propagate(
+        source_evidence_id="ev-1",
+        reason=InvalidationReason.RETRACTED,
+    )
+    assert plan.affected_claims == ["thesis_one"], (
+        "only the configured claim prefix may be treated as a claim"
+    )
+
+
+def test_a_real_claim_is_still_reached(tmp_path: Path) -> None:
+    """The counter-case: filtering must not drop what it is meant to keep."""
+
+    service = _service(tmp_path)
+    service.store.put(
+        "graph_edge",
+        "e1",
+        _edge("claim_alpha", "gate_release", evidence_ids=["ev-1"]),
+        partition="papers",
+    )
+
+    plan = service.propagate(
+        source_evidence_id="ev-1",
+        reason=InvalidationReason.RETRACTED,
+    )
+    assert plan.affected_claims == ["claim_alpha"]
+    assert plan.affected_gates == ["gate_release"]
