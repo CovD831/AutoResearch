@@ -428,6 +428,30 @@ class Outbox:
                 )
             ],
         )
+
+        # Sequential-attempt guard (K9-1 at-most-once under concurrency).
+        # Attempt N must not run the effector while an earlier attempt (N-1) is
+        # still open: some other worker owns that in-flight attempt, and running
+        # the effector here would duplicate the side effect.  An earlier slot is
+        # only ever left "open" by a crash or a concurrent worker, and both are
+        # fail-closed (never re-run).  The check sits after the effect marker is
+        # reserved so the discriminating-power harness can observe both workers
+        # reaching the same point before they decide; it does not mark any state,
+        # so a bailed worker leaves its slot untouched for a later retry.
+        if attempt > 1:
+            prev = self.store.get_idempotent(ATTEMPT_SCOPE, _attempt_key(key, attempt - 1))
+            if prev is None or prev.get("state") != "finalized":
+                return DeliveryOutcome(
+                    outbox_id=entry.outbox_id,
+                    idempotency_key=key,
+                    status=entry.status,
+                    delivered=False,
+                    attempts=self._attempts(key),
+                    reason="deferred: an earlier attempt is still in flight",
+                )
+            if _confirmed_delivery(prev):
+                return self._replayed(entry)
+
         self.store.mark_idempotent_phase(
             ATTEMPT_SCOPE,
             _attempt_key(key, attempt),

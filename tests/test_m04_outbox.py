@@ -627,6 +627,46 @@ def test_instrumented_concurrent_delivery_runs_the_effect_once(tmp_path: Path) -
     assert outbox.entry(entry.outbox_id).status is OutboxStatus.DELIVERED
 
 
+def test_concurrent_delivery_with_multiple_attempts_runs_the_effect_once(tmp_path: Path) -> None:
+    """Instrumented: with max_attempts > 1, two racers still run the effect once.
+
+    Regression guard for a K9-1 at-most-once hole.  The per-attempt claim is
+    atomic, so the second worker wins a *distinct* slot (slot 2); its re-check
+    then only sees its own slot still at ``phase="reserved"`` and proceeds to
+    run the effector -- duplicating the side effect unless attempts are kept
+    strictly sequential.
+    """
+
+    store, outbox, entry = _prepared(tmp_path, max_attempts=2)
+    sink = Sink(tmp_path / "sink.sqlite3")
+    calls: list[str] = []
+    gate = _Gate(parties=2)
+    real_reserve = store.reserve_idempotent
+    seen: set[int] = set()
+
+    def gated_reserve(scope, key, request, events=None):  # noqa: ANN001
+        if scope == EFFECT_SCOPE and key == entry.idempotency_key:
+            ident = threading.get_ident()
+            if ident not in seen:
+                seen.add(ident)
+                gate.arrive()
+        return real_reserve(scope, key, request, events)
+
+    store.reserve_idempotent = gated_reserve  # type: ignore[method-assign]
+    effector = _sink_effector(sink, "key-1", record_calls=calls)
+    outcomes = _run_threads(
+        [
+            lambda: outbox.deliver(entry.outbox_id, effector),
+            lambda: outbox.deliver(entry.outbox_id, effector),
+        ]
+    )
+    assert len(gate.threads) == 2, "instrumentation did not actually overlap the workers"
+    assert sink.count() == 1, "exactly one external side effect under concurrency"
+    assert len(calls) == 1, "the effector ran exactly once"
+    assert any(outcome.delivered for outcome in outcomes)
+    assert outbox.entry(entry.outbox_id).status is OutboxStatus.DELIVERED
+
+
 def test_instrumented_concurrent_retries_cannot_exceed_the_attempt_budget(tmp_path: Path) -> None:
     """Instrumented: the attempt slot is arbitrated atomically, so none is overspent."""
 
