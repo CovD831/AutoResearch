@@ -42,14 +42,29 @@ jobs:
     # instead of letting the step fail and look like a broken check.
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    # Long reviews are acceptable here: the point is review quality, not latency,
-    # and `effort: max` deliberately widens exploration. What this bounds is a
-    # runaway, not a thorough review -- 45 minutes is generous enough for a deep
-    # pass while still guaranteeing the job terminates.
+    # Two bounds, and they do different jobs.
     #
-    # Note the bound is not exact: GitHub cancels cooperatively, so a step blocked
-    # on an external HTTP call can take several extra minutes to notice. A 30-minute
-    # limit was observed to finish at 35. Size the number for that slack.
+    # The job timeout below is the outer backstop. It is not precise: GitHub cancels
+    # cooperatively, so a step blocked on an external HTTP call notices late. A
+    # 30-minute limit was observed to finish at 35; a 45-minute limit was still
+    # running at 55 and had to be cancelled by hand. Size it for that slack.
+    #
+    # The step timeout on `Run the review` is the tighter of the two, and it is the
+    # one that actually bounds the review.
+    #
+    # Neither of those bounds does anything about *why* a review runs long. The
+    # earlier failures were not the timeout: they were three reviews that spent 35,
+    # 55 and 55 minutes without landing a report. The cause was the task surface
+    # being far wider than the diff -- the guide's 12 highest-priority defect
+    # families applied without discrimination to a diff of three Markdown files,
+    # with an instruction to verify every checkable claim by running commands.
+    # That is now fixed in the prompt and the guide, which route the review by diff
+    # type and forbid long command runs on documentation.
+    #
+    # For the case where the agent still over-explores, `codex-home` carries a token
+    # budget. Codex has no --max-turns (unlike Claude Code Action's `--max-turns`),
+    # but it does expose a hard token budget that aborts the session with
+    # `SessionBudgetExceeded` when exhausted. See the config below.
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
@@ -65,8 +80,57 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin "$BASE_SHA"
 
+      - name: Write the Codex config with a token budget
+        # Codex has no turn limit. It does have a token budget that aborts the
+        # session with `SessionBudgetExceeded` once the weighted spend reaches
+        # `limit_tokens`, and it cannot be resumed past it -- `record_usage`
+        # returns exhausted on every later call, not just the one that crossed.
+        #
+        # `reminder_at_remaining_tokens` is the part that matters more than the
+        # hard stop: it injects a reminder into the model's context before the
+        # budget runs out, so the agent gets a chance to land its report rather
+        # than being cut off mid-investigation. The two together are a soft
+        # landing with a hard backstop behind it.
+        #
+        # Numbers: the prompt and the guide now cap exploration, so this is a
+        # backstop rather than the primary control.
+        #
+        # WARNING -- `limit_tokens` has NOT been calibrated against a measured
+        # review. It is set from one reference point: a runaway codex review was
+        # reported to burn ~500M tokens over ~35 minutes of no progress
+        # (openai/codex issue #36555). 600k sits three orders of magnitude below
+        # that, so it will stop a genuine runaway, but it is an estimate and not a
+        # measurement. Watch the first few runs after this lands:
+        #
+        #   - if reviews finish without ever nearing the budget, lower it until
+        #     they do, so it stays a real bound rather than decoration;
+        #   - if a review is cut off at `SessionBudgetExceeded` while still
+        #     producing signal, raise it.
+        #
+        # The reminders are ordered so the agent gets a warning at 200k remaining
+        # and a firmer one at 75k -- enough room to land a report rather than be
+        # cut off mid-investigation.
+        #
+        # The directory lives outside the checkout on purpose. The review runs
+        # with a read-only permission profile, and Codex also writes session and
+        # cache files under CODEX_HOME, so pointing this at a path inside the
+        # read-only tree would be asking for a write failure. `/tmp` is writable
+        # and is not part of what is under review.
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/codex-home
+          cat > /tmp/codex-home/config.toml <<'TOML'
+          [features.rollout_budget]
+          enabled = true
+          limit_tokens = 600000
+          reminder_at_remaining_tokens = [200000, 75000]
+          TOML
+
       - name: Run the review
         id: review
+        # The tighter of the two time bounds, and the one that actually applies to
+        # the review. The job-level timeout is the outer backstop.
+        timeout-minutes: 25
         uses: openai/codex-action@v1
         env:
           # Interpolated by the prompt so the reviewer can build the diff itself.
@@ -84,12 +148,19 @@ jobs:
           # official level and was observed to be accepted-but-inert, so it is
           # not used. `max` is the level the vendor recommends for reasoning and
           # coding work.
+          #
+          # max stays. Latency is acceptable when the output is worth it; what was
+          # wrong before was not the depth but the width of the task. The prompt
+          # and the guide narrow the task, so max has less to wander through.
           effort: max
           # Read-only: the reviewer must not be able to modify the branch under
           # review. Note this profile requires Codex CLI >= 0.138.0, which is why
           # `codex-version` is deliberately left unpinned.
           permission-profile: ":read-only"
           prompt-file: .ai-team/ai-review-prompt.md
+          # The budget config written above. This is the documented way to run
+          # codex with settings the action does not expose as inputs.
+          codex-home: /tmp/codex-home
 
       - name: Post the review as a comment
         if: steps.review.outputs.final-message != ''
