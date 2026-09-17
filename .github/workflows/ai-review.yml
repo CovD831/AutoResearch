@@ -80,36 +80,50 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin "$BASE_SHA"
 
-      - name: Write the Codex config with a token budget
-        # Codex has no turn limit. It does have a token budget that aborts the
-        # session with `SessionBudgetExceeded` once the weighted spend reaches
-        # `limit_tokens`, and it cannot be resumed past it -- `record_usage`
-        # returns exhausted on every later call, not just the one that crossed.
+      - name: Write the Codex config
+        # `approval_policy = "never"` is not what fixed the hang -- the pinned
+        # action version did. It is here because it is the other half of the
+        # read-only setup and was missing.
         #
-        # `reminder_at_remaining_tokens` is the part that matters more than the
-        # hard stop: it injects a reminder into the model's context before the
-        # budget runs out, so the agent gets a chance to land its report rather
-        # than being cut off mid-investigation. The two together are a soft
-        # landing with a hard backstop behind it.
+        # `permission-profile: ":read-only"` constrains the filesystem and the
+        # network; it does not set an approval policy, and Codex's default is
+        # `on-request`, meaning the model may ask a human to approve a command. In
+        # CI there is no human. OpenAI's own CI configuration pairs
+        # `approval_policy = "never"` with a read-only sandbox rather than relying
+        # on the default. `never` does not hang when there is nothing to fall back
+        # on -- it rejects the command and returns the failure to the model, which
+        # then has to work with what it has.
         #
-        # Numbers: the prompt and the guide now cap exploration, so this is a
-        # backstop rather than the primary control.
+        # This goes through `codex-home` rather than `codex-args`: codex-action
+        # lists `approval_policy` in RESTRICTED_CONFIG_ROOTS and rejects it as a
+        # `-c` override on a protected run.
         #
-        # WARNING -- `limit_tokens` has NOT been calibrated against a measured
-        # review. It is set from one reference point: a runaway codex review was
-        # reported to burn ~500M tokens over ~35 minutes of no progress
-        # (openai/codex issue #36555). 600k sits three orders of magnitude below
-        # that, so it will stop a genuine runaway, but it is an estimate and not a
-        # measurement. Watch the first few runs after this lands:
+        # The token budget is the other half of this file, and it is a backstop
+        # rather than the primary control -- the prompt and the guide narrow the
+        # task. It aborts the session with `SessionBudgetExceeded` once weighted
+        # spend reaches `limit_tokens`, and it cannot be resumed past that:
+        # `record_usage` returns exhausted on every later call, not only on the one
+        # that crossed.
+        #
+        # It did not fire on the hung runs, and that is expected -- those runs had
+        # already finished spending and were stuck in the action wrapper.
+        #
+        # `limit_tokens` has NOT been calibrated against a measured review. It is
+        # set from one reference point: a runaway codex review was reported to burn
+        # ~500M tokens over ~35 minutes of no progress (openai/codex issue #36555).
+        # 600k sits three orders of magnitude below that, so it will stop a genuine
+        # runaway, but it is an estimate and not a measurement. Watch the first few
+        # runs after this lands:
         #
         #   - if reviews finish without ever nearing the budget, lower it until
         #     they do, so it stays a real bound rather than decoration;
         #   - if a review is cut off at `SessionBudgetExceeded` while still
         #     producing signal, raise it.
         #
-        # The reminders are ordered so the agent gets a warning at 200k remaining
-        # and a firmer one at 75k -- enough room to land a report rather than be
-        # cut off mid-investigation.
+        # The reminders are the softer half of the budget: they inject a reminder
+        # into the model's context while there is still room, so the agent gets a
+        # chance to land its report rather than be cut off mid-investigation. 200k
+        # remaining is the first warning, 75k the second.
         #
         # The directory lives outside the checkout on purpose. The review runs
         # with a read-only permission profile, and Codex also writes session and
@@ -120,6 +134,8 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/codex-home
           cat > /tmp/codex-home/config.toml <<'TOML'
+          approval_policy = "never"
+
           [features.rollout_budget]
           enabled = true
           limit_tokens = 600000
@@ -128,10 +144,34 @@ jobs:
 
       - name: Run the review
         id: review
-        # The tighter of the two time bounds, and the one that actually applies to
-        # the review. The job-level timeout is the outer backstop.
+        # The tighter of the two time bounds. This alone was NOT enough: a
+        # 25-minute step timeout on this step let a run reach 55 minutes, because
+        # the hang is in the action wrapper and not in Codex. See the note on the
+        # pinned version below.
         timeout-minutes: 25
-        uses: openai/codex-action@v1
+        # Pinned to v1.11 rather than `@v1`. `@v1` and v1.12 are the same commit
+        # (86365089), and v1.12 has a wrapper lifecycle bug that matches this job's
+        # symptoms exactly -- openai/codex-action#169 reports 33 of 39 reviews
+        # stuck until the job timeout, with the identical configuration
+        # (ubuntu-latest, max effort, drop-sudo, :read-only). The reported shape:
+        # Codex prints its final JSON and token count, then the action never exits
+        # or emits its end marker.
+        #
+        # The mechanism is in v1.12's process handling: it spawns with inherited
+        # stdout/stderr and waits on the child's `close` event, so a descendant
+        # that keeps those descriptors open holds the action alive after the direct
+        # child has finished. That is why nothing else here helps. The token budget
+        # never fires (the model is done spending), the step timeout is cooperative
+        # and the wrapper is not cooperating, and the elapsed time is constant
+        # rather than proportional to the work. The fix upstream is
+        # openai/codex-action#151 (private pipes, complete on `exit`), which is
+        # still open and unreleased as of this pin.
+        #
+        # v1.11 is known-good for this: openai/codex-action#150 reports it
+        # completing cleanly where v1.12 spins after printing tokens. It supports
+        # both `permission-profile` and `codex-home`, so nothing else here changes.
+        # Revisit the pin once #151 ships.
+        uses: openai/codex-action@v1.11
         env:
           # Interpolated by the prompt so the reviewer can build the diff itself.
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
