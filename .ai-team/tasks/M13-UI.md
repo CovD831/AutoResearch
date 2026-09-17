@@ -229,7 +229,7 @@
 
 ## Verification
 
-- [x] `PYTHONPATH=src pytest -q -o addopts="" -W error` → **577 passed, 2 skipped, 0 failed**（基线 537 未下降）
+- [x] `PYTHONPATH=src pytest -q -o addopts="" -W error` → **578 passed, 2 skipped, 0 failed**（基线 537 未下降；+1 passed 来自 P6b 入仓后 `test_delivered_snapshots_are_not_stale` 由 skip 转为跑通）
 - [x] `python -m pytest tests/test_web_panels.py` → **40 passed**
 - [x] `python -m ruff check src tests` → `All checks passed!`
 - [x] `python -m compileall -q src` → ok
