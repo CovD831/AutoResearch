@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import os
 import sys
 from pathlib import Path
 
@@ -53,9 +54,16 @@ def run_pytest(*args: str) -> str:
             "--tb=line",
         ],
         cwd=REPO,
-        env={"PYTHONPATH": "src", "PATH": "/usr/bin:/bin:/usr/local/bin"},
+        # Override the env instead of replacing it: ``env={"PATH": ...}``
+        # alone would drop PYTHONIOENCODING, which Python on Windows
+        # inherits from the spawn shell and uses to decode stdout.
+        # Forcing utf-8 here plus the ``encoding`` kwarg below is the
+        # belt-and-braces that lets the script read and write Chinese
+        # source on either platform.
+        env={**os.environ, "PYTHONPATH": "src", "PATH": "/usr/bin:/bin:/usr/local/bin", "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"},
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     return proc.stdout + proc.stderr
 
@@ -105,11 +113,11 @@ class Guard:
     """Restores the two source files on exit, whatever happens."""
 
     def __init__(self) -> None:
-        self._originals = {path: path.read_text() for path in TARGETS}
+        self._originals = {path: path.read_text(encoding="utf-8") for path in TARGETS}
 
     def restore(self) -> None:
         for path, text in self._originals.items():
-            path.write_text(text)
+            path.write_text(text, encoding="utf-8")
 
     def __enter__(self) -> Guard:
         return self
@@ -124,7 +132,7 @@ def shim_probe() -> None:
     real = outcome(summary)
     print(f"  real implementation : {real}")
     for name in ("context_assembler.shim.py", "migration.shim.py"):
-        (SRC / name.replace(".shim.py", ".py")).write_text((HERE / name).read_text())
+        (SRC / name.replace(".shim.py", ".py")).write_text((HERE / name).read_text(encoding="utf-8"), encoding="utf-8")
     shim = run_pytest(*TEST_FILES)
     for line in shim.splitlines():
         if "passed" in line or "failed" in line:
@@ -239,13 +247,13 @@ def mutations() -> None:
     ]
     hits = 0
     for name, target, old, new, test in cases:
-        original = target.read_text()
+        original = target.read_text(encoding="utf-8")
         if old not in original:
             print(f"  {name}: SKIPPED (anchor not found)")
             continue
-        target.write_text(original.replace(old, new, 1))
+        target.write_text(original.replace(old, new, 1), encoding="utf-8")
         result = outcome(run_pytest(test))
-        target.write_text(original)
+        target.write_text(original, encoding="utf-8")
         judgment = "ImportError" not in result and "AttributeError" not in result
         hits += 1 if (judgment and result != "PASS") else 0
         print(f"  {name}\n      {test.rsplit('::', 1)[1]}: {result}")

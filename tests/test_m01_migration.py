@@ -100,6 +100,57 @@ def test_migration_is_replayable() -> None:
     assert payload == {"abstract": "a", "title": "t", "notes": ["n"]}  # input untouched
 
 
+def test_a_mutable_default_is_not_shared_between_calls() -> None:
+    """K6-2 with a list default: each call gets its own list.
+
+    The earlier ``setdefault(key, default)`` aliased the migration's own
+    defaults, so the first call's returned dict shared its list with the
+    second call -- mutating one mutates the other.
+    """
+
+    migration = _migration(
+        field_mapping={},
+        unknown_field_policy="preserve",
+        defaults={"tags": []},
+    )
+    first = migration.apply({})
+    first["tags"].append("first")
+    second = migration.apply({})
+    assert second == {"tags": []}
+
+
+def test_a_nested_mutable_default_is_isolated() -> None:
+    """Defaults with a dict-of-list also have to deep-copy, not shallow."""
+
+    migration = _migration(
+        field_mapping={},
+        unknown_field_policy="preserve",
+        defaults={"counts": {"events": []}},
+    )
+    first = migration.apply({})
+    first["counts"]["events"].append(1)
+    second = migration.apply({})
+    assert second == {"counts": {"events": []}}
+
+
+def test_payload_values_are_not_copied() -> None:
+    """Only the *defaults* are isolated; payload values pass through as-is.
+
+    Copying them would be a different -- and much more expensive --
+    contract. The regression test below distinguishes the two so a
+    future "always copy" rewrite doesn't quietly change the contract.
+    """
+
+    migration = _migration(
+        field_mapping={},
+        unknown_field_policy="preserve",
+        defaults={},
+    )
+    payload = {"notes": ["shared"]}
+    out = migration.apply(payload)
+    assert out["notes"] is payload["notes"]
+
+
 # --------------------------------------------------------------------------- #
 # K6-3: to_version strictly increases (numeric, not lexical)
 # --------------------------------------------------------------------------- #

@@ -3,7 +3,12 @@
 - ID: `M01-CONTEXT`
 - Title: `M01 上下文装配 / 状态迁移 / 交接回放（L-01 lane，K5 + K6）`
 - Status: `handoff`
-- Status note: 2026-09-15 于独立 worktree `r007-l01-context`（分支 `feat/r007-l01-context`，base `main@8dd8780`）实现 K5 `ContextBudget`/`ContextSlice` 与 K6 `StateMigration`，并复用既有 `handoffs.py` 落地 M01-06 交接回放。基线实测 **537 passed / 2 skipped / 0 failed**；本包全量 **580 passed / 2 skipped**；专项 **43 passed**；`ruff check src tests` clean；`compileall -q src` exit 0；`check.mjs`（全仓 + 本账本）均 `valid`。**未 commit、未 push**（按门禁纪律改动停在本地）。K5 的「分级接口」已按 R-007 §2 要求留出（开放 `kind` + `register_kind(tier)` + 分层预算）。owner 已裁决 D-L01-02 / D-L01-02b 批准、K5-3 维持；D-L01-05 / D-L01-09 仍待裁决。
+- Status note: 2026-09-15 于独立 worktree `r007-l01-context`（分支 `feat/r007-l01-context`，base `main@8dd8780`）实现 K5 `ContextBudget`/`ContextSlice` 与 K6 `StateMigration`，并复用既有 `handoffs.py` 落地 M01-06 交接回放。基线实测 **537 passed / 2 skipped / 0 failed**；本包全量 **580 passed / 2 skipped**；专项 **43 passed**；`ruff check src tests` clean；`compileall -q src` exit 0；`check.mjs`（全仓 + 本账本）均 `valid`。提交状态：**已 commit `b561807`、已 push 分支 `feat/r007-l01-context`、已开 PR #27**
+（此前本行写「未 commit、未 push」，与本账本第 91/116 行按「改动停在本地」的表述一起，
+都是提交前的历史状态，已按事实更新）。
+K5 的「分级接口」已按 R-007 §2 要求留出（开放 `kind` + `register_kind(tier)` + 分层预算）。
+owner 已裁决：D-L01-01 / -02 / -02b / -03 / -10 **批准**，D-L01-04（K5-3 无断言）**维持**，
+D-L01-05 / D-L01-09 **处置维持并转为契约缺口上报**（E-L01-01 / E-L01-02）。
 - Owner: `impl-l01-context`
 - Next owner: `team-lead`
 
@@ -88,7 +93,9 @@
 
 ## Pending
 
-- **提交 / 推送：owner 已明确「不许可」**（2026-09-15，老板纪律：不得自动 commit/push，等老板明确确认）。本包改动**全部停在本地工作区**（未 commit / 未 push），等老板确认后才可提交。
+- **提交 / 推送**：2026-09-15 时 owner 明确「不许可」自动提交（项目纪律：不得自动 commit/push）。
+**后续已获许可并完成**：commit `b561807`、分支 `feat/r007-l01-context`、PR #27。
+本行保留原始纪律记录，以免与「现在已提交」的事实看起来矛盾。
 - **D-L01-02 / D-L01-02b 已裁决批准**（2026-09-15）：`ContextBudget` 新增 `max_tokens_per_kind`（可选）获准，**登记已写明「默认 `None` 时行为与 K5 原文等价」**（见 Decisions）。K5-3 维持「无断言」。
 - **D-L01-05 / D-L01-09 已裁决：处置维持**。两条均转为**契约缺口上报**（E-L01-01 / E-L01-02，见 §Contract gap escalations）：缺陷在**契约表达能力**，不在本包实现；**改契约须 owner 裁决**，本包不单方面改 `contracts.py`。回退成本已逐条写明（分别 ≈3 行 / ≈10 行 + 测试）。
 - **D-L01-09 待契约作者裁决**：K6 无值变换能力，无法自己把 `ResearchState.schema_version` 从 `1` 跳到 `2`。当前读侧有 `state_version()` 桥、写侧留给调用方。若 owner 认为「一步完成 v1→v2」是硬要求，K6 需补值变换字段（如 `set_fields`），**这是契约变更，须由契约作者裁决**。
@@ -113,7 +120,8 @@
 
 ## Handoff note
 
-交回 `team-lead`（R-007 主理人）。**改动全部停在本地工作区，未 commit、未 push —— owner 已明确「不许可」，等老板确认。** owner 已裁决：D-L01-01 / -02 / -02b / -03 **批准**、D-L01-04（K5-3 无断言）**维持**、D-L01-05 / -09 **处置维持并转为契约缺口上报**（E-L01-01 / E-L01-02）、D-L01-10（预留↔丢弃语义）**批准**；K5-1 解读**已确认以本实现为准**。判据力证据分两层（符号 shim 42 failed / 11 组行为突变 11/11），**未把弱判据型（`NotImplementedError`）粉饰成强证据**。
+交回 `team-lead`（R-007 主理人）。**当时改动停在本地工作区；现已获许可提交**（commit `b561807` / PR #27）。
+owner 已裁决：D-L01-01 / -02 / -02b / -03 **批准**、D-L01-04（K5-3 无断言）**维持**、D-L01-05 / -09 **处置维持并转为契约缺口上报**（E-L01-01 / E-L01-02）、D-L01-10（预留↔丢弃语义）**批准**；K5-1 解读**已确认以本实现为准**。判据力证据分两层（符号 shim 42 failed / 11 组行为突变 11/11），**未把弱判据型（`NotImplementedError`）粉饰成强证据**。
 
 ## Verification
 

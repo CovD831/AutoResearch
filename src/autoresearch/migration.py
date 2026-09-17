@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from copy import deepcopy
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -153,7 +154,13 @@ class StateMigration(BaseModel):
         for key in unknown:
             result[key] = payload[key]
         for key, default in self.defaults.items():
-            result.setdefault(key, default)
+            # ``default`` may be a mutable container (list / dict / set) --
+            # K6-2 is "same input, same output" and the mutation would
+            # alias the migration's own defaults with the caller's data
+            # if we handed it through unchanged. deepcopy keeps the
+            # caller free to mutate what they got back without changing
+            # what the migration will hand the next caller.
+            result.setdefault(key, deepcopy(default))
         return result
 
 
