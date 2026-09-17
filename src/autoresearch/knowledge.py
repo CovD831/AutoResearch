@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from collections.abc import Iterable
 from enum import StrEnum
 
@@ -13,6 +12,8 @@ from autoresearch.contracts import (
     RetrievalHit,
     WikiPage,
 )
+from autoresearch.knowledge_retrieval import describe_retrieval_level, recall
+from autoresearch.recall_audit import RecallAuditWriter, build_record
 from autoresearch.storage import RecordStore
 
 # R-006 L1 / §11.9: a bare page_id is resolved through a dedicated head index
@@ -196,18 +197,6 @@ class KnowledgeService:
         )
         return edge
 
-    @staticmethod
-    def _score(page: dict, terms: list[str]) -> float:
-        title = page["title"].lower()
-        body = page["body"].lower()
-        tag_text = " ".join(page.get("tags", [])).lower()
-        return sum(
-            (3.0 if term in title else 0.0)
-            + (1.0 if term in body else 0.0)
-            + (2.0 if term in tag_text else 0.0)
-            for term in terms
-        )
-
     def retrieve(
         self,
         query: str,
@@ -217,52 +206,89 @@ class KnowledgeService:
         limit: int = 10,
         require_evidence: bool = False,
     ) -> list[RetrievalHit]:
-        terms = [term for term in query.lower().split() if term]
-        if not terms:
-            return []
+        """Recall candidates through the L0/L1/L2 pipeline (M11-MVP-02).
 
-        candidate_pages: dict[str, dict] = {}
-        for partition in partitions:
-            for page in self.list_pages(partition=partition):
-                raw = page.model_dump()
-                score = self._score(raw, terms)
-                if score > 0 and (not require_evidence or raw.get("evidence_ids")):
-                    raw["_score"] = score
-                    candidate_pages[raw["page_id"]] = raw
+        The public signature and every pre-existing ``RetrievalHit`` field keep their
+        meaning. ``score`` becomes a BM25 / cosine value instead of a naive substring
+        count, and ``retrieval_level`` now names the arms that actually ran, carrying
+        the degradation reason when the vector arm could not run.
+        """
 
-        if level >= 2 and candidate_pages:
-            neighbors: dict[str, set[str]] = defaultdict(set)
+        # L0 needs a project scope, but this package may not change ``__init__`` and
+        # may not touch ``application.py``. Read it as an optional attribute so the
+        # filter is real and testable today; production wiring belongs to the owner
+        # (ledger D-M11-02-01).
+        project_id: str | None = getattr(self, "project_id", None)
+        pages = [
+            page.model_dump()
+            for partition in partitions
+            for page in self.list_pages(project_id=project_id, partition=partition)
+        ]
+
+        def resolve_page(page_id: str) -> dict | None:
+            page = self.get_page(page_id)
+            return None if page is None else page.model_dump()
+
+        edges: list[dict] = []
+        if level >= 2:
             for partition in partitions:
-                for edge in self.store.list("graph_edge", partition=partition.value):
-                    neighbors[edge["source_id"]].add(edge["target_id"])
-                    neighbors[edge["target_id"]].add(edge["source_id"])
-            for page_id in list(candidate_pages):
-                for neighbor_id in neighbors[page_id]:
-                    neighbor = self.get_page(neighbor_id)
-                    if neighbor is None:
-                        continue
-                    nraw = neighbor.model_dump()
-                    if KnowledgePartition(nraw["partition"]) not in partitions:
-                        continue
-                    if require_evidence and not nraw.get("evidence_ids"):
-                        continue
-                    nraw["_score"] = max(candidate_pages[page_id]["_score"] * 0.35, 0.1)
-                    candidate_pages.setdefault(neighbor_id, nraw)
+                edges.extend(
+                    self.store.list(
+                        "graph_edge", project_id=project_id, partition=partition.value
+                    )
+                )
 
-        ordered = sorted(
-            candidate_pages.values(),
-            key=lambda page: (-page["_score"], page["title"], page["page_id"]),
-        )[:limit]
-        retrieval_level = "lexical" if level == 1 else "lexical+graph"
+        result = recall(
+            pages=pages,
+            query=query,
+            level=level,
+            limit=limit,
+            project_id=project_id,
+            partitions=partitions,
+            require_evidence=require_evidence,
+            embedder=getattr(self, "embedding_provider", None),
+            edges=edges,
+            resolve_page=resolve_page,
+        )
+
+        # L8 recall audit (R-006 C8): one row per retrieve, switchable off.
+        RecallAuditWriter(
+            self.store,
+            enabled=bool(getattr(self, "recall_audit_enabled", True)),
+        ).write(
+            build_record(
+                query=query,
+                project_id=project_id,
+                filters={
+                    "project_id": project_id,
+                    "partitions": [partition.value for partition in partitions],
+                    "level": level,
+                    "limit": limit,
+                    "require_evidence": require_evidence,
+                },
+                candidates=result.candidates,
+                deduped=result.deduped,
+                reranked=result.reranked,
+                final_hits=tuple(hit.page_id for hit in result.hits),
+                stage_timings_ms=result.stage_timings_ms,
+            )
+        )
+
+        retrieval_level = describe_retrieval_level(
+            level=level, vector_used=result.vector_used, degradation=result.degradation
+        )
         return [
             RetrievalHit(
-                record_id=page["page_id"],
-                partition=page["partition"],
-                title=page["title"],
-                snippet=page["body"][:500],
-                score=page["_score"],
-                evidence_ids=page.get("evidence_ids", []),
+                record_id=hit.page_id,
+                partition=KnowledgePartition(hit.partition),
+                title=hit.title,
+                snippet=hit.snippet,
+                score=hit.score,
+                evidence_ids=list(hit.evidence_ids),
                 retrieval_level=retrieval_level,
+                score_breakdown=dict(hit.score_breakdown),
+                channel=hit.channel,
+                matched_stage=hit.matched_stage,
             )
-            for page in ordered
+            for hit in result.hits
         ]

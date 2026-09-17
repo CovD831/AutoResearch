@@ -1,0 +1,262 @@
+{
+  "schema": "m11-knowledge-retrieval/v1",
+  "note": "Frozen input for M11-MVP-02. The expected values are hand-authored from the boundary rules, never regenerated from the implementation (D-M11-12).",
+  "project_id": "project-a",
+  "query": {
+    "text": "grid cells",
+    "partitions": [
+      "knowledge"
+    ],
+    "level": 2,
+    "limit": 10,
+    "require_evidence": true
+  },
+  "pages": [
+    {
+      "page_id": "a-lexical",
+      "project_id": "project-a",
+      "partition": "knowledge",
+      "title": "Grid fidelity in simulation",
+      "body": "grid cells drive fidelity",
+      "tags": [
+        "grid"
+      ],
+      "evidence_ids": [
+        "ev-1"
+      ],
+      "level": 1,
+      "created_at": "2026-09-17T00:00:00Z",
+      "revision": 1,
+      "supersedes": null,
+      "author": "m11_retrieval_fixture",
+      "review_status": "draft",
+      "effective_at": null
+    },
+    {
+      "page_id": "a-vector-only",
+      "project_id": "project-a",
+      "partition": "knowledge",
+      "title": "Numerical mesh convergence",
+      "body": "mesh resolution studies",
+      "tags": [
+        "mesh"
+      ],
+      "evidence_ids": [
+        "ev-2"
+      ],
+      "level": 1,
+      "created_at": "2026-09-17T00:00:00Z",
+      "revision": 1,
+      "supersedes": null,
+      "author": "m11_retrieval_fixture",
+      "review_status": "draft",
+      "effective_at": null
+    },
+    {
+      "page_id": "a-neighbour",
+      "project_id": "project-a",
+      "partition": "knowledge",
+      "title": "Mesh refinement notes",
+      "body": "unrelated narrative",
+      "tags": [
+        "mesh"
+      ],
+      "evidence_ids": [
+        "ev-4"
+      ],
+      "level": 1,
+      "created_at": "2026-09-17T00:00:00Z",
+      "revision": 1,
+      "supersedes": null,
+      "author": "m11_retrieval_fixture",
+      "review_status": "draft",
+      "effective_at": null
+    },
+    {
+      "page_id": "a-no-evidence",
+      "project_id": "project-a",
+      "partition": "knowledge",
+      "title": "Grid notes",
+      "body": "grid cells without evidence",
+      "tags": [
+        "grid"
+      ],
+      "evidence_ids": [],
+      "level": 1,
+      "created_at": "2026-09-17T00:00:00Z",
+      "revision": 1,
+      "supersedes": null,
+      "author": "m11_retrieval_fixture",
+      "review_status": "draft",
+      "effective_at": null
+    },
+    {
+      "page_id": "a-superseded",
+      "project_id": "project-a",
+      "partition": "knowledge",
+      "title": "Grid legacy",
+      "body": "grid cells",
+      "tags": [
+        "grid"
+      ],
+      "evidence_ids": [
+        "ev-3"
+      ],
+      "level": 1,
+      "created_at": "2026-09-17T00:00:00Z",
+      "revision": 1,
+      "supersedes": null,
+      "author": "m11_retrieval_fixture",
+      "review_status": "superseded",
+      "effective_at": null
+    },
+    {
+      "page_id": "a-other-partition",
+      "project_id": "project-a",
+      "partition": "papers",
+      "title": "Grid paper",
+      "body": "grid cells in a paper",
+      "tags": [
+        "grid"
+      ],
+      "evidence_ids": [
+        "ev-5"
+      ],
+      "level": 1,
+      "created_at": "2026-09-17T00:00:00Z",
+      "revision": 1,
+      "supersedes": null,
+      "author": "m11_retrieval_fixture",
+      "review_status": "draft",
+      "effective_at": null
+    },
+    {
+      "page_id": "b-intruder",
+      "project_id": "project-b",
+      "partition": "knowledge",
+      "title": "Grid cells of project b",
+      "body": "grid cells",
+      "tags": [
+        "grid"
+      ],
+      "evidence_ids": [
+        "ev-9"
+      ],
+      "level": 1,
+      "created_at": "2026-09-17T00:00:00Z",
+      "revision": 1,
+      "supersedes": null,
+      "author": "m11_retrieval_fixture",
+      "review_status": "draft",
+      "effective_at": null
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "edge-neighbour",
+      "project_id": "project-a",
+      "partition": "knowledge",
+      "source_id": "a-lexical",
+      "relation": "summarized_by",
+      "target_id": "a-neighbour",
+      "evidence_ids": [
+        "ev-4"
+      ]
+    },
+    {
+      "edge_id": "edge-cross-project",
+      "project_id": "project-a",
+      "partition": "knowledge",
+      "source_id": "a-lexical",
+      "relation": "summarized_by",
+      "target_id": "b-intruder",
+      "evidence_ids": [
+        "ev-9"
+      ]
+    }
+  ],
+  "embeddings": {
+    "provider": "fixture-embedding/v1",
+    "note": "Hand-authored vectors, read through a fixture-backed EmbeddingProvider. Axes are orthogonal so each arm's winner is unambiguous: axis 0 = 'grid cells', axis 1 = 'grid only', axis 2 = 'mesh'.",
+    "dimensions": 3,
+    "query_vectors": {
+      "grid cells": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    "vectors": {
+      "a-lexical": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "a-vector-only": [
+        0.95,
+        0.0,
+        0.1
+      ],
+      "a-neighbour": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "a-no-evidence": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "a-superseded": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "a-other-partition": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "b-intruder": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    }
+  },
+  "expected": {
+    "hit_id_set": [
+      "a-lexical",
+      "a-neighbour",
+      "a-vector-only"
+    ],
+    "channels": {
+      "a-lexical": "lexical",
+      "a-neighbour": "graph",
+      "a-vector-only": "vector"
+    },
+    "graph_only_hit": "a-neighbour",
+    "chain_size": 3,
+    "absent_ids": [
+      "a-no-evidence",
+      "a-other-partition",
+      "a-superseded",
+      "b-intruder"
+    ],
+    "without_evidence_filter": {
+      "hit_id_set": [
+        "a-lexical",
+        "a-neighbour",
+        "a-no-evidence",
+        "a-vector-only"
+      ]
+    },
+    "vector_unavailable": {
+      "hit_id_set": [
+        "a-lexical",
+        "a-neighbour"
+      ],
+      "retrieval_level_contains": "degraded"
+    }
+  }
+}
