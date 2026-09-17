@@ -98,6 +98,14 @@ jobs:
         # lists `approval_policy` in RESTRICTED_CONFIG_ROOTS and rejects it as a
         # `-c` override on a protected run.
         #
+        # It is also load-bearing on this runner for a second reason. Codex logs
+        # `warning: Codex could not find bubblewrap on PATH` here, which means the
+        # sandbox backend is absent, and the read-only policy then falls back to
+        # requiring approval for commands. `never` is the setting that makes that
+        # path reject-and-continue instead of waiting for an approver who does not
+        # exist. If bubblewrap is ever installed on the runner, this stays correct;
+        # it is only the fallback behaviour that changes.
+        #
         # The token budget is the other half of this file, and it is a backstop
         # rather than the primary control -- the prompt and the guide narrow the
         # task. It aborts the session with `SessionBudgetExceeded` once weighted
@@ -105,25 +113,28 @@ jobs:
         # `record_usage` returns exhausted on every later call, not only on the one
         # that crossed.
         #
-        # It did not fire on the hung runs, and that is expected -- those runs had
-        # already finished spending and were stuck in the action wrapper.
+        # The limit is now measured rather than guessed. At 600k, a real review of
+        # this pull request ended at 602,575 tokens -- it fired exactly as designed,
+        # 0.4% past the limit, and confirmed both that the mechanism works and that
+        # 600k is simply below what one review of this diff costs. It stopped the
+        # run before a report landed, which is a safe failure but not a useful one.
         #
-        # `limit_tokens` has NOT been calibrated against a measured review. It is
-        # set from one reference point: a runaway codex review was reported to burn
-        # ~500M tokens over ~35 minutes of no progress (openai/codex issue #36555).
-        # 600k sits three orders of magnitude below that, so it will stop a genuine
-        # runaway, but it is an estimate and not a measurement. Watch the first few
-        # runs after this lands:
+        # Raised to 1.5M so that a report lands and the real cost becomes visible.
+        # The point of a budget here is to bound a runaway, not to force early
+        # termination of a working review. Watch the next runs:
         #
-        #   - if reviews finish without ever nearing the budget, lower it until
-        #     they do, so it stays a real bound rather than decoration;
-        #   - if a review is cut off at `SessionBudgetExceeded` while still
-        #     producing signal, raise it.
+        #   - if reviews land comfortably under the limit, lower it toward the
+        #     observed cost, so it stays a real bound rather than decoration;
+        #   - if a review is still cut off while producing signal, raise it again.
+        #
+        # Expect the cost to come down on its own once the task surface narrows
+        # further: the run above read the guide in four separate slices, plus
+        # PROJECT.md and the task ledger, neither of which the prompt asks for.
         #
         # The reminders are the softer half of the budget: they inject a reminder
         # into the model's context while there is still room, so the agent gets a
-        # chance to land its report rather than be cut off mid-investigation. 200k
-        # remaining is the first warning, 75k the second.
+        # chance to land its report rather than be cut off mid-investigation. 400k
+        # remaining is the first warning, 150k the second.
         #
         # The directory lives outside the checkout on purpose. The review runs
         # with a read-only permission profile, and Codex also writes session and
@@ -138,8 +149,8 @@ jobs:
 
           [features.rollout_budget]
           enabled = true
-          limit_tokens = 600000
-          reminder_at_remaining_tokens = [200000, 75000]
+          limit_tokens = 1500000
+          reminder_at_remaining_tokens = [400000, 150000]
           TOML
 
       - name: Run the review
@@ -192,6 +203,15 @@ jobs:
           # max stays. Latency is acceptable when the output is worth it; what was
           # wrong before was not the depth but the width of the task. The prompt
           # and the guide narrow the task, so max has less to wander through.
+          #
+          # Caveat, observed in the run logs: Codex does not recognise this model.
+          # It logs `warning: Model metadata for glm-5.3 not found. Defaulting to
+          # fallback metadata; this can degrade performance and cause issues.` The
+          # value is accepted and the session reports `reasoning effort: max`, but
+          # with `glm-5.3` absent from Codex's model table there is no guarantee the
+          # effort mapping is the one this setting is supposed to select. Treat the
+          # reasoning level as configured-but-unverified until the gateway serves a
+          # model Codex has metadata for.
           effort: max
           # Read-only: the reviewer must not be able to modify the branch under
           # review. Note this profile requires Codex CLI >= 0.138.0, which is why
