@@ -108,6 +108,28 @@ class LicenseViolation(LicenseError):
         self.decision = decision
 
 
+class EntitlementConflictError(LicenseError):
+    """A different grant already exists for ``(subject, resource_id)`` (K12).
+
+    The conflicting registration is refused and the *original* entitlement is left
+    in place -- a later, broader or narrower grant must never silently replace the
+    one already in force.
+    """
+
+    def __init__(
+        self, subject: str, resource_id: str, existing: Entitlement
+    ) -> None:
+        super().__init__(
+            f"entitlement conflict: a different grant already exists for "
+            f"subject={subject!r} resource={resource_id!r}; the existing "
+            f"entitlement is left in place (K12: a conflicting grant must not "
+            f"silently replace the original)"
+        )
+        self.subject = subject
+        self.resource_id = resource_id
+        self.existing = existing
+
+
 # ---------------------------------------------------------------------------
 # Entitlements + decisions
 # ---------------------------------------------------------------------------
@@ -172,8 +194,34 @@ class LicenseGate:
 
     # -- entitlements ------------------------------------------------------
 
+    @staticmethod
+    def _same_grant(a: Entitlement, b: Entitlement) -> bool:
+        """Compare the *grant*, not the whole model.
+
+        ``entitlement_id`` is freshly generated per instance, so two entitlements
+        describing the same grant compare unequal on the model but equal here.
+        """
+        return (
+            a.subject == b.subject
+            and a.resource_id == b.resource_id
+            and sorted(a.actions) == sorted(b.actions)
+            and a.valid_until == b.valid_until
+            and a.reference == b.reference
+        )
+
     def register_entitlement(self, entitlement: Entitlement) -> Entitlement:
-        self._entitlements[(entitlement.subject, entitlement.resource_id)] = entitlement
+        key = (entitlement.subject, entitlement.resource_id)
+        existing = self._entitlements.get(key)
+        if existing is not None:
+            if self._same_grant(existing, entitlement):
+                # Idempotent re-registration: keep the original grant in force
+                # (entitlement_id differs per instance, so the model compares unequal).
+                return existing
+            # Refuse the conflicting grant and keep the original in force (K12).
+            raise EntitlementConflictError(
+                entitlement.subject, entitlement.resource_id, existing
+            )
+        self._entitlements[key] = entitlement
         return entitlement
 
     def entitlement_for(self, subject: str, resource_id: str) -> Entitlement | None:

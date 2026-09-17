@@ -1,0 +1,513 @@
+name: AI Review
+
+# AI code review via Codex, pointed at the WorkBuddy gateway.
+#
+# Observation mode: this job posts a review comment. It is deliberately NOT a
+# required status check, so it cannot block a merge while we are still measuring
+# its false-positive rate. Promote it to a gate only after reviewing the output
+# on real pull requests.
+#
+# Runs on every pull request event, including each push (`synchronize`). A newer
+# push cancels an in-flight review of the same PR, so a PR that is pushed
+# repeatedly does not queue up a stack of paid reviews.
+#
+# Secrets: WB2API_KEY is a repository secret holding the key for the gateway in
+# `responses-api-endpoint`. It is not an OpenAI-issued key. The action name says
+# "openai" because it ships the Codex CLI; the endpoint override is what makes it
+# talk to our provider.
+#
+# Fork pull requests cannot read repository secrets, so they are skipped
+# explicitly and the reason is recorded in the job summary. Member PRs come from
+# forks, so their reviews need to be triggered from a same-repo branch until we
+# decide on a different mechanism. A skip is reported, never silent.
+#
+# Manual triggering exists for replay. A `pull_request` event only runs the
+# workflow version present on the PR's own head branch, so a pull request opened
+# before this file landed on the base branch never gets reviewed, and neither does
+# one whose head predates it. `workflow_dispatch` with a `pr_number` input runs
+# this file as it exists on the ref it is dispatched against, which lets a review
+# be replayed against any pull request without pushing to that pull request's
+# branch. Use it to re-check output after a guide change, or to review a PR that
+# was opened before this workflow existed.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to review
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  # One review per pull request. A new push cancels the previous run rather than
+  # reviewing a superseded revision.
+  group: ai-review-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  # Both event sources have to resolve to the same facts before anything else can
+  # run. Under `pull_request` they are already in the event payload; under
+  # `workflow_dispatch` nothing about the target is known beyond its number, so it
+  # is looked up. Downstream jobs read only this job's outputs, so the two paths
+  # cannot drift apart.
+  resolve:
+    name: Resolve the target
+    runs-on: ubuntu-latest
+    outputs:
+      number: ${{ steps.resolve.outputs.number }}
+      head_sha: ${{ steps.resolve.outputs.head_sha }}
+      base_sha: ${{ steps.resolve.outputs.base_sha }}
+      same_repo: ${{ steps.resolve.outputs.same_repo }}
+      skip_reason: ${{ steps.resolve.outputs.skip_reason }}
+    steps:
+      - name: Resolve the pull request
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          # Empty under workflow_dispatch, populated under pull_request.
+          EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ -z "$PR_NUMBER" ]; then
+              echo "::error::workflow_dispatch requires the pr_number input"
+              exit 1
+            fi
+            # Look the pull request up rather than trusting the input beyond the
+            # number itself.
+            meta=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+            number=$PR_NUMBER
+            head_sha=$(printf '%s' "$meta" | jq -r '.head.sha')
+            base_sha=$(printf '%s' "$meta" | jq -r '.base.sha')
+            head_repo=$(printf '%s' "$meta" | jq -r '.head.repo.full_name')
+            echo "Mode: manual dispatch for PR #$number"
+          else
+            number=$EVENT_PR_NUMBER
+            head_sha=$EVENT_HEAD_SHA
+            base_sha=$EVENT_BASE_SHA
+            head_repo=$EVENT_HEAD_REPO
+            echo "Mode: pull_request event for PR #$number"
+          fi
+
+          # A fork head cannot read repository secrets, so the review could not
+          # authenticate. Both event paths report the skip the same way.
+          if [ "$head_repo" = "$REPO" ]; then
+            same_repo=true
+            skip_reason=""
+          else
+            same_repo=false
+            skip_reason="head is $head_repo, a fork; repository secrets are unavailable to fork runs"
+          fi
+
+          {
+            echo "number=$number"
+            echo "head_sha=$head_sha"
+            echo "base_sha=$base_sha"
+            echo "same_repo=$same_repo"
+            echo "skip_reason=$skip_reason"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## AI review target"
+            echo
+            echo "- pull request: #$number"
+            echo "- head: \`$head_sha\`"
+            echo "- base: \`$base_sha\`"
+            echo "- same repo: $same_repo"
+            if [ -n "$skip_reason" ]; then
+              echo "- skipped: $skip_reason"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report the skip
+        if: steps.resolve.outputs.same_repo != 'true'
+        run: |
+          echo "::notice::AI review skipped for PR #${{ steps.resolve.outputs.number }}: ${{ steps.resolve.outputs.skip_reason }}"
+
+  review:
+    name: AI review
+    needs: resolve
+    # Fork PRs carry no secrets, so the review cannot authenticate. Skip them
+    # instead of letting the step fail and look like a broken check.
+    if: needs.resolve.outputs.same_repo == 'true'
+    runs-on: ubuntu-latest
+    # Two bounds, and they do different jobs.
+    #
+    # The job timeout below is the outer backstop. It is not precise: GitHub cancels
+    # cooperatively, so a step blocked on an external HTTP call notices late. A
+    # 30-minute limit was observed to finish at 35; a 45-minute limit was still
+    # running at 55 and had to be cancelled by hand. Size it for that slack.
+    #
+    # The step timeout on `Run the review` is the tighter of the two, and it is the
+    # one that actually bounds the review.
+    #
+    # Neither of those bounds does anything about *why* a review runs long. The
+    # earlier failures were not the timeout: they were three reviews that spent 35,
+    # 55 and 55 minutes without landing a report. The cause was the task surface
+    # being far wider than the diff -- the guide's 12 highest-priority defect
+    # families applied without discrimination to a diff of three Markdown files,
+    # with an instruction to verify every checkable claim by running commands.
+    # That is now fixed in the prompt and the guide, which route the review by diff
+    # type and forbid long command runs on documentation.
+    #
+    # For the case where the agent still over-explores, `codex-home` carries a token
+    # budget. Codex has no --max-turns (unlike Claude Code Action's `--max-turns`),
+    # but it does expose a hard token budget that aborts the session with
+    # `SessionBudgetExceeded` when exhausted. See the config below.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Resolved by the `resolve` job, so this works under both event sources.
+          ref: ${{ needs.resolve.outputs.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch the base ref for the diff
+        env:
+          BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BASE_SHA"
+
+      - name: Restore the review guide from the default branch
+        # `prompt-file` is a path into the working tree, and the checkout above
+        # puts the PR *head* there. The guide is infrastructure, not part of the
+        # change under review, so a pull request opened before the guide landed
+        # looks for a file its own tree does not contain, and the action fails
+        # with ENOENT before the reviewer ever runs. That is every R-007 lane PR
+        # (#25-#33), and it is why `workflow_dispatch` replay could not reach
+        # them -- the same ENOENT, from the same cause.
+        #
+        # Take the guide from the default branch rather than from the PR's base.
+        # These pull requests are stacked (`owner/r007-plan-freeze` is the base of
+        # #26-#30 and #32), and that base predates the guide too, so "use the base
+        # ref" only moves the ENOENT one hop. The guide is infrastructure: the
+        # default branch is where its reviewed version lives, and it is the
+        # version that should judge a diff regardless of how the PR is stacked.
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$DEFAULT_BRANCH"
+          git checkout FETCH_HEAD -- .ai-team/ai-review-prompt.md
+          {
+            echo "review guide taken from \`origin/$DEFAULT_BRANCH\`"
+            echo
+            echo '```'
+            head -3 .ai-team/ai-review-prompt.md
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Assemble the prompt with the diff inlined
+        # The single largest cost driver was the reviewer building the diff
+        # itself. Handing it two SHAs and letting it run `git diff` reads as
+        # harmless, but it turns the task from "review this change" into "locate
+        # this change" -- and locating is where the budget went.
+        #
+        # Measured before this step, on PR #26 (1,602 lines / 8 files, so a small
+        # diff): 1,505,750 tokens, ended by the budget at ~8 minutes. The run log
+        # shows 56 reads of `tests/test_run_manifest.py` (333 lines) and 37 of
+        # `src/autoresearch/run_manifest.py` (193 lines), plus 15+ files outside
+        # the diff. Reading the same small file 56 times is not a size problem.
+        # For scale, the reference implementation this guide follows spends
+        # 30-60K tokens on a 500-line diff.
+        #
+        # Inlining the diff removes the whole locate phase. Anthropic's
+        # claude-code-security-review does exactly this, and this guide already
+        # asks for the tracked-by-diff behaviour -- it was just unable to enforce
+        # it. Text in a prompt is advice; a diff already in the prompt is a bound.
+        #
+        # `prompt-file` accepts one path, so the guide and the diff are
+        # concatenated rather than passed separately.
+        #
+        # The diff is capped. Beyond the cap the prompt names every changed file
+        # and says the body was omitted -- still a named scope, never "go look
+        # around". The fallback is deliberate: an uncapped inline would fail the
+        # run outright on a very large diff, which is strictly worse than a
+        # bounded review of the same change.
+        env:
+          BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          # ~48k lines of diff. Well past anything this repository produces, and
+          # far below the size that would itself exhaust the budget.
+          MAX_DIFF_CHARS: "1200000"
+        run: |
+          set -euo pipefail
+          guide=.ai-team/ai-review-prompt.md
+          out=/tmp/review-prompt.md
+
+          git diff --name-status "$BASE_SHA" "$HEAD_SHA" > /tmp/changed.txt
+          git diff "$BASE_SHA" "$HEAD_SHA" > /tmp/full.diff
+          diff_chars=$(wc -c < /tmp/full.diff | tr -d ' ')
+
+          {
+            cat "$guide"
+            echo
+            echo "---"
+            echo
+            echo "## The change under review (already extracted -- do not re-derive it)"
+            echo
+            echo "The diff is below, in full. It is the complete set of code changes for this"
+            echo "pull request. Do not run \`git diff\`, \`git log\`, or \`git show\` to reconstruct"
+            echo "it, and do not compare branch names: what you need is already here."
+            echo
+            echo "Reading files named in the diff is in scope. Reading files the diff does"
+            echo "not name is not -- no walk of the repository, no survey of neighbouring"
+            echo "modules. That restriction is the one that keeps the review inside its"
+            echo "budget, and the budget is what keeps the review from ending without a"
+            echo "report."
+            echo
+            echo "### Files changed"
+            echo
+            echo '```'
+            cat /tmp/changed.txt
+            echo '```'
+            echo
+          } > "$out"
+
+          if [ "$diff_chars" -le "$MAX_DIFF_CHARS" ]; then
+            {
+              echo "### Diff"
+              echo
+              echo '```diff'
+              cat /tmp/full.diff
+              echo '```'
+            } >> "$out"
+            echo "inlined full diff: $diff_chars chars" >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### Diff body omitted"
+              echo
+              echo "The diff is $diff_chars characters, above the $MAX_DIFF_CHARS limit this"
+              echo "job is willing to inline. Read the files listed above, and only those,"
+              echo "using the repository tools. Do not read anything else."
+            } >> "$out"
+            echo "diff body omitted ($diff_chars chars > $MAX_DIFF_CHARS)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "prompt assembled: $(wc -c < "$out" | tr -d ' ') chars" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write the Codex config
+        # `approval_policy = "never"` is not what fixed the hang -- the pinned
+        # action version did. It is here because it is the other half of the
+        # read-only setup and was missing.
+        #
+        # `permission-profile: ":read-only"` constrains the filesystem and the
+        # network; it does not set an approval policy, and Codex's default is
+        # `on-request`, meaning the model may ask a human to approve a command. In
+        # CI there is no human. OpenAI's own CI configuration pairs
+        # `approval_policy = "never"` with a read-only sandbox rather than relying
+        # on the default. `never` does not hang when there is nothing to fall back
+        # on -- it rejects the command and returns the failure to the model, which
+        # then has to work with what it has.
+        #
+        # This goes through `codex-home` rather than `codex-args`: codex-action
+        # lists `approval_policy` in RESTRICTED_CONFIG_ROOTS and rejects it as a
+        # `-c` override on a protected run.
+        #
+        # It is also load-bearing on this runner for a second reason. Codex logs
+        # `warning: Codex could not find bubblewrap on PATH` here, which means the
+        # sandbox backend is absent, and the read-only policy then falls back to
+        # requiring approval for commands. `never` is the setting that makes that
+        # path reject-and-continue instead of waiting for an approver who does not
+        # exist. If bubblewrap is ever installed on the runner, this stays correct;
+        # it is only the fallback behaviour that changes.
+        #
+        # The token budget is the other half of this file, and it is a backstop
+        # rather than the primary control -- the prompt and the guide narrow the
+        # task. It aborts the session with `SessionBudgetExceeded` once weighted
+        # spend reaches `limit_tokens`, and it cannot be resumed past that:
+        # `record_usage` returns exhausted on every later call, not only on the one
+        # that crossed.
+        #
+        # The limit is now measured rather than guessed. At 600k, a real review of
+        # this pull request ended at 602,575 tokens -- it fired exactly as designed,
+        # 0.4% past the limit, and confirmed both that the mechanism works and that
+        # 600k is simply below what one review of this diff costs. It stopped the
+        # run before a report landed, which is a safe failure but not a useful one.
+        #
+        # Raised to 1.5M so that a report lands and the real cost becomes visible.
+        # The point of a budget here is to bound a runaway, not to force early
+        # termination of a working review. Watch the next runs:
+        #
+        #   - if reviews land comfortably under the limit, lower it toward the
+        #     observed cost, so it stays a real bound rather than decoration;
+        #   - if a review is still cut off while producing signal, raise it again.
+        #
+        # Expect the cost to come down on its own once the task surface narrows
+        # further: the run above read the guide in four separate slices, plus
+        # PROJECT.md and the task ledger, neither of which the prompt asks for.
+        #
+        # The reminders are the softer half of the budget: they inject a reminder
+        # into the model's context while there is still room, so the agent gets a
+        # chance to land its report rather than be cut off mid-investigation. 400k
+        # remaining is the first warning, 150k the second.
+        #
+        # The directory lives outside the checkout on purpose. The review runs
+        # with a read-only permission profile, and Codex also writes session and
+        # cache files under CODEX_HOME, so pointing this at a path inside the
+        # read-only tree would be asking for a write failure. `/tmp` is writable
+        # and is not part of what is under review.
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/codex-home
+          cat > /tmp/codex-home/config.toml <<'TOML'
+          approval_policy = "never"
+
+          [features.rollout_budget]
+          enabled = true
+          # 2026-09-18: raised 1500000 -> 3000000 (user-approved).
+          # 2,031-line diff (#28) hit 1,285,938 with no truncation; the 2,511-line
+          # diff (#29) reached 1,506,675 and was cut off mid-investigation -- the
+          # 1.5M cap was the wall, not the prompt. Re-test at the new cap; if
+          # review quality still drops at 2-3M, treat it as a prompt problem and
+          # narrow the diff scope rather than raise the cap further.
+          limit_tokens = 3000000
+          reminder_at_remaining_tokens = [800000, 300000]
+          TOML
+
+      - name: Run the review
+        id: review
+        # The tighter of the two time bounds. This alone was NOT enough: a
+        # 25-minute step timeout on this step let a run reach 55 minutes, because
+        # the hang is in the action wrapper and not in Codex. See the note on the
+        # pinned version below.
+        timeout-minutes: 25
+        # Pinned to v1.11 rather than `@v1`. `@v1` and v1.12 are the same commit
+        # (86365089), and v1.12 has a wrapper lifecycle bug that matches this job's
+        # symptoms exactly -- openai/codex-action#169 reports 33 of 39 reviews
+        # stuck until the job timeout, with the identical configuration
+        # (ubuntu-latest, max effort, drop-sudo, :read-only). The reported shape:
+        # Codex prints its final JSON and token count, then the action never exits
+        # or emits its end marker.
+        #
+        # The mechanism is in v1.12's process handling: it spawns with inherited
+        # stdout/stderr and waits on the child's `close` event, so a descendant
+        # that keeps those descriptors open holds the action alive after the direct
+        # child has finished. That is why nothing else here helps. The token budget
+        # never fires (the model is done spending), the step timeout is cooperative
+        # and the wrapper is not cooperating, and the elapsed time is constant
+        # rather than proportional to the work. The fix upstream is
+        # openai/codex-action#151 (private pipes, complete on `exit`), which is
+        # still open and unreleased as of this pin.
+        #
+        # v1.11 is known-good for this: openai/codex-action#150 reports it
+        # completing cleanly where v1.12 spins after printing tokens. It supports
+        # both `permission-profile` and `codex-home`, so nothing else here changes.
+        # Revisit the pin once #151 ships.
+        uses: openai/codex-action@v1.11
+        env:
+          # Interpolated by the prompt so the reviewer can build the diff itself.
+          BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+        with:
+          # The gateway key, not an OpenAI key.
+          openai-api-key: ${{ secrets.WB2API_KEY }}
+          # Full URL including the /v1/responses suffix. This is the documented
+          # shape for a non-default Responses endpoint, and it is how the action
+          # is pointed at a third-party provider.
+          responses-api-endpoint: "https://workbuddy2api.henryai.top/v1/responses"
+          model: glm-5.3
+          # The gateway's GLM-5.3 accepts low/high/max. `medium` is not an
+          # official level and was observed to be accepted-but-inert, so it is
+          # not used. `max` is the level the vendor recommends for reasoning and
+          # coding work.
+          #
+          # Set to `high` rather than `max`. The earlier reasoning -- that latency
+          # is acceptable when the output is worth it -- still holds, but `max` was
+          # observed to be unpredictable rather than merely slow, and unpredictable
+          # is a different problem from slow.
+          #
+          # Two runs of this job against the same pull request and the same revision
+          # of this workflow: one finished in 6.28 minutes and posted a review, the
+          # other ran 25.0 minutes and was cut off by the step timeout with nothing
+          # produced. The second run's log shows why the time was not spent working:
+          # all twelve shell commands completed within 40 seconds of each other
+          # (`succeeded in 0ms` each), and then there was 24 minutes of no output at
+          # all. That is one very long inference, not exploration. Reasoning
+          # magnitude is swinging by an order of magnitude between identical runs.
+          #
+          # The likely cause is that Codex does not recognise this model. It logs
+          # `warning: Model metadata for glm-5.3 not found. Defaulting to fallback
+          # metadata; this can degrade performance and cause issues.` The session
+          # reports `reasoning effort: max`, but with `glm-5.3` absent from Codex's
+          # model table there is no guarantee the effort mapping is the one this
+          # setting is supposed to select -- and an effort level that maps to
+          # "unbounded" would look exactly like this.
+          #
+          # `high` is the hedge while that remains true: still a deep pass, but
+          # without the setting whose mapping is unverified. Move it back to `max`
+          # once the gateway serves a model Codex has metadata for, and re-measure
+          # rather than assuming the earlier behaviour returns.
+          effort: high
+          # Read-only: the reviewer must not be able to modify the branch under
+          # review. Note this profile requires Codex CLI >= 0.138.0, which is why
+          # `codex-version` is deliberately left unpinned.
+          permission-profile: ":read-only"
+          # Assembled by the step above: the guide, then the diff inlined.
+          # Not `.ai-team/ai-review-prompt.md` directly -- the guide is only half
+          # the prompt now, and the other half is what bounds the review.
+          prompt-file: /tmp/review-prompt.md
+          # The budget config written above. This is the documented way to run
+          # codex with settings the action does not expose as inputs.
+          codex-home: /tmp/codex-home
+
+      - name: Post the review as a comment
+        if: steps.review.outputs.final-message != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ needs.resolve.outputs.number }}
+          REVIEW_BODY: ${{ steps.review.outputs.final-message }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## AI review (Codex + GLM-5.3)"
+            echo
+            echo "_Observation mode: advisory only, not a required check._"
+            echo
+            echo "$REVIEW_BODY"
+          } > /tmp/comment.md
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body-file /tmp/comment.md
+
+  # Records why a fork PR received no review, so the absence is visible rather
+  # than looking like a job that silently did nothing. It reads the resolved
+  # verdict rather than re-deriving it, so the two cannot disagree.
+  skip-notice:
+    name: AI review (skipped)
+    needs: resolve
+    if: needs.resolve.outputs.same_repo != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - env:
+          PR_NUMBER: ${{ needs.resolve.outputs.number }}
+          SKIP_REASON: ${{ needs.resolve.outputs.skip_reason }}
+        run: |
+          {
+            echo "### AI review skipped"
+            echo
+            echo "Pull request: #$PR_NUMBER"
+            echo
+            echo "Reason: $SKIP_REASON"
+            echo
+            echo "A fork pull request cannot read repository secrets, so the review"
+            echo "cannot authenticate. To review it, a maintainer can check out the"
+            echo "branch in this repository and open a same-repo pull request, or"
+            echo "dispatch this workflow manually with the pull request number. This is"
+            echo "a limitation of GitHub's secret handling for fork pull requests, not a"
+            echo "failure of the workflow."
+          } >> "$GITHUB_STEP_SUMMARY"

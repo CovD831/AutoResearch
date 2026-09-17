@@ -95,6 +95,9 @@ _SECRET_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/-]{8,}=*"),  # Authorization header value
     re.compile(r"(?i)\b(api[_-]?key|apikey|secret|password|passwd|token|bearer)\b\s*[:=]"),
+    # RFC 7519 JSON Web Token: header.payload.signature, base64url, header starts
+    # with the literal "eyJ" (base64url of `{"`).  A JWT is itself a bearer secret.
+    re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"),
 )
 
 
@@ -338,11 +341,21 @@ def redact_value(key: str, value: object) -> object:
       reusing :func:`autoresearch.pii.default_scanner`) is redacted whatever it
       is called.
 
-    Long values are truncated: a prompt or a document body is not a loggable
-    field, and truncation at least bounds the leak even when no pattern matches.
+    The key rule fires first, so a container under a sensitive key is replaced
+    wholesale and never drilled into.  Containers are otherwise recursed so that
+    a sensitive key buried one level down is caught by rule rather than by the
+    coincidental string form of the container.  Long values are truncated last: a
+    prompt or a document body is not a loggable field, so an over-long value is
+    shortened -- but only after the secret/PII rules have had their chance to
+    replace it wholesale with :data:`REDACTED`.
     """
+    # key rule first: a sensitive name is redacted whatever it holds, and the
+    # value is not drilled into.
     if key.strip().lower() in _REDACT_KEYS:
         return REDACTED
+    # containers are recursed so nested sensitive keys are redacted by rule.
+    if isinstance(value, (dict, list, tuple)):
+        return _redact_nested(value)
     text = str(value)
     if any(pattern.search(text) for pattern in _SECRET_PATTERNS):
         return REDACTED
@@ -351,6 +364,22 @@ def redact_value(key: str, value: object) -> object:
     if len(text) > MAX_DIMENSION_VALUE:
         return text[:MAX_DIMENSION_VALUE] + f"...<truncated {len(text)} chars>"
     return value
+
+
+def _redact_nested(value: object) -> object:
+    """Recurse into a container, redacting each element by its own key/value.
+
+    A container whose *key* is itself sensitive is redacted wholesale by
+    :func:`redact_value` and never reaches this helper, so an already-redacted
+    container is not re-drilled.  Scalars fall back to :func:`redact_value` (with
+    an empty key, so only the content/length rules apply).
+    """
+    if isinstance(value, dict):
+        return {key: redact_value(key, item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        redacted = [_redact_nested(item) for item in value]
+        return tuple(redacted) if isinstance(value, tuple) else redacted
+    return redact_value("", value)
 
 
 def redact_health_report(report: dict[str, object]) -> dict[str, object]:

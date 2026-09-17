@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
-PYTHON = "/Users/abab/.workbuddy/binaries/python/envs/default/bin/python"
+PYTHON = os.environ.get("MUTATION_CHECK_PYTHON", sys.executable)
 EVIDENCE = Path(__file__).resolve().parent
 
 SYMBOL_ERRORS = ("ModuleNotFoundError", "ImportError", "AttributeError", "NameError")

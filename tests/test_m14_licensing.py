@@ -19,6 +19,7 @@ from autoresearch.licensing import (
     OPEN_ACCESS_REASON,
     PAYWALL_REASON,
     Entitlement,
+    EntitlementConflictError,
     LicenseAction,
     LicenseDecision,
     LicenseError,
@@ -227,6 +228,44 @@ def test_entitlement_is_scoped_to_the_subject():
     )
     assert decision.allowed is False
     assert decision.reason == ENTITLEMENT_REQUIRED_REASON
+
+
+def test_register_entitlement_rejects_a_conflicting_grant():
+    """K12: a broader/narrower grant must not silently replace the original."""
+    gate = LicenseGate()
+    first = _entitlement(gate, actions=["read"])
+    # a different grant for the same (subject, resource_id)
+    with pytest.raises(EntitlementConflictError):
+        gate.register_entitlement(
+            Entitlement(
+                subject=SUBJECT,
+                resource_id=RESOURCE,
+                actions=["read", "export"],  # type: ignore[arg-type]
+                reference="order-2026-0002",
+            )
+        )
+    # the original grant stays in force; it was not overwritten
+    assert gate.entitlement_for(SUBJECT, RESOURCE) is first
+    assert [a.value for a in gate.entitlement_for(SUBJECT, RESOURCE).actions] == ["read"]
+
+
+def test_register_entitlement_allows_idempotent_reregister():
+    """Re-registering the identical grant is a no-op, not a conflict (entitlement_id differs)."""
+    gate = LicenseGate()
+    first = _entitlement(gate, actions=["read"])
+    again = gate.register_entitlement(
+        Entitlement(
+            subject=SUBJECT,
+            resource_id=RESOURCE,
+            actions=["read"],  # type: ignore[arg-type]
+            reference="order-2026-0001",
+        )
+    )
+    # the freshly built instance carries a new entitlement_id, but registering the
+    # same grant must keep the original grant in force rather than replace it.
+    assert again is first
+    assert gate.entitlement_for(SUBJECT, RESOURCE) is first
+    assert [a.value for a in gate.entitlement_for(SUBJECT, RESOURCE).actions] == ["read"]
 
 
 def test_licensed_without_entitlement_is_refused_with_its_own_reason():

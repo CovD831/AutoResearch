@@ -414,3 +414,57 @@ def test_doctor_diagnostics_never_echoes_a_redacted_value():
 def test_doctor_diagnostics_ignores_absent_keys():
     """An absent key is not a healthy key -- but it is also not a diagnosis."""
     assert doctor_diagnostics({"ok": True}) == []
+
+
+def test_redact_health_report_recurses_into_nested_containers():
+    """M15-02 recursion: a sensitive key buried one level down must be redacted.
+
+    The single-level implementation leaked ``password`` because it only looked at
+    the (non-sensitive) outer key and the string repr of the inner dict.
+    """
+    report = {
+        "ok": True,
+        "cfg": {"password": "hunter2-example"},
+        "endpoints": [{"token": "secret-inside-list"}],
+        "pairs": ({"api_key": "plaintext-nested"},),
+    }
+    redacted = redact_health_report(report)
+    assert set(redacted) == set(report)
+    assert redacted["ok"] is True
+    assert redacted["cfg"]["password"] == REDACTED
+    assert redacted["endpoints"][0]["token"] == REDACTED
+    assert redacted["pairs"][0]["api_key"] == REDACTED
+
+
+def test_redact_health_report_redacts_whole_container_under_sensitive_key():
+    """A container under a sensitive key is replaced wholesale, not drilled into."""
+    report = {"secret": {"anything": "at all", "even": ["nested", "data"]}}
+    redacted = redact_health_report(report)
+    assert redacted["secret"] == REDACTED
+
+
+def test_redact_value_truncates_after_validation():
+    """M15-02: validation (REDACTED) precedes truncation, never the reverse.
+
+    A long value that is *also* a secret must be fully redacted, not leaked as a
+    truncated prefix; a long but harmless value is still shortened.
+    """
+    long_harmless = "x" * (MAX_DIMENSION_VALUE + 40)
+    out = redact_value("note", long_harmless)
+    assert isinstance(out, str)
+    assert out.startswith("x" * MAX_DIMENSION_VALUE)
+    assert f"<truncated {MAX_DIMENSION_VALUE + 40} chars>" in out
+
+    # long AND secret -> fully redacted, no partial leak
+    long_secret = "sk-abcdefghijklmnop" + "y" * MAX_DIMENSION_VALUE
+    assert redact_value("note", long_secret) == REDACTED
+
+    # long value under a sensitive key -> redacted, not truncated
+    assert redact_value("token", "z" * (MAX_DIMENSION_VALUE + 40)) == REDACTED
+
+
+def test_redact_value_redacts_jwt_tokens():
+    """M15-02: an RFC 7519 JWT (header.payload.signature) is a bearer secret."""
+    jwt = "eyJ" + "A" * 12 + "." + "B" * 12 + "." + "C" * 12
+    assert redact_value("note", jwt) == REDACTED
+    assert redact_value("token_header", "Bearer " + jwt) == REDACTED

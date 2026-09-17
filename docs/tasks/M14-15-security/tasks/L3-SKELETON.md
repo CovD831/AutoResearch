@@ -76,7 +76,7 @@ class SensitivityClass(StrEnum):
 > → **负例必须断言「未测得时 `value is None`」**，而**不是**断言「`value == 0`」。
 
 **与 O12 ProviderLane 的对齐**：成本指标必须复用 **`price_source` + `attempts`** 口径；
-**未命中价目一律 `None`，绝不用 0**（`docs/PRICE-POLICY.md` 全文）。
+**未命中价目一律 `None`，绝不用 0**（`docs/tasks/P1-I-owner-lane/tasks/O12-provider-lane/PRICE-POLICY.md` 全文）。
 
 ---
 
