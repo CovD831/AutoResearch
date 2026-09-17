@@ -55,11 +55,19 @@
 - `docs/tasks/M08-execution/tasks/M08-01-run-manifest/`：`L3.md` 补全 `Implemented design`（§2.4）/ `Deliberate non-goals`（§5.1）/ `Contract deviations`（§9）/ `判别力证据`（§6）/ `验证记录`（§7.1）/ `已知边界与遗留`（§10）。
 - `docs/tasks/M08-execution/tasks/M08-01-run-manifest/evidence/`：`discriminating-power.log` + `.json`（探针原始输出，落盘留证）。
 - `.ai-team/tasks/M08-01-RUN-MANIFEST.md`（本文件）。
-- 本包改动文件全集（7 个路径，全部在 `allowed_paths` 内）：2 个源码/测试文件 + 1 个 fixture 探针 + 3 个任务文档/证据 + 1 个账本。**`forbidden_paths` 零触碰。**
+- 本包改动文件全集（**8 个路径**，全部在 `allowed_paths` 内）：2 个源码/测试文件
+（`src/autoresearch/run_manifest.py`、`tests/test_run_manifest.py`）+ 1 个 fixture 探针
+（`tests/fixtures/run_manifest/probe_discriminating_power.py`）+ 4 个任务文档/证据
+（`L3.md`、`task-package.json`、`evidence/discriminating-power.json`、`evidence/discriminating-power.log`）
++ 1 个账本。**`forbidden_paths` 零触碰。**
+
+  > 原记「7 个路径」，漏计了 `task-package.json` —— 实测 `gh api .../pulls/26/files` 返回 8 项。
 
 ## Pending
 
-- **未 commit / 未 push / 未开 PR**（R-007 §6 提交纪律，等 owner 明确许可）。
+- **提交状态：已 commit `2931bcb`、已 push 分支 `feat/r007-l05-execution`、已开 PR #26**。
+  > 原记「未 commit / 未 push / 未开 PR」（R-007 §6 提交纪律下的当时状态）；
+owner 已许可并完成提交，本行按事实更新。
 - [x] **owner 裁决（2026-09-15）：D-1 / D-2 均保留为契约硬化条款**（裁决理由见 L3 §2.5：不是加严，是补掉真实坍缩通道 / 不可观测的静默丢失）；措辞已由「强化项」改称「契约硬化」，来源已注明。
 - [x] **owner 明确免做**：K1 不上收 `contracts.py`；R-2/R-3/R-4/R-5 不修（不属本包管辖 —— K1 只管「记录得像不像样」，不管「命令该不该跑」）；R-9 空判决口径由 owner 写进最终汇编。四条遗留的**实测复现命令**保留在 L3 §10。
 - [ ] owner 裁决后启动下一包：`M08-02-EXECUTOR`（K2）。
@@ -82,7 +90,9 @@
 - [x] `ruff check src tests` → `All checks passed!`（exit 0）。
 - [x] `python -m compileall -q src` → 无输出（exit 0）。
 - [x] `node .ai-team/check.mjs --base main` → **`Result: valid`**（exit 0；`Code progress from main: 0 commits, 12 files, +78/-11`）。**首跑为 `blocked`**（「changed without updating `.ai-team/TASK.md` or a member ledger」）—— 写入本账本后转为 `valid`，即该门禁确实在要求账本，不是空跑。
-- [x] `python scripts/check_pr_contract.py --base main` → `PR contract check passed: 0 changed paths; 0 task ledger(s)`（exit 0）。**但须注明：它统计的是已提交 diff，本包未 commit ⇒ 这次 `passed` 是空判决，不能当证据**（遗留 R-9）。
+- [x] `python scripts/check_pr_contract.py --base main` → `PR contract check passed: 0 changed paths; 0 task ledger(s)`（exit 0）。**但须注明：它统计的是已提交 diff，运行时本包尚未 commit ⇒ 那次 `passed` 是空判决，
+不能当证据**（遗留 R-9）。**2026-09-17 更新**：本包现已 commit `2931bcb`（PR #26），
+该检查自此有了判别力；上面那行保留为当时的记录。
 - [x] 改动面核查：`git status` 显示本包只新增 `run_manifest.py` / `test_run_manifest.py` / fixture 探针 / 任务文档 / 本账本；`contracts.py` 等 7 个 `forbidden_paths` **零改动**。
 
 ### 判别力实测（`tests/fixtures/run_manifest/probe_discriminating_power.py --base 8dd8780`）

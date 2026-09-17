@@ -202,7 +202,10 @@ def build_tree(base: str, workdir: Path) -> Path:
     archive = subprocess.run(
         ["git", "archive", base], cwd=REPO, capture_output=True, check=True
     )
-    subprocess.run(["tar", "-x", "-C", str(tree)], input=archive.stdout, check=True)
+    # `tar -x -C <tree>` reads from a tty by default; with stdin being
+    # `git archive`'s stdout we have to add `-f -` explicitly or Windows
+    # exits with status 1 ("Cannot read stdin: inappropriate ioctl").
+    subprocess.run(["tar", "-x", "-f", "-", "-C", str(tree)], input=archive.stdout, check=True)
     shutil.copy2(REPO / TEST_REL, tree / TEST_REL)
     return tree
 
