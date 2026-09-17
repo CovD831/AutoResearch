@@ -421,19 +421,33 @@ jobs:
           # not used. `max` is the level the vendor recommends for reasoning and
           # coding work.
           #
-          # max stays. Latency is acceptable when the output is worth it; what was
-          # wrong before was not the depth but the width of the task. The prompt
-          # and the guide narrow the task, so max has less to wander through.
+          # Set to `high` rather than `max`. The earlier reasoning -- that latency
+          # is acceptable when the output is worth it -- still holds, but `max` was
+          # observed to be unpredictable rather than merely slow, and unpredictable
+          # is a different problem from slow.
           #
-          # Caveat, observed in the run logs: Codex does not recognise this model.
-          # It logs `warning: Model metadata for glm-5.3 not found. Defaulting to
-          # fallback metadata; this can degrade performance and cause issues.` The
-          # value is accepted and the session reports `reasoning effort: max`, but
-          # with `glm-5.3` absent from Codex's model table there is no guarantee the
-          # effort mapping is the one this setting is supposed to select. Treat the
-          # reasoning level as configured-but-unverified until the gateway serves a
-          # model Codex has metadata for.
-          effort: max
+          # Two runs of this job against the same pull request and the same revision
+          # of this workflow: one finished in 6.28 minutes and posted a review, the
+          # other ran 25.0 minutes and was cut off by the step timeout with nothing
+          # produced. The second run's log shows why the time was not spent working:
+          # all twelve shell commands completed within 40 seconds of each other
+          # (`succeeded in 0ms` each), and then there was 24 minutes of no output at
+          # all. That is one very long inference, not exploration. Reasoning
+          # magnitude is swinging by an order of magnitude between identical runs.
+          #
+          # The likely cause is that Codex does not recognise this model. It logs
+          # `warning: Model metadata for glm-5.3 not found. Defaulting to fallback
+          # metadata; this can degrade performance and cause issues.` The session
+          # reports `reasoning effort: max`, but with `glm-5.3` absent from Codex's
+          # model table there is no guarantee the effort mapping is the one this
+          # setting is supposed to select -- and an effort level that maps to
+          # "unbounded" would look exactly like this.
+          #
+          # `high` is the hedge while that remains true: still a deep pass, but
+          # without the setting whose mapping is unverified. Move it back to `max`
+          # once the gateway serves a model Codex has metadata for, and re-measure
+          # rather than assuming the earlier behaviour returns.
+          effort: high
           # Read-only: the reviewer must not be able to modify the branch under
           # review. Note this profile requires Codex CLI >= 0.138.0, which is why
           # `codex-version` is deliberately left unpinned.
