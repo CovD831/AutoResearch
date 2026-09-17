@@ -20,10 +20,25 @@ name: AI Review
 # explicitly and the reason is recorded in the job summary. Member PRs come from
 # forks, so their reviews need to be triggered from a same-repo branch until we
 # decide on a different mechanism. A skip is reported, never silent.
+#
+# Manual triggering exists for replay. A `pull_request` event only runs the
+# workflow version present on the PR's own head branch, so a pull request opened
+# before this file landed on the base branch never gets reviewed, and neither does
+# one whose head predates it. `workflow_dispatch` with a `pr_number` input runs
+# this file as it exists on the ref it is dispatched against, which lets a review
+# be replayed against any pull request without pushing to that pull request's
+# branch. Use it to re-check output after a guide change, or to review a PR that
+# was opened before this workflow existed.
 
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to review
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -32,15 +47,102 @@ permissions:
 concurrency:
   # One review per pull request. A new push cancels the previous run rather than
   # reviewing a superseded revision.
-  group: ai-review-${{ github.event.pull_request.number }}
+  group: ai-review-${{ github.event.pull_request.number || inputs.pr_number }}
   cancel-in-progress: true
 
 jobs:
+  # Both event sources have to resolve to the same facts before anything else can
+  # run. Under `pull_request` they are already in the event payload; under
+  # `workflow_dispatch` nothing about the target is known beyond its number, so it
+  # is looked up. Downstream jobs read only this job's outputs, so the two paths
+  # cannot drift apart.
+  resolve:
+    name: Resolve the target
+    runs-on: ubuntu-latest
+    outputs:
+      number: ${{ steps.resolve.outputs.number }}
+      head_sha: ${{ steps.resolve.outputs.head_sha }}
+      base_sha: ${{ steps.resolve.outputs.base_sha }}
+      same_repo: ${{ steps.resolve.outputs.same_repo }}
+      skip_reason: ${{ steps.resolve.outputs.skip_reason }}
+    steps:
+      - name: Resolve the pull request
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          # Empty under workflow_dispatch, populated under pull_request.
+          EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ -z "$PR_NUMBER" ]; then
+              echo "::error::workflow_dispatch requires the pr_number input"
+              exit 1
+            fi
+            # Look the pull request up rather than trusting the input beyond the
+            # number itself.
+            meta=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+            number=$PR_NUMBER
+            head_sha=$(printf '%s' "$meta" | jq -r '.head.sha')
+            base_sha=$(printf '%s' "$meta" | jq -r '.base.sha')
+            head_repo=$(printf '%s' "$meta" | jq -r '.head.repo.full_name')
+            echo "Mode: manual dispatch for PR #$number"
+          else
+            number=$EVENT_PR_NUMBER
+            head_sha=$EVENT_HEAD_SHA
+            base_sha=$EVENT_BASE_SHA
+            head_repo=$EVENT_HEAD_REPO
+            echo "Mode: pull_request event for PR #$number"
+          fi
+
+          # A fork head cannot read repository secrets, so the review could not
+          # authenticate. Both event paths report the skip the same way.
+          if [ "$head_repo" = "$REPO" ]; then
+            same_repo=true
+            skip_reason=""
+          else
+            same_repo=false
+            skip_reason="head is $head_repo, a fork; repository secrets are unavailable to fork runs"
+          fi
+
+          {
+            echo "number=$number"
+            echo "head_sha=$head_sha"
+            echo "base_sha=$base_sha"
+            echo "same_repo=$same_repo"
+            echo "skip_reason=$skip_reason"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## AI review target"
+            echo
+            echo "- pull request: #$number"
+            echo "- head: \`$head_sha\`"
+            echo "- base: \`$base_sha\`"
+            echo "- same repo: $same_repo"
+            if [ -n "$skip_reason" ]; then
+              echo "- skipped: $skip_reason"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report the skip
+        if: steps.resolve.outputs.same_repo != 'true'
+        run: |
+          echo "::notice::AI review skipped for PR #${{ steps.resolve.outputs.number }}: ${{ steps.resolve.outputs.skip_reason }}"
+
   review:
     name: AI review
+    needs: resolve
     # Fork PRs carry no secrets, so the review cannot authenticate. Skip them
     # instead of letting the step fail and look like a broken check.
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: needs.resolve.outputs.same_repo == 'true'
     runs-on: ubuntu-latest
     # Two bounds, and they do different jobs.
     #
@@ -69,13 +171,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          # Resolved by the `resolve` job, so this works under both event sources.
+          ref: ${{ needs.resolve.outputs.head_sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Fetch the base ref for the diff
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
         run: |
           set -euo pipefail
           git fetch --no-tags origin "$BASE_SHA"
@@ -185,8 +288,8 @@ jobs:
         uses: openai/codex-action@v1.11
         env:
           # Interpolated by the prompt so the reviewer can build the diff itself.
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
         with:
           # The gateway key, not an OpenAI key.
           openai-api-key: ${{ secrets.WB2API_KEY }}
@@ -226,7 +329,7 @@ jobs:
         if: steps.review.outputs.final-message != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ needs.resolve.outputs.number }}
           REVIEW_BODY: ${{ steps.review.outputs.final-message }}
         run: |
           set -euo pipefail
@@ -240,22 +343,30 @@ jobs:
           gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body-file /tmp/comment.md
 
   # Records why a fork PR received no review, so the absence is visible rather
-  # than looking like a job that silently did nothing.
+  # than looking like a job that silently did nothing. It reads the resolved
+  # verdict rather than re-deriving it, so the two cannot disagree.
   skip-notice:
     name: AI review (skipped)
-    if: github.event.pull_request.head.repo.full_name != github.repository
+    needs: resolve
+    if: needs.resolve.outputs.same_repo != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - run: |
+      - env:
+          PR_NUMBER: ${{ needs.resolve.outputs.number }}
+          SKIP_REASON: ${{ needs.resolve.outputs.skip_reason }}
+        run: |
           {
             echo "### AI review skipped"
             echo
-            echo "This pull request comes from a fork, so the repository secret"
-            echo "\`WB2API_KEY\` is unavailable and the review cannot authenticate."
+            echo "Pull request: #$PR_NUMBER"
             echo
-            echo "To review it, a maintainer can check out the branch in this"
-            echo "repository and open a same-repo pull request, or run the review"
-            echo "locally. This is a limitation of GitHub's secret handling for"
-            echo "fork pull requests, not a failure of the workflow."
+            echo "Reason: $SKIP_REASON"
+            echo
+            echo "A fork pull request cannot read repository secrets, so the review"
+            echo "cannot authenticate. To review it, a maintainer can check out the"
+            echo "branch in this repository and open a same-repo pull request, or"
+            echo "dispatch this workflow manually with the pull request number. This is"
+            echo "a limitation of GitHub's secret handling for fork pull requests, not a"
+            echo "failure of the workflow."
           } >> "$GITHUB_STEP_SUMMARY"
