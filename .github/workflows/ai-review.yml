@@ -183,27 +183,34 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin "$BASE_SHA"
 
-      - name: Restore the review guide from the base ref
+      - name: Restore the review guide from the default branch
         # `prompt-file` is a path into the working tree, and the checkout above
         # puts the PR *head* there. The guide is infrastructure, not part of the
         # change under review, so a pull request opened before the guide landed
-        # would otherwise look for a file its own tree does not contain -- and the
-        # action fails with ENOENT before the reviewer ever runs.
+        # looks for a file its own tree does not contain, and the action fails
+        # with ENOENT before the reviewer ever runs. That is every R-007 lane PR
+        # (#25-#33), and it is why `workflow_dispatch` replay could not reach
+        # them -- the same ENOENT, from the same cause.
         #
-        # Take the guide from the base ref instead: the version the base branch
-        # has reviewed and approved, which is the one that should judge the diff.
-        # This is also what makes `workflow_dispatch` replay work for pull
-        # requests older than the guide, without pushing to their branches.
+        # Take the guide from the default branch rather than from the PR's base.
+        # These pull requests are stacked (`owner/r007-plan-freeze` is the base of
+        # #26-#30 and #32), and that base predates the guide too, so "use the base
+        # ref" only moves the ENOENT one hop. The guide is infrastructure: the
+        # default branch is where its reviewed version lives, and it is the
+        # version that should judge a diff regardless of how the PR is stacked.
         env:
-          BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          git checkout "$BASE_SHA" -- .ai-team/ai-review-prompt.md
-          echo "review guide taken from $BASE_SHA:" >> "$GITHUB_STEP_SUMMARY"
-          echo >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          head -3 .ai-team/ai-review-prompt.md >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          git fetch --no-tags origin "$DEFAULT_BRANCH"
+          git checkout FETCH_HEAD -- .ai-team/ai-review-prompt.md
+          {
+            echo "review guide taken from \`origin/$DEFAULT_BRANCH\`"
+            echo
+            echo '```'
+            head -3 .ai-team/ai-review-prompt.md
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Write the Codex config
         # `approval_policy = "never"` is not what fixed the hang -- the pinned
