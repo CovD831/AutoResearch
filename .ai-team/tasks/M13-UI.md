@@ -43,7 +43,7 @@
       （35 次 HTTP 调用），非手写 fixture。
 - [x] **截图交付**：6 张 PNG + 12 页快照 HTML，`page errors: 0`。
 - [x] **零成本**：offline provider + `NETWORK_ENABLED=false`，无外网、无 LLM 费用。
-- [x] **无回归**：577 passed（537 基线 + 29 新增），ruff 全绿，compileall 通过。
+- [x] **无回归**：581 passed, 2 skipped, 0 failed（实测；基线 537 未下降；原「537 基线 + 29 新增 = 577」算式不成立，已删除，只留实测值），ruff 全绿，compileall 通过。
 
 ## Invariants
 
@@ -62,7 +62,7 @@
 - **`None` ≠ `[]`**：端点读不到与读到空是不同事实、不同文案。
 - **不新增端点、不改共享文件**：`contracts.py` / `storage.py` / `knowledge.py` 写路径
   全部未碰；K14 类型定义在本包模块内。
-- **不搬运别人的基线数字**：537/2/0 与 566/2/0 均为本 worktree 自测。
+- **不搬运别人的基线数字**（均带时点）：`537/2/0` = 开工基线（feature 前，main@8dd8780 自测）；`566/2/0` = 加完本包新增测试后（537 + 29 新增，L3 §6 实测）；当前含本审查补的 3 条 `_pending_interrupt` 回归测试为 `581/2/0`。三者均为本 worktree 自测，非搬运。
 
 ## Decisions
 
@@ -201,8 +201,8 @@
 
 ## Verification
 
-- [x] `PYTHONPATH=src pytest -q -o addopts="" -W error` → **577 passed, 2 skipped, 0 failed**（基线 537 未下降）
-- [x] `python -m pytest tests/test_web_panels.py` → **40 passed**
+- [x] `PYTHONPATH=src pytest -q -o addopts="" -W error` → **581 passed, 2 skipped, 0 failed**（实测；原「577」公式 537+29=566≠577 已修正为实测值）
+- [x] `python -m pytest tests/test_web_panels.py` → **43 passed**（含 3 条 `_pending_interrupt` 回归测试；本环境 playwright 已装，浏览器快照测试 0 skipped。无 playwright 时其中浏览器测试会 skip，计数相应下降）
 - [x] `python -m ruff check src tests` → `All checks passed!`
 - [x] `python -m compileall -q src` → ok
 - [x] `python web/dev/mutation_check.py` → **mutations caught: 9/9**（含 5 支前端突变），`restored exactly: True`

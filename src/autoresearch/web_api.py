@@ -948,7 +948,10 @@ def _pending_interrupt(sources: PanelSources) -> dict[str, Any] | None:
     for interrupt in interrupts:
         if _string(interrupt, "type") == APPROVAL_INTERRUPT_TYPE:
             return interrupt
-    return interrupts[0] if interrupts else None
+    # Only a genuine human-release-approval interrupt counts as a pending decision.
+    # A non-approval interrupt (e.g. an inline user message) must NOT be treated as
+    # one, otherwise the approval panel would falsely report "pending = true".
+    return None
 
 
 def _approval_scope_section(

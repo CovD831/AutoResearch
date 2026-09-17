@@ -9,10 +9,13 @@
   "merge_after": [],
   "allowed_paths": [
     "src/autoresearch/web_api.py",
+    "src/autoresearch/api.py",
     "web/",
     "tests/test_web_panels.py",
+    "tests/test_api_and_cli.py",
     "docs/tasks/M13-ui/",
-    ".ai-team/tasks/M13-UI.md"
+    ".ai-team/tasks/M13-UI.md",
+    "docs/tasks/M13-ui/tasks/task-package.json"
   ],
   "forbidden_paths": [
     "src/autoresearch/contracts.py",
@@ -21,13 +24,20 @@
     "src/autoresearch/evidence.py",
     "src/autoresearch/gates.py",
     "src/autoresearch/application.py",
-    "src/autoresearch/api.py",
     "src/autoresearch/cli.py",
     "src/autoresearch/graph.py",
     "src/autoresearch/project_service.py",
     "src/autoresearch/execution_service.py",
     ".ai-team/TASK.md",
     ".project-to-act/"
+  ],
+  "boundary_amendments": [
+    {
+      "path": "src/autoresearch/api.py",
+      "approved_by": "team-lead",
+      "approved_at": "2026-09-17",
+      "rationale": "G-7 headers: list_evidence() adds two response headers X-Evidence-Filtered / X-Evidence-Omitted (+35/-3, pure appenditive, response body unchanged) so the default valid_only=True filtering becomes observable. The change is read-only additive on the BFF's own readonly accessor; it does not mutate shared write-path files (contracts/storage/knowledge). Boundary corrected (moved from forbidden to allowed), not reverted."
+    }
   ],
   "deliverables": [
     "K14 PanelProjection types with mechanically enforced K14-1/K14-2/K14-3 invariants",

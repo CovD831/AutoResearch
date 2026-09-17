@@ -29,6 +29,7 @@ from autoresearch.api import create_api
 from autoresearch.application import AutoResearchApplication
 from autoresearch.contracts import PaperRecord, ProjectCreate, RunRequest
 from autoresearch.web_api import (
+    APPROVAL_INTERRUPT_TYPE,
     PANEL_IDS,
     PanelProjection,
     PanelReader,
@@ -328,6 +329,80 @@ def test_no_pending_interrupt_is_unverified_not_blocked(runtime):
     assert pending.verification_state == "unverified"
     assert pending.facts["pending"] == "false"
     assert "409" in (pending.unknown_reason or "")
+
+
+def _approval_sources(run: dict[str, Any]) -> PanelSources:
+    return PanelSources(
+        project_id="proj",
+        run=run,
+        evidence=[],
+        audit_events=[],
+        work_packages=[],
+    )
+
+
+def _pending_decision_section(projection: PanelProjection) -> PanelSection:
+    return next(
+        s for s in projection.sections if "pending human decision" in s.title
+    )
+
+
+def _scope_section(projection: PanelProjection) -> PanelSection:
+    return next(s for s in projection.sections if "scope" in s.title)
+
+
+def test_non_approval_interrupt_is_not_treated_as_pending_approval():
+    """A non-approval interrupt (e.g. an inline user message) must NOT make the
+    approval panel report a pending human decision. Regresses the bug where
+    ``_pending_interrupt`` returned ``interrupts[0]`` regardless of type."""
+    run = {
+        "run_id": "run_x",
+        "interrupts": [{"type": "some_other_interrupt", "run_id": "run_x"}],
+    }
+    projection = build_panel("approval", _approval_sources(run))
+    pending = _pending_decision_section(projection)
+    assert pending.facts["pending"] == "false"
+    assert pending.verification_state == "unverified"
+    scope = _scope_section(projection)
+    assert scope.facts.get("pending_interrupt") == "false"
+
+
+def test_approval_interrupt_is_recognised_only_by_its_type():
+    """When a non-approval interrupt precedes the approval interrupt, the panel
+    must surface the *approval* interrupt (not the first one)."""
+    run = {
+        "run_id": "run_y",
+        "interrupts": [
+            {"type": "some_other_interrupt", "run_id": "run_y"},
+            {
+                "type": APPROVAL_INTERRUPT_TYPE,
+                "run_id": "run_y",
+                "operation": "external_manuscript_release",
+                "risk_level": "L4",
+            },
+        ],
+    }
+    projection = build_panel("approval", _approval_sources(run))
+    pending = _pending_decision_section(projection)
+    assert pending.facts["pending"] == "true"
+    scope = _scope_section(projection)
+    assert scope.facts["interrupt_type"] == APPROVAL_INTERRUPT_TYPE
+    assert scope.facts["operation"] == "external_manuscript_release"
+
+
+def test_only_non_approval_interrupts_never_report_pending():
+    """Multiple non-approval interrupts still yield no pending decision."""
+    run = {
+        "run_id": "run_z",
+        "interrupts": [
+            {"type": "a", "run_id": "run_z"},
+            {"type": "b", "run_id": "run_z"},
+        ],
+    }
+    projection = build_panel("approval", _approval_sources(run))
+    pending = _pending_decision_section(projection)
+    assert pending.facts["pending"] == "false"
+    assert pending.verification_state == "unverified"
 
 
 # ---------------------------------------------------------------------------
