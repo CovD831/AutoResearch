@@ -1,0 +1,122 @@
+name: AI Review
+
+# AI code review via Codex, pointed at the WorkBuddy gateway.
+#
+# Observation mode: this job posts a review comment. It is deliberately NOT a
+# required status check, so it cannot block a merge while we are still measuring
+# its false-positive rate. Promote it to a gate only after reviewing the output
+# on real pull requests.
+#
+# Runs on every pull request event, including each push (`synchronize`). A newer
+# push cancels an in-flight review of the same PR, so a PR that is pushed
+# repeatedly does not queue up a stack of paid reviews.
+#
+# Secrets: WB2API_KEY is a repository secret holding the key for the gateway in
+# `responses-api-endpoint`. It is not an OpenAI-issued key. The action name says
+# "openai" because it ships the Codex CLI; the endpoint override is what makes it
+# talk to our provider.
+#
+# Fork pull requests cannot read repository secrets, so they are skipped
+# explicitly and the reason is recorded in the job summary. Member PRs come from
+# forks, so their reviews need to be triggered from a same-repo branch until we
+# decide on a different mechanism. A skip is reported, never silent.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  # One review per pull request. A new push cancels the previous run rather than
+  # reviewing a superseded revision.
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: AI review
+    # Fork PRs carry no secrets, so the review cannot authenticate. Skip them
+    # instead of letting the step fail and look like a broken check.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch the base ref for the diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BASE_SHA"
+
+      - name: Run the review
+        id: review
+        uses: openai/codex-action@v1
+        env:
+          # Interpolated by the prompt so the reviewer can build the diff itself.
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          # The gateway key, not an OpenAI key.
+          openai-api-key: ${{ secrets.WB2API_KEY }}
+          # Full URL including the /v1/responses suffix. This is the documented
+          # shape for a non-default Responses endpoint, and it is how the action
+          # is pointed at a third-party provider.
+          responses-api-endpoint: "https://workbuddy2api.henryai.top/v1/responses"
+          model: glm-5.3
+          # The gateway's GLM-5.3 accepts low/high/max. `medium` is not an
+          # official level and was observed to be accepted-but-inert, so it is
+          # not used. `max` is the level the vendor recommends for reasoning and
+          # coding work.
+          effort: max
+          # Read-only: the reviewer must not be able to modify the branch under
+          # review. Note this profile requires Codex CLI >= 0.138.0, which is why
+          # `codex-version` is deliberately left unpinned.
+          permission-profile: ":read-only"
+          prompt-file: .ai-team/ai-review-prompt.md
+
+      - name: Post the review as a comment
+        if: steps.review.outputs.final-message != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REVIEW_BODY: ${{ steps.review.outputs.final-message }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## AI review (Codex + GLM-5.3)"
+            echo
+            echo "_Observation mode: advisory only, not a required check._"
+            echo
+            echo "$REVIEW_BODY"
+          } > /tmp/comment.md
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body-file /tmp/comment.md
+
+  # Records why a fork PR received no review, so the absence is visible rather
+  # than looking like a job that silently did nothing.
+  skip-notice:
+    name: AI review (skipped)
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: |
+          {
+            echo "### AI review skipped"
+            echo
+            echo "This pull request comes from a fork, so the repository secret"
+            echo "\`WB2API_KEY\` is unavailable and the review cannot authenticate."
+            echo
+            echo "To review it, a maintainer can check out the branch in this"
+            echo "repository and open a same-repo pull request, or run the review"
+            echo "locally. This is a limitation of GitHub's secret handling for"
+            echo "fork pull requests, not a failure of the workflow."
+          } >> "$GITHUB_STEP_SUMMARY"
