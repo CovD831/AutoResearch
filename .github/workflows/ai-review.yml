@@ -42,7 +42,15 @@ jobs:
     # instead of letting the step fail and look like a broken check.
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Long reviews are acceptable here: the point is review quality, not latency,
+    # and `effort: max` deliberately widens exploration. What this bounds is a
+    # runaway, not a thorough review -- 45 minutes is generous enough for a deep
+    # pass while still guaranteeing the job terminates.
+    #
+    # Note the bound is not exact: GitHub cancels cooperatively, so a step blocked
+    # on an external HTTP call can take several extra minutes to notice. A 30-minute
+    # limit was observed to finish at 35. Size the number for that slack.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
         with:
