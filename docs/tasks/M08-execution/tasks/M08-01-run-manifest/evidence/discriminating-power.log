@@ -1,0 +1,77 @@
+probe workdir : /tmp/l05-probe-run
+base commit   : 8dd8780
+python        : /Users/abab/.workbuddy/binaries/python/envs/default/bin/python
+
+=== P0-nomodule: pre-implementation baseline (no module)
+    1 error in 0.08s  (exit 2)
+    [symbol-missing] <collection>: ModuleNotFoundError: No module named 'autoresearch.run_manifest'
+
+=== P1-shim: symbols only; no validators, no helpers
+    28 failed, 11 passed in 0.25s  (exit 1)
+    [     criterion] test_an_unknown_field_is_rejected_instead_of_silently_dropped: Failed: DID NOT RAISE ValidationError
+    [     criterion] test_created_at_default_is_the_existing_utc_now: assert None is utc_now
+    [     criterion] test_exit_code_rejects_bools_that_pydantic_would_coerce_to_zero_or_one[False]: Failed: DID NOT RAISE ValidationError
+    [     criterion] test_exit_code_rejects_bools_that_pydantic_would_coerce_to_zero_or_one[True]: Failed: DID NOT RAISE ValidationError
+    [     criterion] test_exit_code_rejects_strings_because_no_status_was_observed[0]: Failed: DID NOT RAISE ValidationError
+    [     criterion] test_exit_code_rejects_strings_because_no_status_was_observed[137]: Failed: DID NOT RAISE ValidationError
+    [     criterion] test_exit_code_rejects_strings_because_no_status_was_observed[1]: Failed: DID NOT RAISE ValidationError
+    [symbol-missing] test_for_work_package_consumes_the_existing_work_package_model: AttributeError: for_work_package
+    [symbol-missing] test_for_work_package_refuses_a_silent_identifier_override: AttributeError: for_work_package
+    [     criterion] test_k1_1_a_rejected_shell_string_is_not_split_into_argv: assert 'argv list' in "1 validation error for RunManifest\ncommand\n  Input should be a valid list [type=list_
+    [     criterion] test_k1_1_shell_string_command_is_rejected[]: assert 'argv' in "1 validation error for RunManifest\ncommand\n  Input should be a valid list [type=list_type,
+    [     criterion] test_k1_1_shell_string_command_is_rejected[python train.py && rm -rf /]: assert 'argv' in "1 validation error for RunManifest\ncommand\n  Input should be a valid list [type=list_type,
+    [     criterion] test_k1_1_shell_string_command_is_rejected[python train.py]: assert 'argv' in "1 validation error for RunManifest\ncommand\n  Input should be a valid list [type=list_type,
+    [     criterion] test_k1_1_shell_string_command_is_rejected[python]: assert 'argv' in "1 validation error for RunManifest\ncommand\n  Input should be a valid list [type=list_type,
+    [     criterion] test_k1_2_empty_seeds_is_rejected: Failed: DID NOT RAISE ValidationError
+    [     criterion] test_k1_2_missing_seeds_is_rejected_rather_than_defaulted: Failed: DID NOT RAISE ValidationError
+    [symbol-missing] test_k1_3_a_failed_run_is_not_read_as_never_run: AttributeError: 'RunManifest' object has no attribute 'executed'
+    [symbol-missing] test_k1_3_executed_success_and_unexecuted_stay_semantically_distinct: AttributeError: 'RunManifest' object has no attribute 'executed'
+    [symbol-missing] test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[-9]: AttributeError: 'RunManifest' object has no attribute 'executed'
+    [symbol-missing] test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[137]: AttributeError: 'RunManifest' object has no attribute 'executed'
+    [symbol-missing] test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[1]: AttributeError: 'RunManifest' object has no attribute 'executed'
+    [symbol-missing] test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[2]: AttributeError: 'RunManifest' object has no attribute 'executed'
+    [symbol-missing] test_k1_3_unexecuted_none_is_never_coerced_to_zero: AttributeError: 'RunManifest' object has no attribute 'executed'
+    [     criterion] test_k1_4_has_no_validator_because_authenticity_is_not_machine_checkable: AssertionError: assert set() == {'command', 'exit_code'} |  | Extra items in the right set: | 'exit_code' | 'c
+    [symbol-missing] test_output_refs_of_a_run_that_produced_nothing_is_empty_not_a_placeholder: AttributeError: 'RunManifest' object has no attribute 'output_refs'
+    [symbol-missing] test_output_refs_uses_the_existing_artifact_ref_type: AttributeError: 'RunManifest' object has no attribute 'output_refs'
+    [     criterion] test_run_id_default_has_the_existing_new_id_shape: AssertionError: assert False | +  where False = <built-in method startswith of str object at 0x106530a98>('run
+    [symbol-missing] test_run_id_default_is_produced_by_the_existing_new_id: AttributeError: <module 'autoresearch.run_manifest'> has no attribute 'new_id'
+
+=== M1-command-shell-string-accepted: real module with one guard removed/inverted
+    5 failed, 34 passed in 0.11s  (exit 1)
+    [     criterion] test_k1_1_a_rejected_shell_string_is_not_split_into_argv: Failed: DID NOT RAISE ValidationError
+    [     criterion] test_k1_1_shell_string_command_is_rejected[]: Failed: DID NOT RAISE ValidationError
+    [     criterion] test_k1_1_shell_string_command_is_rejected[python train.py && rm -rf /]: Failed: DID NOT RAISE ValidationError
+    [     criterion] test_k1_1_shell_string_command_is_rejected[python train.py]: Failed: DID NOT RAISE ValidationError
+    [     criterion] test_k1_1_shell_string_command_is_rejected[python]: Failed: DID NOT RAISE ValidationError
+
+=== M2-empty-seeds-accepted: real module with one guard removed/inverted
+    1 failed, 38 passed in 0.11s  (exit 1)
+    [     criterion] test_k1_2_empty_seeds_is_rejected: Failed: DID NOT RAISE ValidationError
+
+=== M3-none-coerced-to-zero: real module with one guard removed/inverted
+    5 failed, 34 passed in 0.11s  (exit 1)
+    [     criterion] test_a_fully_populated_manifest_validates_and_survives_a_json_round_trip: assert RunManifest(r...fo=TzInfo(0))) == RunManifest(r...timezone.utc)) |  | Use -v to get more diff
+    [     criterion] test_k1_3_a_failed_run_is_not_read_as_never_run: AssertionError: assert True is not True | +  where True = RunManifest(run_id='run_fd0877482f1748ed', project_i
+    [     criterion] test_k1_3_a_serialised_unexecuted_manifest_stays_unexecuted: AssertionError: assert 0 is None | +  where 0 = RunManifest(run_id='run_2793a27a4c914546', project_id='demo', 
+    [     criterion] test_k1_3_executed_success_and_unexecuted_stay_semantically_distinct: AssertionError: assert 0 != 0 | +  where 0 = RunManifest(run_id='run_1a968f585fa94c98', project_id='demo', wor
+    [     criterion] test_k1_3_unexecuted_none_is_never_coerced_to_zero: AssertionError: assert 0 is None | +  where 0 = RunManifest(run_id='run_f886b54d14c14a99', project_id='demo', 
+
+=== M4-nonzero-coerced-to-none: real module with one guard removed/inverted
+    5 failed, 34 passed in 0.11s  (exit 1)
+    [     criterion] test_k1_3_a_failed_run_is_not_read_as_never_run: AssertionError: assert False is not False | +  where False = RunManifest(run_id='run_b8d1143db45d4200', projec
+    [     criterion] test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[-9]: AssertionError: assert None == -9 | +  where None = RunManifest(run_id='run_49d5298bc5094449', project_id='dem
+    [     criterion] test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[137]: AssertionError: assert None == 137 | +  where None = RunManifest(run_id='run_f31d2cda3cb24cb1', project_id='de
+    [     criterion] test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[1]: AssertionError: assert None == 1 | +  where None = RunManifest(run_id='run_225edc3945c8474e', project_id='demo
+    [     criterion] test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[2]: AssertionError: assert None == 2 | +  where None = RunManifest(run_id='run_90f6be1a7f3f4b4c', project_id='demo
+
+=== matrix (rows = probes, cells = the four negative cases)
+probe                             N-1           N-2           N-3           N-4           
+P0-nomodule                       not-run(symbol)not-run(symbol)not-run(symbol)not-run(symbol)
+P1-shim                           criterion     criterion     symbol-missingsymbol-missing
+M1-command-shell-string-accepted  criterion     pass          pass          pass          
+M2-empty-seeds-accepted           pass          criterion     pass          pass          
+M3-none-coerced-to-zero           pass          pass          criterion     pass          
+M4-nonzero-coerced-to-none        pass          pass          pass          criterion     
+
+report: /tmp/l05-probe-run/probe-report.json
