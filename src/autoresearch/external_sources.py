@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
+from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, Field
@@ -471,11 +472,10 @@ _TDM_CONTENT_VERSION = "tdm"
 
 # Only an explicit open licence counts. An unrecognised licence URL is not
 # evidence of open access -- it stays closed, because guessing open here is the
-# same failure as reading "unknown" as "fine".
-_OPEN_LICENCE_MARKERS = (
-    "creativecommons.org/licenses/",
-    "creativecommons.org/publicdomain/",
-)
+# same failure as reading "unknown" as "fine". Matching is host/path based, not
+# substring based: a marker substring can appear in the path or query of an
+# unrelated host (e.g. ``https://example.com/creativecommons.org/licenses/by/4.0/``)
+# and would otherwise be misread as permissive.
 
 
 def _licence_entries(message: dict) -> list[dict]:
@@ -494,8 +494,26 @@ def _entry_content_version(entry: dict) -> str:
 
 
 def _is_open_licence_url(url: str) -> bool:
-    lowered = url.strip().casefold()
-    return any(marker in lowered for marker in _OPEN_LICENCE_MARKERS)
+    """Whether ``url`` is an explicit open-licence landing URL on creativecommons.org.
+
+    Fail-closed: anything that is not an absolute ``http(s)`` URL whose host is
+    exactly ``creativecommons.org`` and whose path begins with ``/licenses/`` or
+    ``/publicdomain/`` is treated as *not* an open licence. Substring matching is
+    rejected because a marker can appear in the path or query of an unrelated
+    host (e.g. ``https://example.com/creativecommons.org/licenses/by/4.0/``) and
+    would be misread as permissive. A URL that cannot be parsed, has no scheme,
+    or has no host also fails closed rather than guessing open.
+    """
+
+    parsed = urlparse(url.strip())
+    if parsed.scheme not in ("http", "https"):
+        return False
+    if parsed.hostname is None:
+        return False
+    if parsed.hostname.casefold() != "creativecommons.org":
+        return False
+    path = parsed.path.casefold()
+    return path.startswith("/licenses/") or path.startswith("/publicdomain/")
 
 
 def _licence_verdict_from_message(

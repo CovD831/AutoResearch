@@ -32,7 +32,7 @@
   ],
   "deliverables": [
     "K10 RetractionStatus enum + total fail-closed projection from B5 SourceStatus (K10-1, K10-3)",
-    "K10-2: RETRACTED cannot be returned without a K8 propagation; missing sink / empty claim set raises",
+    "K10-2: RETRACTED cannot be returned without a K8 propagation; missing sink raises (the claim set is not validated here -- K8-2 is the claim-set judge, so an empty claim set is the normal case, not an error)",
     "InvalidationSink protocol port (call shape only; K8 type stays L-02's)",
     "M05-06 access-basis facts: AccessStatus OPEN/RESTRICTED/UNAVAILABLE from Crossref license[]",
     "N-3: paywall bypass refused for every work; recorded as K8 paywall_bypass/permanent_block",

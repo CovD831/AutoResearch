@@ -447,8 +447,12 @@ class RetractionChecker:
         """Classify, and propagate to K8 when the work is retracted.
 
         A retracted work cannot be returned without a propagation: a missing
-        sink or an empty claim set raises rather than yielding a status that
-        claims a propagation which never happened (K10-2).
+        sink raises rather than yielding a status that claims a propagation
+        which never happened (K10-2). The claim/gate blast radius is *not*
+        validated here -- deriving it is the K8 owner's job (K8-2), so an empty
+        claim set is the normal case and is not an error at this seam; K8-3's
+        empty-set guard lives where the evidence -> claim -> gate walk actually
+        happens.
 
         **Not retry-safe.** Calling this twice for the same work emits two K8
         propagations: ``plan()`` mints a fresh ``propagation_id`` per call, so

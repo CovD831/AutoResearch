@@ -31,6 +31,7 @@ from autoresearch.external_sources import (
     SourceSnapshot,
     SourceStatus,
     TransportOutcome,
+    _is_open_licence_url,
 )
 from autoresearch.retraction import (
     K8_MODULE,
@@ -602,6 +603,66 @@ def test_an_embargo_is_recorded_as_a_reason_without_becoming_open():
     verdict = _adapter().licence(WILEY_EMBARGOED_WORK)
     assert verdict.status is AccessStatus.RESTRICTED
     assert any("delay-in-days" in reason for reason in verdict.reasons)
+
+
+# ---------------------------------------------------------------------------
+# `_is_open_licence_url` must match on host + path, never on a substring.
+#
+# The discriminating property of this test set: the three forged forms below
+# (marker in path, marker in query, domain that merely *ends* in the marker
+# host) all returned True under the old ``marker in url.casefold()`` substring
+# matching -- i.e. a forged URL smuggled an "open licence" past the gate. The
+# urlparse fix makes each of them return False. Run against the unfixed version
+# to confirm at least 4 of these fail (3 forged + the protocol-relative / no
+# scheme cases); against the fixed version all 15 pass.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        # 5 positives: absolute http(s) URLs on creativecommons.org whose path
+        # begins with /licenses/ or /publicdomain/, including upper-case forms.
+        "https://creativecommons.org/licenses/by/4.0/",
+        "http://creativecommons.org/licenses/by/4.0/",
+        "https://creativecommons.org/publicdomain/zero/1.0/",
+        "HTTPS://CREATIVECOMMONS.ORG/LICENSES/BY/4.0/",
+        "https://CreativeCommons.org/PublicDomain/zero/1.0/",
+    ],
+)
+def test_open_licence_url_accepts_genuine_cc_landing_pages(url):
+    assert _is_open_licence_url(url) is True
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        # 10 negatives. Each is something a substring matcher would wrongly
+        # accept (or that must fail closed by construction).
+        # forged: marker sits in the *path* of an unrelated host
+        "https://example.com/creativecommons.org/licenses/by/4.0/",
+        # forged: marker sits in the *query* of an unrelated host
+        "https://evil.test/?next=creativecommons.org/licenses/by/4.0",
+        # forged: domain only *ends with* the marker host, not equal
+        "https://notcreativecommons.org/licenses/by/4.0/",
+        # ordinary commercial licence page, never permissive
+        "https://www.elsevier.com/tdm/userlicense/1.0/",
+        # genuine CC host but a non-licence path
+        "https://creativecommons.org/about/",
+        # bare string with no scheme at all
+        "creativecommons.org/licenses/by/4.0/",
+        # empty string: not a URL
+        "",
+        # protocol-relative URL: no scheme -> fail closed
+        "//creativecommons.org/licenses/by/4.0/",
+        # wrong scheme entirely
+        "ftp://creativecommons.org/licenses/by/4.0/",
+        # subdomain of the marker host, not the host itself
+        "https://api.creativecommons.org/licenses/by/4.0/",
+    ],
+)
+def test_open_licence_url_rejects_non_cc_or_forged_urls(url):
+    assert _is_open_licence_url(url) is False
 
 
 # ---------------------------------------------------------------------------

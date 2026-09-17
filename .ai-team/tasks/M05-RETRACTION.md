@@ -18,7 +18,7 @@
 - [x] **K10-1**：网络不可用 / 超时 / 限流 / 403 / 500 / 503 / 404 / resolver 抛异常 → 全部 `UNAVAILABLE`，`confirmed_active is False`。
 - [x] **K10-1 结构保证**：投影表全覆盖，`ACTIVE` 的原像恰好 `{FOUND}`；未映射成员抛错不返回默认值。
 - [x] **投影层允许归并 / 审计层禁止归并**（owner D-M05-01 裁决附加条件）：`NOT_FOUND` 与 `UNKNOWN` 同投影为 `UNAVAILABLE`，但 `source_status`/`reasons` 可区分，有测试固化。
-- [x] **K10-2**：`RETRACTED` 触发 K8 传播（记录调用形状与 `action`）；无 sink / `affected_claims` 空 / 无 `source_evidence_id` → 抛错，不返回「看起来已传播」的状态。
+- [x] **K10-2**：`RETRACTED` 触发 K8 传播（记录调用形状与 `action`）；无 sink / 无 `source_evidence_id` → 抛错，不返回「看起来已传播」的状态。**`affected_claims` 空是正常情况**：blast radius 由 K8 从图推导（K8-2），不在本模块校验，空集不在此抛错（K8-3 守卫在 walk 实际发生处）。
 - [x] **K10-3**：判据只在 `external_sources.py:254-255` 读取；AST 守卫禁止本模块重读关系数组。
 - [x] **M05-06 正例**：OA / 受限 / 不可用三态可区分，且「有 `license[]`」不被当作开放。
 - [x] **N-1（核心）**：不可用 → `UNAVAILABLE`，断言具体取值而非「没崩」。
