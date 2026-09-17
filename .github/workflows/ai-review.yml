@@ -212,6 +212,95 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Assemble the prompt with the diff inlined
+        # The single largest cost driver was the reviewer building the diff
+        # itself. Handing it two SHAs and letting it run `git diff` reads as
+        # harmless, but it turns the task from "review this change" into "locate
+        # this change" -- and locating is where the budget went.
+        #
+        # Measured before this step, on PR #26 (1,602 lines / 8 files, so a small
+        # diff): 1,505,750 tokens, ended by the budget at ~8 minutes. The run log
+        # shows 56 reads of `tests/test_run_manifest.py` (333 lines) and 37 of
+        # `src/autoresearch/run_manifest.py` (193 lines), plus 15+ files outside
+        # the diff. Reading the same small file 56 times is not a size problem.
+        # For scale, the reference implementation this guide follows spends
+        # 30-60K tokens on a 500-line diff.
+        #
+        # Inlining the diff removes the whole locate phase. Anthropic's
+        # claude-code-security-review does exactly this, and this guide already
+        # asks for the tracked-by-diff behaviour -- it was just unable to enforce
+        # it. Text in a prompt is advice; a diff already in the prompt is a bound.
+        #
+        # `prompt-file` accepts one path, so the guide and the diff are
+        # concatenated rather than passed separately.
+        #
+        # The diff is capped. Beyond the cap the prompt names every changed file
+        # and says the body was omitted -- still a named scope, never "go look
+        # around". The fallback is deliberate: an uncapped inline would fail the
+        # run outright on a very large diff, which is strictly worse than a
+        # bounded review of the same change.
+        env:
+          BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          # ~48k lines of diff. Well past anything this repository produces, and
+          # far below the size that would itself exhaust the budget.
+          MAX_DIFF_CHARS: "1200000"
+        run: |
+          set -euo pipefail
+          guide=.ai-team/ai-review-prompt.md
+          out=/tmp/review-prompt.md
+
+          git diff --name-status "$BASE_SHA" "$HEAD_SHA" > /tmp/changed.txt
+          git diff "$BASE_SHA" "$HEAD_SHA" > /tmp/full.diff
+          diff_chars=$(wc -c < /tmp/full.diff | tr -d ' ')
+
+          {
+            cat "$guide"
+            echo
+            echo "---"
+            echo
+            echo "## The change under review (already extracted -- do not re-derive it)"
+            echo
+            echo "The diff is below, in full. It is the complete set of code changes for this"
+            echo "pull request. Do not run \`git diff\`, \`git log\`, or \`git show\` to reconstruct"
+            echo "it, and do not compare branch names: what you need is already here."
+            echo
+            echo "Reading files named in the diff is in scope. Reading files the diff does"
+            echo "not name is not -- no walk of the repository, no survey of neighbouring"
+            echo "modules. That restriction is the one that keeps the review inside its"
+            echo "budget, and the budget is what keeps the review from ending without a"
+            echo "report."
+            echo
+            echo "### Files changed"
+            echo
+            echo '```'
+            cat /tmp/changed.txt
+            echo '```'
+            echo
+          } > "$out"
+
+          if [ "$diff_chars" -le "$MAX_DIFF_CHARS" ]; then
+            {
+              echo "### Diff"
+              echo
+              echo '```diff'
+              cat /tmp/full.diff
+              echo '```'
+            } >> "$out"
+            echo "inlined full diff: $diff_chars chars" >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### Diff body omitted"
+              echo
+              echo "The diff is $diff_chars characters, above the $MAX_DIFF_CHARS limit this"
+              echo "job is willing to inline. Read the files listed above, and only those,"
+              echo "using the repository tools. Do not read anything else."
+            } >> "$out"
+            echo "diff body omitted ($diff_chars chars > $MAX_DIFF_CHARS)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "prompt assembled: $(wc -c < "$out" | tr -d ' ') chars" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Write the Codex config
         # `approval_policy = "never"` is not what fixed the hang -- the pinned
         # action version did. It is here because it is the other half of the
@@ -349,7 +438,10 @@ jobs:
           # review. Note this profile requires Codex CLI >= 0.138.0, which is why
           # `codex-version` is deliberately left unpinned.
           permission-profile: ":read-only"
-          prompt-file: .ai-team/ai-review-prompt.md
+          # Assembled by the step above: the guide, then the diff inlined.
+          # Not `.ai-team/ai-review-prompt.md` directly -- the guide is only half
+          # the prompt now, and the other half is what bounds the review.
+          prompt-file: /tmp/review-prompt.md
           # The budget config written above. This is the documented way to run
           # codex with settings the action does not expose as inputs.
           codex-home: /tmp/codex-home

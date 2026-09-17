@@ -19,22 +19,40 @@ Two things are worth stating up front:
 - **Check CI and test-configuration changes first.** An agent that weakens its own
   referee defeats every downstream gate. This check runs on **every** track.
 
+## What is not a finding
+
+A report that lists only real defects is worth more than a longer report that also
+lists these. Do not report:
+
+- **Style and formatting.** Naming, layout, import order, line length, docstring
+  presence, comment density. A linter owns these and it already ran.
+- **Speculation about future work.** "This could become a problem if", "consider
+  refactoring", "might benefit from" -- if it is not a defect in the change as
+  written, it is not a finding.
+- **Missing work that the change never claimed.** A pull request that does not
+  implement a feature is not defective for not implementing it. Judge the change
+  against what it says it does.
+- **Restatements of the diff.** Describing what changed is not review. If your
+  finding would be equally true of a correct implementation, it is not a finding.
+- **The trades the project has already recorded as decided.** The guide's "stated
+  design trade-offs" section lists them; re-reporting one is a false positive by
+  definition.
+- **The reviewer's own uncertainty.** "I could not fully verify X" belongs in the
+  summary, not in the findings list, unless the unverifiable thing is itself the
+  defect.
+- **Anything below the severity floor** the guide sets. A low-severity real defect
+  still gets reported; a plausible-sounding non-defect does not get promoted into
+  one.
+
+If nothing clears this bar, the answer is `NONE`. `NONE` is a correct review of a
+clean change, not a failure to find something.
+
 ## Step 2: identify the change, and pick your track
 
-The base and head revisions are in the environment:
-
-```
-echo "$BASE_SHA"
-echo "$HEAD_SHA"
-```
-
-Get the change under review:
-
-```
-git diff --stat "$BASE_SHA...$HEAD_SHA"
-git log --oneline "$BASE_SHA...$HEAD_SHA"
-git diff "$BASE_SHA...$HEAD_SHA"
-```
+The diff is at the end of this prompt, under "The change under review". It is already
+extracted: read it there. Do not reconstruct it with `git diff`, `git log`, or
+`git show`, and do not compare branch names -- deriving it again is pure cost, and it
+is what previously ran this review out of budget before it produced a report.
 
 Classify the diff and **state the track you picked and why**, on one line, before you
 start. The track determines what you read, which defect families apply, and whether
