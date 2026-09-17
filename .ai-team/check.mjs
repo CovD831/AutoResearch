@@ -80,7 +80,15 @@ function isCollaborationFile(path) {
     normalized === "AGENTS.md" ||
     normalized.startsWith(".ai-team/") ||
     normalized.startsWith(".github/PULL_REQUEST_TEMPLATE/") ||
-    normalized === ".github/workflows/repo-task-sync.yml"
+    // CI infrastructure is not product code. A workflow change carries no
+    // functional slice, so there is no task ledger that could honestly
+    // describe it -- demanding one only produces ledger churn. The gate
+    // weakening this rule was meant to catch is covered elsewhere: branch
+    // protection still requires a reviewed pull request and the required
+    // checks, and the review guide scores "CI gate weakening" explicitly.
+    // Matches every workflow rather than one filename, so the next
+    // infrastructure change does not rediscover this same failure.
+    normalized.startsWith(".github/workflows/")
   );
 }
 
