@@ -37,7 +37,7 @@
   命令被中断时尾部动作不保证执行。（实证：一次冻结命令被中断，树根本没建出来，而我差点拿不存在的冻结件去汇报。）
 - **D-R007-P0-03**：**端点口径以代码实测为准 = 24**，
   逐条核对命令：`grep -cE '@app\.(get|post|put|patch|delete)\("' src/autoresearch/api.py`。
-  本文早先几处写的 22 已更正（`06-dispatch-sheet.md` / `ALIGNMENT-PLAN-A-K.md` / `KICKOFF-NON-R006.md`）。
+  本文早先几处写的 22 已更正 —— **仓库内可核验的只有 `06-dispatch-sheet.md`**；另两份（`docs/ALIGNMENT-PLAN-A-K.md`、`docs/KICKOFF-NON-R006.md`）**存在于工作区但未被 git 跟踪**（`git ls-files --error-unmatch` 均不命中），因此属于**工作区资料、无法从仓库复核**，不计入「已更正位置」的证据。
 
 ## Completed
 

@@ -74,7 +74,12 @@ cd ../r007-<lane>          # 已由 owner 预建，base = main@8dd8780
 
 > **口径更正（2026-09-15 实测）**：API 端点数是 **24**，不是本文早先几处写的 22。
 > 逐条核对命令：`grep -cE '@app\.(get|post|put|patch|delete)\("' src/autoresearch/api.py` → `24`。
-> 清单见 `04-l2-contracts.md` 的 K14 节与 L-08 的 `HANDOFF.md`（后者先于本次更正发现并记录了该差异）。
+> **清单出处（2026-09-17 更正）**：上文原先指向「`04-l2-contracts.md` 的 K14 节与 L-08 的 `HANDOFF.md`」，
+> 两处**都无法复核** —— `04-l2-contracts.md` 的 K14 定义的是 `PanelProjection`（UI 面板投影），
+> 全文对「端点 / 路由 / endpoint」**零命中**；`feat/r007-l08-ui` 分支上**不存在** `HANDOFF.md`。
+>
+> 端点的**权威出处是代码本身**：`src/autoresearch/api.py`（用上面的 `grep -cE` 命令即可逐条复核）。
+> 本文不在此处复制 24 条清单 —— 复制会与代码漂移，而命令不会。
 
 **全局三处串行**：
 
