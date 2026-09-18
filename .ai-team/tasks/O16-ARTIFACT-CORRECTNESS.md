@@ -2,7 +2,7 @@
 
 - ID: `O16-ARTIFACT-CORRECTNESS`
 - Title: `Fix manuscript artifact correctness: extraction failure, dedup, delivery file`
-- Status: `handoff`
+- Status: `integrated`（2026-09-18 人工审查通过并合入 main；原 `handoff`）
 - Owner: `member B`
 - Next owner: `user/team`
 
@@ -24,7 +24,7 @@
 - 不碰 `contracts.py`（forbidden）；用空列表表达抽取失败，不加字段。
 - 不改 `unresolved_gaps` 语义（Gate 输入 `work_closed_loop`）。
 - 不改 `gates.py`（O15 范围）、不接 LLM（O17 范围）。
-- `agents/paper_reader.py` 属越界改动（任务包 allowed/forbidden 均未列），已在 HANDOFF 声明并加入 allowed_paths。
+- `agents/paper_reader.py`：早期曾越界改动，**该越界声明已撤销**（见 `docs/tasks/O16-artifact-correctness/HANDOFF.md` §「越界声明（已撤销）」——PR #23 已从根源消除消费点，本包最终改动**不含**该文件）。本行原写「已加入 allowed_paths」与 HANDOFF 撤销后的实施相反，2026-09-18 审查更正。
 
 ## Decisions
 

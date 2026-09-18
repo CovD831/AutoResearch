@@ -169,8 +169,12 @@ class WritingService:
             project_id=project_id,
             actor="writer",
         )
-        # O16 决策 1 (c): DRAFT_v1 is the immutable first-draft archive; DRAFT is
-        # the always-current pointer. On draft both carry the same content.
+        # O16 决策 1 (c): DRAFT_v1 archives the draft produced by this call;
+        # DRAFT is the always-current pointer. Note: a second ``draft()`` on the
+        # same project overwrites the first DRAFT_v1 -- "archive the draft of
+        # this call", not "preserve the first draft forever". Whether v1 should
+        # be write-once (skip if it exists) is an open semantic decision
+        # recorded in HANDOFF known-limitation #3, pending owner adjudication. On draft both carry the same content.
         self.write_project_file(manuscript, filename="MANUSCRIPT_DRAFT_v1.md")
         self.write_project_file(manuscript)
         return manuscript
