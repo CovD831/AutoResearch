@@ -1,0 +1,152 @@
+{
+  "P0-nomodule": {
+    "description": "pre-implementation baseline (no module)",
+    "summary": "1 error in 0.08s",
+    "exit_code": 2,
+    "collection_error": true,
+    "failures": {
+      "<collection>": "ModuleNotFoundError: No module named 'autoresearch.run_manifest'"
+    },
+    "classification": {
+      "<collection>": "symbol-missing"
+    }
+  },
+  "P1-shim": {
+    "description": "symbols only; no validators, no helpers",
+    "summary": "28 failed, 11 passed in 0.25s",
+    "exit_code": 1,
+    "collection_error": false,
+    "failures": {
+      "test_run_id_default_is_produced_by_the_existing_new_id": "AttributeError: <module 'autoresearch.run_manifest'> has no attribute 'new_id'",
+      "test_run_id_default_has_the_existing_new_id_shape": "AssertionError: assert False | +  where False = <built-in method startswith of str object at 0x106530a98>('run_') | +    where <built-in method startswith of str object at 0x106530a98> = ''.startswith | +      where '' = RunManifest(run_id='', project_id='demo', work_package_id='wp_0000000000000001', code_revision='8dd8780', data_refs=['...py', '--epochs', '3'], exit_code=None, output_hashes={'metrics.json': 'sha256:abc123'}, rerun_of=None, created_at=None).run_id",
+      "test_created_at_default_is_the_existing_utc_now": "assert None is utc_now",
+      "test_for_work_package_consumes_the_existing_work_package_model": "AttributeError: for_work_package",
+      "test_for_work_package_refuses_a_silent_identifier_override": "AttributeError: for_work_package",
+      "test_output_refs_uses_the_existing_artifact_ref_type": "AttributeError: 'RunManifest' object has no attribute 'output_refs'",
+      "test_output_refs_of_a_run_that_produced_nothing_is_empty_not_a_placeholder": "AttributeError: 'RunManifest' object has no attribute 'output_refs'",
+      "test_k1_1_shell_string_command_is_rejected[python train.py]": "assert 'argv' in \"1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type\" | +  where \"1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type\" = str(1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type) | +    where 1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type = <ExceptionInfo 1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type tblen=2>.value",
+      "test_k1_1_shell_string_command_is_rejected[python train.py && rm -rf /]": "assert 'argv' in \"1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py && rm -rf /', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type\" | +  where \"1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py && rm -rf /', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type\" = str(1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py && rm -rf /', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type) | +    where 1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py && rm -rf /', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type = <ExceptionInfo 1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value=...y && rm -rf /', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type tblen=2>.value",
+      "test_k1_1_shell_string_command_is_rejected[python]": "assert 'argv' in \"1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type\" | +  where \"1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type\" = str(1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type) | +    where 1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type = <ExceptionInfo 1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type tblen=2>.value",
+      "test_k1_1_shell_string_command_is_rejected[]": "assert 'argv' in \"1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type\" | +  where \"1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type\" = str(1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type) | +    where 1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type = <ExceptionInfo 1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type tblen=2>.value",
+      "test_k1_1_a_rejected_shell_string_is_not_split_into_argv": "assert 'argv list' in \"1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type\" | +  where \"1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type\" = str(1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type) | +    where 1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type = <ExceptionInfo 1 validation error for RunManifest\\ncommand\\n  Input should be a valid list [type=list_type, input_value='python train.py', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type tblen=2>.value",
+      "test_k1_2_empty_seeds_is_rejected": "Failed: DID NOT RAISE ValidationError",
+      "test_k1_2_missing_seeds_is_rejected_rather_than_defaulted": "Failed: DID NOT RAISE ValidationError",
+      "test_k1_3_unexecuted_none_is_never_coerced_to_zero": "AttributeError: 'RunManifest' object has no attribute 'executed'",
+      "test_k1_3_executed_success_and_unexecuted_stay_semantically_distinct": "AttributeError: 'RunManifest' object has no attribute 'executed'",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[1]": "AttributeError: 'RunManifest' object has no attribute 'executed'",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[2]": "AttributeError: 'RunManifest' object has no attribute 'executed'",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[137]": "AttributeError: 'RunManifest' object has no attribute 'executed'",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[-9]": "AttributeError: 'RunManifest' object has no attribute 'executed'",
+      "test_k1_3_a_failed_run_is_not_read_as_never_run": "AttributeError: 'RunManifest' object has no attribute 'executed'",
+      "test_exit_code_rejects_bools_that_pydantic_would_coerce_to_zero_or_one[False]": "Failed: DID NOT RAISE ValidationError",
+      "test_exit_code_rejects_bools_that_pydantic_would_coerce_to_zero_or_one[True]": "Failed: DID NOT RAISE ValidationError",
+      "test_exit_code_rejects_strings_because_no_status_was_observed[0]": "Failed: DID NOT RAISE ValidationError",
+      "test_exit_code_rejects_strings_because_no_status_was_observed[1]": "Failed: DID NOT RAISE ValidationError",
+      "test_exit_code_rejects_strings_because_no_status_was_observed[137]": "Failed: DID NOT RAISE ValidationError",
+      "test_an_unknown_field_is_rejected_instead_of_silently_dropped": "Failed: DID NOT RAISE ValidationError",
+      "test_k1_4_has_no_validator_because_authenticity_is_not_machine_checkable": "AssertionError: assert set() == {'command', 'exit_code'} |  | Extra items in the right set: | 'exit_code' | 'command' | Use -v to get more diff"
+    },
+    "classification": {
+      "test_run_id_default_is_produced_by_the_existing_new_id": "symbol-missing",
+      "test_run_id_default_has_the_existing_new_id_shape": "criterion",
+      "test_created_at_default_is_the_existing_utc_now": "criterion",
+      "test_for_work_package_consumes_the_existing_work_package_model": "symbol-missing",
+      "test_for_work_package_refuses_a_silent_identifier_override": "symbol-missing",
+      "test_output_refs_uses_the_existing_artifact_ref_type": "symbol-missing",
+      "test_output_refs_of_a_run_that_produced_nothing_is_empty_not_a_placeholder": "symbol-missing",
+      "test_k1_1_shell_string_command_is_rejected[python train.py]": "criterion",
+      "test_k1_1_shell_string_command_is_rejected[python train.py && rm -rf /]": "criterion",
+      "test_k1_1_shell_string_command_is_rejected[python]": "criterion",
+      "test_k1_1_shell_string_command_is_rejected[]": "criterion",
+      "test_k1_1_a_rejected_shell_string_is_not_split_into_argv": "criterion",
+      "test_k1_2_empty_seeds_is_rejected": "criterion",
+      "test_k1_2_missing_seeds_is_rejected_rather_than_defaulted": "criterion",
+      "test_k1_3_unexecuted_none_is_never_coerced_to_zero": "symbol-missing",
+      "test_k1_3_executed_success_and_unexecuted_stay_semantically_distinct": "symbol-missing",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[1]": "symbol-missing",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[2]": "symbol-missing",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[137]": "symbol-missing",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[-9]": "symbol-missing",
+      "test_k1_3_a_failed_run_is_not_read_as_never_run": "symbol-missing",
+      "test_exit_code_rejects_bools_that_pydantic_would_coerce_to_zero_or_one[False]": "criterion",
+      "test_exit_code_rejects_bools_that_pydantic_would_coerce_to_zero_or_one[True]": "criterion",
+      "test_exit_code_rejects_strings_because_no_status_was_observed[0]": "criterion",
+      "test_exit_code_rejects_strings_because_no_status_was_observed[1]": "criterion",
+      "test_exit_code_rejects_strings_because_no_status_was_observed[137]": "criterion",
+      "test_an_unknown_field_is_rejected_instead_of_silently_dropped": "criterion",
+      "test_k1_4_has_no_validator_because_authenticity_is_not_machine_checkable": "criterion"
+    }
+  },
+  "M1-command-shell-string-accepted": {
+    "description": "real module with one guard removed/inverted",
+    "summary": "5 failed, 34 passed in 0.11s",
+    "exit_code": 1,
+    "collection_error": false,
+    "failures": {
+      "test_k1_1_shell_string_command_is_rejected[python train.py]": "Failed: DID NOT RAISE ValidationError",
+      "test_k1_1_shell_string_command_is_rejected[python train.py && rm -rf /]": "Failed: DID NOT RAISE ValidationError",
+      "test_k1_1_shell_string_command_is_rejected[python]": "Failed: DID NOT RAISE ValidationError",
+      "test_k1_1_shell_string_command_is_rejected[]": "Failed: DID NOT RAISE ValidationError",
+      "test_k1_1_a_rejected_shell_string_is_not_split_into_argv": "Failed: DID NOT RAISE ValidationError"
+    },
+    "classification": {
+      "test_k1_1_shell_string_command_is_rejected[python train.py]": "criterion",
+      "test_k1_1_shell_string_command_is_rejected[python train.py && rm -rf /]": "criterion",
+      "test_k1_1_shell_string_command_is_rejected[python]": "criterion",
+      "test_k1_1_shell_string_command_is_rejected[]": "criterion",
+      "test_k1_1_a_rejected_shell_string_is_not_split_into_argv": "criterion"
+    }
+  },
+  "M2-empty-seeds-accepted": {
+    "description": "real module with one guard removed/inverted",
+    "summary": "1 failed, 38 passed in 0.11s",
+    "exit_code": 1,
+    "collection_error": false,
+    "failures": {
+      "test_k1_2_empty_seeds_is_rejected": "Failed: DID NOT RAISE ValidationError"
+    },
+    "classification": {
+      "test_k1_2_empty_seeds_is_rejected": "criterion"
+    }
+  },
+  "M3-none-coerced-to-zero": {
+    "description": "real module with one guard removed/inverted",
+    "summary": "5 failed, 34 passed in 0.11s",
+    "exit_code": 1,
+    "collection_error": false,
+    "failures": {
+      "test_a_fully_populated_manifest_validates_and_survives_a_json_round_trip": "assert RunManifest(r...fo=TzInfo(0))) == RunManifest(r...timezone.utc)) |  | Use -v to get more diff",
+      "test_k1_3_unexecuted_none_is_never_coerced_to_zero": "AssertionError: assert 0 is None | +  where 0 = RunManifest(run_id='run_f886b54d14c14a99', project_id='demo', work_package_id='wp_0000000000000001', code_revision='8d...256:abc123'}, rerun_of=None, created_at=datetime.datetime(2026, 9, 15, 7, 50, 0, 310786, tzinfo=datetime.timezone.utc)).exit_code",
+      "test_k1_3_executed_success_and_unexecuted_stay_semantically_distinct": "AssertionError: assert 0 != 0 | +  where 0 = RunManifest(run_id='run_1a968f585fa94c98', project_id='demo', work_package_id='wp_0000000000000001', code_revision='8d...256:abc123'}, rerun_of=None, created_at=datetime.datetime(2026, 9, 15, 7, 50, 0, 313153, tzinfo=datetime.timezone.utc)).exit_code | +  and   0 = RunManifest(run_id='run_cceaf40a6c7148ad', project_id='demo', work_package_id='wp_0000000000000001', code_revision='8d...256:abc123'}, rerun_of=None, created_at=datetime.datetime(2026, 9, 15, 7, 50, 0, 313159, tzinfo=datetime.timezone.utc)).exit_code",
+      "test_k1_3_a_serialised_unexecuted_manifest_stays_unexecuted": "AssertionError: assert 0 is None | +  where 0 = RunManifest(run_id='run_2793a27a4c914546', project_id='demo', work_package_id='wp_0000000000000001', code_revision='8d....json': 'sha256:abc123'}, rerun_of=None, created_at=datetime.datetime(2026, 9, 15, 7, 50, 0, 316118, tzinfo=TzInfo(0))).exit_code",
+      "test_k1_3_a_failed_run_is_not_read_as_never_run": "AssertionError: assert True is not True | +  where True = RunManifest(run_id='run_fd0877482f1748ed', project_id='demo', work_package_id='wp_0000000000000001', code_revision='8d...256:abc123'}, rerun_of=None, created_at=datetime.datetime(2026, 9, 15, 7, 50, 0, 319234, tzinfo=datetime.timezone.utc)).executed | +  and   True = RunManifest(run_id='run_7be35b0d554f418c', project_id='demo', work_package_id='wp_0000000000000001', code_revision='8d...256:abc123'}, rerun_of=None, created_at=datetime.datetime(2026, 9, 15, 7, 50, 0, 319239, tzinfo=datetime.timezone.utc)).executed"
+    },
+    "classification": {
+      "test_a_fully_populated_manifest_validates_and_survives_a_json_round_trip": "criterion",
+      "test_k1_3_unexecuted_none_is_never_coerced_to_zero": "criterion",
+      "test_k1_3_executed_success_and_unexecuted_stay_semantically_distinct": "criterion",
+      "test_k1_3_a_serialised_unexecuted_manifest_stays_unexecuted": "criterion",
+      "test_k1_3_a_failed_run_is_not_read_as_never_run": "criterion"
+    }
+  },
+  "M4-nonzero-coerced-to-none": {
+    "description": "real module with one guard removed/inverted",
+    "summary": "5 failed, 34 passed in 0.11s",
+    "exit_code": 1,
+    "collection_error": false,
+    "failures": {
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[1]": "AssertionError: assert None == 1 | +  where None = RunManifest(run_id='run_225edc3945c8474e', project_id='demo', work_package_id='wp_0000000000000001', code_revision='8d...256:abc123'}, rerun_of=None, created_at=datetime.datetime(2026, 9, 15, 7, 50, 1, 313579, tzinfo=datetime.timezone.utc)).exit_code",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[2]": "AssertionError: assert None == 2 | +  where None = RunManifest(run_id='run_90f6be1a7f3f4b4c', project_id='demo', work_package_id='wp_0000000000000001', code_revision='8d...256:abc123'}, rerun_of=None, created_at=datetime.datetime(2026, 9, 15, 7, 50, 1, 355598, tzinfo=datetime.timezone.utc)).exit_code",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[137]": "AssertionError: assert None == 137 | +  where None = RunManifest(run_id='run_f31d2cda3cb24cb1', project_id='demo', work_package_id='wp_0000000000000001', code_revision='8d...256:abc123'}, rerun_of=None, created_at=datetime.datetime(2026, 9, 15, 7, 50, 1, 357914, tzinfo=datetime.timezone.utc)).exit_code",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[-9]": "AssertionError: assert None == -9 | +  where None = RunManifest(run_id='run_49d5298bc5094449', project_id='demo', work_package_id='wp_0000000000000001', code_revision='8d...256:abc123'}, rerun_of=None, created_at=datetime.datetime(2026, 9, 15, 7, 50, 1, 359964, tzinfo=datetime.timezone.utc)).exit_code",
+      "test_k1_3_a_failed_run_is_not_read_as_never_run": "AssertionError: assert False is not False | +  where False = RunManifest(run_id='run_b8d1143db45d4200', project_id='demo', work_package_id='wp_0000000000000001', code_revision='8d...256:abc123'}, rerun_of=None, created_at=datetime.datetime(2026, 9, 15, 7, 50, 1, 361839, tzinfo=datetime.timezone.utc)).executed | +  and   False = RunManifest(run_id='run_a7ea08894f024d99', project_id='demo', work_package_id='wp_0000000000000001', code_revision='8d...256:abc123'}, rerun_of=None, created_at=datetime.datetime(2026, 9, 15, 7, 50, 1, 361847, tzinfo=datetime.timezone.utc)).executed"
+    },
+    "classification": {
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[1]": "criterion",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[2]": "criterion",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[137]": "criterion",
+      "test_k1_3_non_zero_exit_code_is_accepted_as_an_executed_run[-9]": "criterion",
+      "test_k1_3_a_failed_run_is_not_read_as_never_run": "criterion"
+    }
+  }
+}

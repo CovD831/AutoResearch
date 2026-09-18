@@ -1,0 +1,80 @@
+{
+  "task_id": "M08-01-RUN-MANIFEST",
+  "phase": "M08 / R007-L05",
+  "owner_lane": "execution",
+  "status": "ready",
+  "status_note": "契约先行包。K1 已在 R-007 L2 冻结（04-l2-contracts.md K1），本包只做落地 + 负例。其余 6 条 lane 等本包冻结 K1 后再定义各自的运行标识。",
+  "base_ref": "8dd8780",
+  "base_ref_note": "main@8dd8780 实测 537 passed / 2 skipped / 0 failed（本 worktree 自测，非跨 worktree 搬运）。开工前先 git fetch && git log --oneline -1 确认基线未变。",
+  "branch": "feat/r007-l05-execution",
+  "worktree": "../r007-l05-execution",
+  "depends_on": [],
+  "merge_after": [],
+  "allowed_paths": [
+    "src/autoresearch/run_manifest.py",
+    "tests/test_run_manifest.py",
+    "tests/fixtures/run_manifest/",
+    "docs/tasks/M08-execution/",
+    ".ai-team/tasks/M08-01-RUN-MANIFEST.md"
+  ],
+  "conditional_paths": {
+    "src/autoresearch/contracts.py": {
+      "rule": "default deny",
+      "allowed": [
+        "NONE - 本包不改 contracts.py"
+      ],
+      "reason": "contracts.py 被 L-06/L-07 占用（R-007 L1 §5「三处必须串行」）。K1 的类型定义落在本包的新模块 run_manifest.py 内，是否上收由 owner 裁决。",
+      "authority": "docs/rearchitecture/R007-parallel-modules/06-dispatch-sheet.md section 2"
+    }
+  },
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/knowledge.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/evolution_service.py",
+    "src/autoresearch/application.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/gates.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "deliverables": [
+    "src/autoresearch/run_manifest.py: the K1 RunManifest model with all 13 fields exactly as frozen in R-007 L2 K1",
+    "K1-1 validator: command must be an argv list; a shell string is REJECTED (not split, not silently accepted)",
+    "K1-2 validator: seeds must be non-empty; explicit [0] for deterministic runs",
+    "K1-3 validator: exit_code is None iff not executed; an executed run must carry an exit code including non-zero",
+    "K1-4 docstring: output_hashes authenticity is an ARCHITECTURAL INTENT, not machine-checkable; deferred to M08-07. NO passing assertion may be written for it.",
+    "reuse of existing types: must actually import and call WorkPackage (contracts.py:376), ArtifactRef (contracts.py:199) and new_id; the L3 verification section must point at the call sites",
+    "tests/test_run_manifest.py with at least 4 negative cases: N-1 shell-string command rejected; N-2 empty seeds rejected while [0] passes; N-3 exit_code None vs 0 stay semantically distinct (None must never be coerced to 0); N-4 non-zero exit_code accepted as executed",
+    "discriminating-power evidence: new tests fail on the pre-implementation baseline with CATEGORY-typed failures (assertion/semantic), not symbol-missing failures (ImportError/AttributeError do not count as evidence)",
+    "task-local ledger and L3 record"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest tests/test_run_manifest.py -q -o addopts=\"\" -W error",
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
+    "ruff check src tests",
+    "compileall -q src",
+    "node .ai-team/check.mjs --base main",
+    "python scripts/check_pr_contract.py --base main"
+  ],
+  "acceptance": {
+    "positive": [
+      "a fully populated manifest serialises and validates",
+      "seeds=[0] for a deterministic run passes",
+      "exit_code=0 and exit_code=None are both representable and stay distinct"
+    ],
+    "negative": [
+      "command given as a shell string is rejected",
+      "seeds=[] is rejected",
+      "a failed run (exit_code=1) is NOT treated as not-executed",
+      "no passing assertion is written for K1-4 (architectural intent)"
+    ]
+  },
+  "pass_condition": "full suite >= 537 passed / 0 failed (baseline must not drop), ruff clean, both repo gates valid",
+  "downstream_commitments": {
+    "L-02": "PrefetchRecord must reference K1's RunManifest.run_id; it must NOT define its own run identifier",
+    "L-09": "TelemetryPoint.dimensions['run'] must point at K1's run_id",
+    "note": "L-02's K7 invariant 'a PrefetchRecord must be written before any L2+ action' is a TEMPORAL architectural intent and cannot be machine-checked; compensate at the unified entry point of L2+ actions."
+  },
+  "next_package": "M08-02-EXECUTOR"
+}
