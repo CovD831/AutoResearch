@@ -1,0 +1,298 @@
+[
+ {
+  "actor": "user",
+  "created_at": "2026-09-15T15:38:58.484025+00:00",
+  "event_id": "event_cecf245162954283",
+  "event_type": "project.created",
+  "payload": {
+   "idea": "The pipeline must block instead of inventing paper records.",
+   "path": "<repo>/var/l08-demo/runtime/projects/nolit",
+   "project_id": "nolit",
+   "status": "active",
+   "title": "Run with no seed papers"
+  }
+ },
+ {
+  "actor": "user",
+  "created_at": "2026-09-15T15:38:58.485735+00:00",
+  "event_id": "event_2a9c4f20f47544bf",
+  "event_type": "run.started",
+  "payload": {
+   "idea": "Run with no seed papers, so the pipeline blocks instead of inventing.",
+   "run_id": "run_5747fc9a5c95496f"
+  }
+ },
+ {
+  "actor": "orchestrator",
+  "created_at": "2026-09-15T15:38:58.489347+00:00",
+  "event_id": "event_a2985c3cf2614cb2",
+  "event_type": "evidence.added",
+  "payload": {
+   "checksum": null,
+   "claim": "The user supplied this idea as the starting research intent.",
+   "created_at": "2026-09-15T15:38:58.487806Z",
+   "evidence_id": "ev_c86d61ec9d954fbf",
+   "evidence_type": "human",
+   "grade": "E0",
+   "independent_source": "user-intent:nolit",
+   "locator": "research charter: idea",
+   "metadata": {},
+   "project_id": "nolit",
+   "source_id": "charter_3011c435cf5b4238",
+   "source_uri": null,
+   "supersedes": null,
+   "title": "User-provided research idea",
+   "valid": true
+  }
+ },
+ {
+  "actor": "orchestrator",
+  "created_at": "2026-09-15T15:38:58.496704+00:00",
+  "event_id": "event_53b89a9098434c3a",
+  "event_type": "handoff.issued",
+  "payload": {
+   "artifact_refs": [
+    {
+     "artifact_id": "charter_3011c435cf5b4238",
+     "checksum": null,
+     "kind": "research_charter",
+     "summary": "Run with no seed papers, so the pipeline blocks instead of inventing.",
+     "uri": null
+    }
+   ],
+   "bounded_context": "Run with no seed papers so the pipeline blocks instead of inventing\nRun with no seed papers so the pipeline blocks instead of inventing systematic review\nRun with no seed papers so the pipeline blocks instead of inventing benchmark evaluation",
+   "constraints": [
+    "Do not invent papers",
+    "Keep source IDs and URLs",
+    "Stop cleanly if no records are available"
+   ],
+   "created_at": "2026-09-15T15:38:58.495751Z",
+   "evidence_ids": [
+    "ev_c86d61ec9d954fbf"
+   ],
+   "expected_output": "Deduplicated paper IDs with provenance and diagnostics.",
+   "from_agent": "orchestrator",
+   "handoff_id": "handoff_1d89c60d646e4339",
+   "objective": "Find and register relevant scholarly records for the scoped idea.",
+   "project_id": "nolit",
+   "run_id": "run_5747fc9a5c95496f",
+   "to_agent": "paper_search"
+  }
+ },
+ {
+  "actor": "paper_search",
+  "created_at": "2026-09-15T15:38:58.500632+00:00",
+  "event_id": "event_e8e61936c5ba43e8",
+  "event_type": "handoff.accepted",
+  "payload": {
+   "handoff_id": "handoff_1d89c60d646e4339",
+   "receiver": "paper_search"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.501884+00:00",
+  "event_id": "event_1805ce674cb04e2b",
+  "event_type": "capability.invocation_reserved",
+  "payload": {
+   "invocation_id": "q-7fe3d0b089928db3",
+   "request_fingerprint": "fcb934bf98a64225df4b2c2a9040e4f316907e538d663e16d288bb02ec163a3f"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.503307+00:00",
+  "event_id": "event_398ad070cd374981",
+  "event_type": "capability.service_started",
+  "payload": {
+   "invocation_id": "q-7fe3d0b089928db3"
+  }
+ },
+ {
+  "actor": "paper_search",
+  "created_at": "2026-09-15T15:38:58.504155+00:00",
+  "event_id": "event_cf9be8ec1df34904",
+  "event_type": "papers.search_completed",
+  "payload": {
+   "diagnostics": [
+    "Network search is disabled; only user-supplied seed papers were processed.",
+    "No papers were found; downstream reading is blocked instead of inventing records."
+   ],
+   "paper_ids": [],
+   "queries": [
+    "Run with no seed papers so the pipeline blocks instead of inventing"
+   ]
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.505370+00:00",
+  "event_id": "event_9e661e44676a4cd3",
+  "event_type": "capability.service_returned",
+  "payload": {
+   "diagnostics": [
+    "Network search is disabled; only user-supplied seed papers were processed.",
+    "No papers were found; downstream reading is blocked instead of inventing records."
+   ],
+   "invocation_id": "q-7fe3d0b089928db3",
+   "paper_ids": [],
+   "status": "unknown_outcome"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.506604+00:00",
+  "event_id": "event_bf188ebcd69546a9",
+  "event_type": "capability.invocation_finalized",
+  "payload": {
+   "diagnostics": [
+    "Network search is disabled; only user-supplied seed papers were processed.",
+    "No papers were found; downstream reading is blocked instead of inventing records."
+   ],
+   "invocation_id": "q-7fe3d0b089928db3",
+   "paper_ids": [],
+   "status": "unknown_outcome"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.507827+00:00",
+  "event_id": "event_52b62c47a8e448c9",
+  "event_type": "capability.invocation_reserved",
+  "payload": {
+   "invocation_id": "q-f54661b36cace1c2",
+   "request_fingerprint": "fc5150f6a61f4d9299ff4a58fe625f5acaa97468dfd3cfaa3e361c6131d01494"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.508642+00:00",
+  "event_id": "event_f622c119ee714e05",
+  "event_type": "capability.service_started",
+  "payload": {
+   "invocation_id": "q-f54661b36cace1c2"
+  }
+ },
+ {
+  "actor": "paper_search",
+  "created_at": "2026-09-15T15:38:58.509216+00:00",
+  "event_id": "event_a9c2001906e74542",
+  "event_type": "papers.search_completed",
+  "payload": {
+   "diagnostics": [
+    "Network search is disabled; only user-supplied seed papers were processed.",
+    "No papers were found; downstream reading is blocked instead of inventing records."
+   ],
+   "paper_ids": [],
+   "queries": [
+    "Run with no seed papers so the pipeline blocks instead of inventing systematic review"
+   ]
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.510565+00:00",
+  "event_id": "event_d35c61c0bca145c8",
+  "event_type": "capability.service_returned",
+  "payload": {
+   "diagnostics": [
+    "Network search is disabled; only user-supplied seed papers were processed.",
+    "No papers were found; downstream reading is blocked instead of inventing records."
+   ],
+   "invocation_id": "q-f54661b36cace1c2",
+   "paper_ids": [],
+   "status": "unknown_outcome"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.511806+00:00",
+  "event_id": "event_c9bc677582304422",
+  "event_type": "capability.invocation_finalized",
+  "payload": {
+   "diagnostics": [
+    "Network search is disabled; only user-supplied seed papers were processed.",
+    "No papers were found; downstream reading is blocked instead of inventing records."
+   ],
+   "invocation_id": "q-f54661b36cace1c2",
+   "paper_ids": [],
+   "status": "unknown_outcome"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.514315+00:00",
+  "event_id": "event_99497f622094496a",
+  "event_type": "capability.invocation_reserved",
+  "payload": {
+   "invocation_id": "q-feea66ee856cd844",
+   "request_fingerprint": "0888a820ae76f1f183f9f4950881fe8c67339de4c82eebf5237e150c62f02894"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.515609+00:00",
+  "event_id": "event_34594436511b4b06",
+  "event_type": "capability.service_started",
+  "payload": {
+   "invocation_id": "q-feea66ee856cd844"
+  }
+ },
+ {
+  "actor": "paper_search",
+  "created_at": "2026-09-15T15:38:58.516291+00:00",
+  "event_id": "event_33718f79df7a4701",
+  "event_type": "papers.search_completed",
+  "payload": {
+   "diagnostics": [
+    "Network search is disabled; only user-supplied seed papers were processed.",
+    "No papers were found; downstream reading is blocked instead of inventing records."
+   ],
+   "paper_ids": [],
+   "queries": [
+    "Run with no seed papers so the pipeline blocks instead of inventing benchmark evaluation"
+   ]
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.517562+00:00",
+  "event_id": "event_918af90a137747c2",
+  "event_type": "capability.service_returned",
+  "payload": {
+   "diagnostics": [
+    "Network search is disabled; only user-supplied seed papers were processed.",
+    "No papers were found; downstream reading is blocked instead of inventing records."
+   ],
+   "invocation_id": "q-feea66ee856cd844",
+   "paper_ids": [],
+   "status": "unknown_outcome"
+  }
+ },
+ {
+  "actor": "capability_adapter",
+  "created_at": "2026-09-15T15:38:58.519112+00:00",
+  "event_id": "event_6f6170b82c8448ce",
+  "event_type": "capability.invocation_finalized",
+  "payload": {
+   "diagnostics": [
+    "Network search is disabled; only user-supplied seed papers were processed.",
+    "No papers were found; downstream reading is blocked instead of inventing records."
+   ],
+   "invocation_id": "q-feea66ee856cd844",
+   "paper_ids": [],
+   "status": "unknown_outcome"
+  }
+ },
+ {
+  "actor": "application",
+  "created_at": "2026-09-15T15:38:58.521144+00:00",
+  "event_id": "event_aa79e90804cc468d",
+  "event_type": "run.checkpointed",
+  "payload": {
+   "lifecycle_state": "waiting_evidence",
+   "run_id": "run_5747fc9a5c95496f",
+   "status": "blocked"
+  }
+ }
+]

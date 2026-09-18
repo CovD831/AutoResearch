@@ -208,3 +208,90 @@ def test_safe_settings_summary_never_returns_secret_value(tmp_path):
     summary = settings.safe_summary()
     assert "top-secret-value" not in json.dumps(summary)
     assert summary["llm_api_key_configured"] is True
+
+
+async def _seed_evidence(client: httpx.AsyncClient, project_id: str, claim: str) -> str:
+    """Create one evidence item and return its id.
+
+    ``locator`` is required by ``EvidenceService.add`` -- evidence without a
+    locator is not admissible, so the test must supply one rather than the
+    service relaxing the rule for tests.
+    """
+    created = await client.post(
+        "/evidence",
+        json={
+            "project_id": project_id,
+            "evidence_type": "paper",
+            "grade": "E2",
+            "title": claim,
+            "claim": claim,
+            "locator": f"sec:{claim}",
+            "independent_source": "unit-test",
+        },
+    )
+    assert created.status_code == 201, created.text
+    return created.json()["evidence_id"]
+
+
+def test_default_evidence_query_reports_when_it_filtered(runtime: AutoResearchApplication):
+    """The default `valid_only=true` hides invalidated items -- and says so.
+
+    An invalidated item is a materially different fact from one that was never
+    recorded: it means a claim lost its support. A caller receiving N items
+    cannot tell "there are N" from "there were N+1 and one was withdrawn"
+    unless the response carries a signal. This pins that signal.
+
+    Both directions are asserted, because a header that is *always* present
+    proves nothing:
+      * nothing invalidated  -> ``Filtered: false`` / ``Omitted: 0``
+      * one invalidated      -> ``Filtered: true``  / ``Omitted: 1``, and the
+        body really is one item shorter.
+    """
+
+    async def scenario():
+        transport = httpx.ASGITransport(app=create_api(runtime))
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            await client.post(
+                "/projects",
+                json={
+                    "project_id": "evsig",
+                    "title": "Evidence filter signal",
+                    "idea": "Check that filtering is observable.",
+                },
+            )
+            kept = await _seed_evidence(client, "evsig", "The retained claim")
+            dropped = await _seed_evidence(client, "evsig", "The withdrawn claim")
+
+            # --- Direction 1: nothing invalidated yet -----------------------
+            before = await client.get("/projects/evsig/evidence")
+            assert before.status_code == 200
+            assert before.headers["X-Evidence-Filtered"] == "false"
+            assert before.headers["X-Evidence-Omitted"] == "0"
+            assert len(before.json()) == 2
+
+            # --- invalidate exactly one -------------------------------------
+            inv = await client.post(
+                f"/evidence/{dropped}/invalidate",
+                json={"reason": "source retracted", "actor": "test"},
+            )
+            assert inv.status_code == 200
+
+            # --- Direction 2: the default query now filters ------------------
+            default = await client.get("/projects/evsig/evidence")
+            assert default.status_code == 200
+            assert default.headers["X-Evidence-Filtered"] == "true"
+            assert default.headers["X-Evidence-Omitted"] == "1"
+            body = default.json()
+            assert len(body) == 1, "the default query must omit the invalidated item"
+            assert body[0]["evidence_id"] == kept
+
+            # --- the explicit opt-out still returns everything ---------------
+            full = await client.get("/projects/evsig/evidence?valid_only=false")
+            assert full.status_code == 200
+            assert full.headers["X-Evidence-Filtered"] == "false"
+            assert full.headers["X-Evidence-Omitted"] == "0"
+            assert len(full.json()) == 2
+
+    asyncio.run(scenario())

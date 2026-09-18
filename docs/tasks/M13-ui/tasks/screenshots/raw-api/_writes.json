@@ -1,0 +1,64 @@
+[
+ {
+  "purpose": "M13-07 approve/reject",
+  "call": "POST /runs/run_5e60708b0ed84ee7/resume",
+  "body": {
+   "approval": true,
+   "reviewer": "l08-demo",
+   "note": "panel M13-07"
+  },
+  "status": 409,
+  "response": {
+   "detail": "run is not waiting for a human interrupt"
+  }
+ },
+ {
+  "purpose": "M13-07 retract evidence",
+  "call": "POST /evidence/ev_a2ef425a1a8d4995/invalidate",
+  "body": {
+   "reason": "panel M13-07 retraction: source could not be re-verified",
+   "actor": "l08-demo"
+  },
+  "status": 200,
+  "response": {
+   "evidence_id": "ev_a2ef425a1a8d4995",
+   "valid": false
+  }
+ },
+ {
+  "purpose": "audit confirmation after retraction",
+  "call": "GET /projects/litalpha/audit-events",
+  "retraction_events": [
+   {
+    "event_id": "event_b049e06cbad946b4",
+    "event_type": "evidence.invalidated",
+    "actor": "l08-demo",
+    "payload": {
+     "evidence_id": "ev_a2ef425a1a8d4995",
+     "valid": false,
+     "reason": "panel M13-07 retraction: source could not be re-verified",
+     "actor": "l08-demo"
+    },
+    "created_at": "2026-09-15T15:38:58.527184+00:00"
+   }
+  ],
+  "event_type_histogram": {
+   "capability.invocation_finalized": 3,
+   "capability.invocation_reserved": 3,
+   "capability.service_returned": 3,
+   "capability.service_started": 3,
+   "evidence.added": 11,
+   "evidence.invalidated": 1,
+   "gate.evaluated": 2,
+   "handoff.accepted": 6,
+   "handoff.issued": 6,
+   "knowledge.page_added": 5,
+   "manuscript.drafted": 1,
+   "papers.search_completed": 1,
+   "project.created": 1,
+   "run.checkpointed": 1,
+   "run.started": 1,
+   "work_package.updated": 2
+  }
+ }
+]

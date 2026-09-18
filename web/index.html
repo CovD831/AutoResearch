@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoResearch · M13 面板</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar__id">
+    <h1>AutoResearch · M13 面板</h1>
+    <p class="topbar__sub">
+      只读投影（K14 <code>PanelProjection</code>）· 24 个既有 API 端点 · 不引入前端框架
+    </p>
+  </div>
+  <div class="topbar__controls">
+    <label class="field">
+      <span class="field__label">project_id</span>
+      <input id="project-input" class="field__input" type="text" value="litalpha"
+             spellcheck="false" autocomplete="off">
+    </label>
+    <button id="load-btn" class="btn btn--primary" type="button">载入</button>
+  </div>
+</header>
+
+<div class="banner banner--contract" role="note">
+  <strong>面板不得把未完成写成完成</strong>（M13-04 / L1 §4.2 A5）。
+  每个 section 都带一个 <code>verification_state</code>；非 verified 的 section
+  <strong>必须内联显示原因</strong>，不使用「灰色 / 暂无」这类无法区分
+  <code>unverified</code> 与 <code>blocked</code> 的写法。
+</div>
+
+<div id="snapshot-note" class="banner banner--snapshot" hidden>
+  这是<strong>静态快照</strong>：数据来自实跑 <code>autoresearch serve</code> 的 GET 响应，
+  已内联进页面。<code>file://</code> 打开时写操作被禁用，点击按钮不会发出请求。
+</div>
+
+<nav id="tabs" class="tabs" aria-label="面板"></nav>
+
+<div id="legend" class="legend"></div>
+
+<main id="panels" class="panels">
+  <p class="placeholder">正在载入…</p>
+</main>
+
+<footer class="foot">
+  <p>
+    来源：<code>GET /projects/{id}</code> · <code>GET /runs/{id}</code> ·
+    <code>GET /projects/{id}/evidence?valid_only=false</code> ·
+    <code>GET /projects/{id}/work-packages</code> ·
+    <code>GET /projects/{id}/audit-events</code>
+  </p>
+  <p>
+    写入（仅 M13-07）：<code>POST /runs/{run_id}/resume</code> ·
+    <code>POST /evidence/{evidence_id}/invalidate</code>
+  </p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

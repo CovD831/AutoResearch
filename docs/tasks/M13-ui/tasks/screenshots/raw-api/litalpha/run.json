@@ -1,0 +1,101 @@
+{
+ "interrupts": [],
+ "project_id": "litalpha",
+ "run_id": "run_5e60708b0ed84ee7",
+ "state": {
+  "blockers": [
+   "evidence score 35 is below required 75",
+   "required work and result lineage are not closed loop"
+  ],
+  "diagnostics": [
+   "Network search is disabled; only user-supplied seed papers were processed.",
+   "provider failure: ValueError: revision 1 must be > current max 1 for page paper_259d17dad9a54577 (append-only: revisions are never overwritten)",
+   "provider failure: ValueError: revision 1 must be > current max 1 for page paper_259d17dad9a54577 (append-only: revisions are never overwritten)"
+  ],
+  "evidence_ids": [
+   "ev_942cd5dda8f043a7",
+   "ev_966de25a265242a5",
+   "ev_c63bf4b8681a4569",
+   "ev_2ce27db1aeda41ac",
+   "ev_5ba65f4951524566",
+   "ev_89637ec5948042a4",
+   "ev_91334cc139c24bb0"
+  ],
+  "gate_decision_ids": [
+   "gate_6ade0a91999d4ff6",
+   "gate_7856071305234f63"
+  ],
+  "handoff": null,
+  "idea": "Grade the evidence behind an automated literature review claim.",
+  "innovation_ids": [
+   "innovation_e3b0d70309224276"
+  ],
+  "last_agent": "reviewer",
+  "lifecycle_state": "waiting_evidence",
+  "manuscript_id": "manuscript_e96e09883e4b45dd",
+  "paper_ids": [
+   "paper_259d17dad9a54577",
+   "paper_e902e8ff6ff8465d"
+  ],
+  "project_id": "litalpha",
+  "reading_card_ids": [
+   "card_d1d21e0762cb46fe",
+   "card_34426bd94a8e48ea"
+  ],
+  "request_release": true,
+  "review_ids": [
+   "review_7559138cbd4d4c43",
+   "review_a8f72664201b433d"
+  ],
+  "run_id": "run_5e60708b0ed84ee7",
+  "run_status": "blocked",
+  "schema_version": 1,
+  "search_queries": [
+   "Grade the evidence behind an automated literature review claim",
+   "Grade the evidence behind an automated literature review claim systematic review",
+   "Grade the evidence behind an automated literature review claim benchmark evaluation"
+  ],
+  "seed_papers": [
+   {
+    "abstract": "We study RAG for literature review automation.",
+    "authors": [
+     "A. Researcher"
+    ],
+    "doi": "10.1000/lit-a",
+    "full_text_path": null,
+    "paper_id": "paper_259d17dad9a54577",
+    "project_id": "litalpha",
+    "retrieved_at": "2026-09-15T15:38:58.298336Z",
+    "source": "user_seed",
+    "source_record_id": null,
+    "title": "Retrieval Augmented Research Agents",
+    "url": "https://example.org/lit-a",
+    "year": 2024
+   },
+   {
+    "abstract": "Grading evidence for claim support in automated review.",
+    "authors": [
+     "B. Author"
+    ],
+    "doi": "10.1000/lit-b",
+    "full_text_path": null,
+    "paper_id": "paper_e902e8ff6ff8465d",
+    "project_id": "litalpha",
+    "retrieved_at": "2026-09-15T15:38:58.298345Z",
+    "source": "user_seed",
+    "source_record_id": null,
+    "title": "Evidence-Graded Claim Verification",
+    "url": "https://example.org/lit-b",
+    "year": 2023
+   }
+  ],
+  "updated_at": "2026-09-15T15:38:58.448450Z",
+  "work_package_ids": [
+   "wp_6646b59e63304021",
+   "wp_93fe6c657b494163",
+   "wp_f3860b27166d4cf5",
+   "wp_ecb6647786a84bca"
+  ]
+ },
+ "status": "blocked"
+}

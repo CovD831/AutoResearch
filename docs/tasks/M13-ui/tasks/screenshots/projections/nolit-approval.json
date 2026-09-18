@@ -1,0 +1,81 @@
+{
+ "panel_id": "approval",
+ "project_id": "nolit",
+ "sections": [
+  {
+   "facts": {
+    "pending_interrupt": "false",
+    "run_id": "run_5747fc9a5c95496f",
+    "run_resolution": "run-payload"
+   },
+   "refs": [
+    "nolit",
+    "run_5747fc9a5c95496f"
+   ],
+   "title": "审批范围 / scope",
+   "unknown_reason": "run carries no pending interrupt, so there is no approval scope to show (scope is defined by the interrupt payload)",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "gap": "G-6 RiskLevel only readable via gate.evaluated"
+   },
+   "refs": [
+    "nolit"
+   ],
+   "title": "风险等级 / risk level",
+   "unknown_reason": "no pending interrupt and no gate.evaluated event: RiskLevel is not exposed by any other read endpoint",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "evidence_count": "1",
+    "grades": "E0=1",
+    "h3_count": "0",
+    "note": "H3 = human-graded; claim text is not copied (K14-2)",
+    "qualifying_evidence_count": "0",
+    "valid_count": "1"
+   },
+   "refs": [
+    "ev_c86d61ec9d954fbf"
+   ],
+   "title": "支撑证据 / backing evidence",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  },
+  {
+   "facts": {
+    "approve_endpoint": "POST /runs/{run_id}/resume",
+    "interrupt_count": "0",
+    "pending": "false",
+    "run_id": "run_5747fc9a5c95496f"
+   },
+   "refs": [
+    "run_5747fc9a5c95496f"
+   ],
+   "title": "待人工决策 / pending human decision",
+   "unknown_reason": "no pending human interrupt on this run: POST /runs/{run_id}/resume would return 409 ('run is not waiting for a human interrupt')",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "actors": "none",
+    "attribution": "approve -> evidence.added(human,H3,actor=reviewer); reject -> gate.evaluated(operation=external_manuscript_release); retract -> evidence.invalidated",
+    "decision_event_types": "none",
+    "human_decision_count": "0"
+   },
+   "refs": [
+    "nolit"
+   ],
+   "title": "审批历史 / approval history",
+   "unknown_reason": "no human approve / reject / retract decision is recorded for this project (looked for evidence.invalidated, evidence.added with evidence_type=human, and gate.evaluated on external_manuscript_release)",
+   "verification_state": "unverified",
+   "verified": false
+  }
+ ],
+ "verification_state": "unverified"
+}

@@ -1,0 +1,135 @@
+[
+ {
+  "png": "<repo>/docs/tasks/M13-ui/tasks/screenshots/litalpha-project.png",
+  "project_id": "litalpha",
+  "panel_id": "project",
+  "note": "rich run: 5 sections verified, blockers BLOCKED",
+  "states": {
+   "verified": 5,
+   "unverified": 0,
+   "blocked": 1
+  },
+  "synthetic": false,
+  "section_count": 6,
+  "panel_chip": "chip chip--blocked",
+  "tab_dots": {
+   "project": "blocked",
+   "evidence": "unverified",
+   "files": "blocked",
+   "approval": "unverified"
+  }
+ },
+ {
+  "png": "<repo>/docs/tasks/M13-ui/tasks/screenshots/litalpha-evidence.png",
+  "project_id": "litalpha",
+  "panel_id": "evidence",
+  "note": "mixed: 4 verified, 3 unverified (read gaps G-3/G-4/G-5)",
+  "states": {
+   "verified": 4,
+   "unverified": 3,
+   "blocked": 0
+  },
+  "synthetic": false,
+  "section_count": 7,
+  "panel_chip": "chip chip--unverified",
+  "tab_dots": {
+   "project": "blocked",
+   "evidence": "unverified",
+   "files": "blocked",
+   "approval": "unverified"
+  }
+ },
+ {
+  "png": "<repo>/docs/tasks/M13-ui/tasks/screenshots/litalpha-approval.png",
+  "project_id": "litalpha",
+  "panel_id": "approval",
+  "note": "M13-07 actions; no pending interrupt -> buttons disabled",
+  "states": {
+   "verified": 3,
+   "unverified": 2,
+   "blocked": 0
+  },
+  "synthetic": false,
+  "section_count": 5,
+  "panel_chip": "chip chip--unverified",
+  "tab_dots": {
+   "project": "blocked",
+   "evidence": "unverified",
+   "files": "blocked",
+   "approval": "unverified"
+  }
+ },
+ {
+  "png": "<repo>/docs/tasks/M13-ui/tasks/screenshots/litalpha-files.png",
+  "project_id": "litalpha",
+  "panel_id": "files",
+  "note": "M13-06 BLOCKED on K11 AccessPolicy (L-09)",
+  "states": {
+   "verified": 0,
+   "unverified": 0,
+   "blocked": 1
+  },
+  "synthetic": false,
+  "section_count": 1,
+  "panel_chip": "chip chip--blocked",
+  "tab_dots": {
+   "project": "blocked",
+   "evidence": "unverified",
+   "files": "blocked",
+   "approval": "unverified"
+  }
+ },
+ {
+  "png": "<repo>/docs/tasks/M13-ui/tasks/screenshots/bare-project.png",
+  "project_id": "bare",
+  "panel_id": "project",
+  "note": "N-1: created, never run -> every section UNVERIFIED with a reason",
+  "states": {
+   "verified": 0,
+   "unverified": 6,
+   "blocked": 0
+  },
+  "synthetic": false,
+  "section_count": 6,
+  "panel_chip": "chip chip--unverified",
+  "tab_dots": {
+   "project": "unverified",
+   "evidence": "unverified",
+   "files": "blocked",
+   "approval": "unverified"
+  }
+ },
+ {
+  "png": "<repo>/docs/tasks/M13-ui/tasks/screenshots/nolit-project.png",
+  "project_id": "nolit",
+  "panel_id": "project",
+  "note": "N-2: run without seeds -> BLOCKED, distinguishable from UNVERIFIED",
+  "states": {
+   "verified": 4,
+   "unverified": 1,
+   "blocked": 1
+  },
+  "synthetic": false,
+  "section_count": 6,
+  "panel_chip": "chip chip--blocked",
+  "tab_dots": {
+   "project": "blocked",
+   "evidence": "unverified",
+   "files": "blocked",
+   "approval": "unverified"
+  }
+ },
+ {
+  "png": "<repo>/docs/tasks/M13-ui/tasks/screenshots/_tabdot-fixture.png",
+  "project_id": null,
+  "panel_id": null,
+  "note": "SYNTHETIC: all three tab-dot states are reachable; verified is unreachable from real data, so this is the only place the third dot can be shown",
+  "synthetic": true,
+  "tab_dots": {
+   "project": "verified",
+   "evidence": "unverified",
+   "files": "blocked",
+   "approval": null
+  }
+ }
+]

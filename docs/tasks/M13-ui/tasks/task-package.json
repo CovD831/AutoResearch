@@ -1,0 +1,64 @@
+{
+  "task_id": "M13-UI",
+  "phase": "R-007",
+  "owner_lane": "L-08",
+  "status": "handoff",
+  "base_ref": "8dd8780",
+  "branch": "feat/r007-l08-ui",
+  "depends_on": [],
+  "merge_after": [],
+  "allowed_paths": [
+    "src/autoresearch/web_api.py",
+    "src/autoresearch/api.py",
+    "web/",
+    "tests/test_web_panels.py",
+    "tests/test_api_and_cli.py",
+    "docs/tasks/M13-ui/",
+    ".ai-team/tasks/M13-UI.md",
+    "docs/tasks/M13-ui/tasks/task-package.json"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/knowledge.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/gates.py",
+    "src/autoresearch/application.py",
+    "src/autoresearch/cli.py",
+    "src/autoresearch/graph.py",
+    "src/autoresearch/project_service.py",
+    "src/autoresearch/execution_service.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "boundary_amendments": [
+    {
+      "path": "src/autoresearch/api.py",
+      "approved_by": "team-lead",
+      "approved_at": "2026-09-17",
+      "rationale": "G-7 headers: list_evidence() adds two response headers X-Evidence-Filtered / X-Evidence-Omitted (+35/-3, pure appenditive, response body unchanged) so the default valid_only=True filtering becomes observable. The change is read-only additive on the BFF's own readonly accessor; it does not mutate shared write-path files (contracts/storage/knowledge). Boundary corrected (moved from forbidden to allowed), not reverted."
+    }
+  ],
+  "deliverables": [
+    "K14 PanelProjection types with mechanically enforced K14-1/K14-2/K14-3 invariants",
+    "read-only BFF (src/autoresearch/web_api.py) that consumes the existing 24 endpoints and mutates nothing",
+    "M13-04 project panel: stage / gate / evidence coverage / handoff / work packages / blockers",
+    "M13-05 evidence panel: evidence items / by claim / by run-action / gate / reviews / ReviewReport / retraction",
+    "M13-07 approval panel: scope / risk level / backing evidence / pending human decision / approval history",
+    "M13-07 write actions wired to POST /runs/{id}/resume and POST /evidence/{id}/invalidate",
+    "M13-06 rendered as blocked with a named dependency (K11 / L-09), deliberately not implemented",
+    "native HTML+CSS+JS front end under web/ with no framework and no build step",
+    "real-data static snapshots and headless-browser screenshots under docs/tasks/M13-ui/tasks/screenshots/",
+    "dev harness: seed_demo.py (real serve + HTTP), build_snapshots.py, shoot.py, mutation_check.py",
+    "task-local L3, task-package.json and member ledger"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest tests/test_web_panels.py -q -o addopts=\"\" -W error",
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
+    "python -m ruff check src tests",
+    "python -m compileall -q src",
+    "python web/dev/mutation_check.py",
+    "node .ai-team/check.mjs --base main"
+  ],
+  "next_package": null
+}

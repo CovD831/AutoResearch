@@ -1,0 +1,19 @@
+[
+ {
+  "checksum": null,
+  "claim": "The user supplied this idea as the starting research intent.",
+  "created_at": "2026-09-15T15:38:58.487806Z",
+  "evidence_id": "ev_c86d61ec9d954fbf",
+  "evidence_type": "human",
+  "grade": "E0",
+  "independent_source": "user-intent:nolit",
+  "locator": "research charter: idea",
+  "metadata": {},
+  "project_id": "nolit",
+  "source_id": "charter_3011c435cf5b4238",
+  "source_uri": null,
+  "supersedes": null,
+  "title": "User-provided research idea",
+  "valid": true
+ }
+]

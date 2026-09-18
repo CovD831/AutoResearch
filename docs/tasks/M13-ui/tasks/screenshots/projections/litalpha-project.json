@@ -1,0 +1,131 @@
+{
+ "panel_id": "project",
+ "project_id": "litalpha",
+ "sections": [
+  {
+   "facts": {
+    "lifecycle_state": "waiting_evidence",
+    "run_resolution": "run-payload",
+    "run_status": "blocked",
+    "updated_at": "2026-09-15T15:38:58.448450Z"
+   },
+   "refs": [
+    "litalpha",
+    "run_5e60708b0ed84ee7"
+   ],
+   "title": "阶段 / stage",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  },
+  {
+   "facts": {
+    "gate_decision_count": "2",
+    "latest_decision_id": "gate_7856071305234f63",
+    "latest_independent_sources": "3",
+    "latest_operation": "mark_manuscript_evidence_complete",
+    "latest_qualifying_evidence_ids": "ev_942cd5dda8f043a7,ev_966de25a265242a5,ev_c63bf4b8681a4569",
+    "latest_risk_level": "L3",
+    "latest_score": "35",
+    "latest_status": "revise",
+    "source": "audit:gate.evaluated"
+   },
+   "refs": [
+    "gate_6ade0a91999d4ff6",
+    "gate_7856071305234f63"
+   ],
+   "title": "Gate 裁决 / gate decisions",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  },
+  {
+   "facts": {
+    "grades": "E0=1,E1=7,E2=1,E3=1,H3=1",
+    "invalid_count": "1",
+    "resolved_ref_count": "7",
+    "state_evidence_ref_count": "7",
+    "store_evidence_count": "11",
+    "unresolved_count": "0"
+   },
+   "refs": [
+    "litalpha",
+    "ev_942cd5dda8f043a7",
+    "ev_966de25a265242a5",
+    "ev_c63bf4b8681a4569",
+    "ev_2ce27db1aeda41ac",
+    "ev_5ba65f4951524566",
+    "ev_89637ec5948042a4",
+    "ev_91334cc139c24bb0"
+   ],
+   "title": "证据覆盖 / evidence coverage",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  },
+  {
+   "facts": {
+    "handoff_accepted": "6",
+    "handoff_issued": "6",
+    "source": "audit:handoff.issued,audit:handoff.accepted",
+    "state_handoff_present": "false"
+   },
+   "refs": [
+    "handoff_0636125168744978",
+    "run_5e60708b0ed84ee7",
+    "orchestrator",
+    "paper_search",
+    "handoff_2f281d32171f4d95",
+    "paper_reader",
+    "handoff_3103beb1bfa24e08",
+    "reviewer",
+    "handoff_5a220bc7aaf14beb",
+    "handoff_4e8eab033da3433a",
+    "writer",
+    "handoff_e4d6e7d3c67f4719"
+   ],
+   "title": "handoff",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  },
+  {
+   "facts": {
+    "status_blocked": "1",
+    "status_completed": "1",
+    "status_in_progress": "0",
+    "status_planned": "2",
+    "unresolved_count": "0",
+    "work_package_count": "4"
+   },
+   "refs": [
+    "wp_6646b59e63304021",
+    "wp_93fe6c657b494163",
+    "wp_f3860b27166d4cf5",
+    "wp_ecb6647786a84bca"
+   ],
+   "title": "任务 / work packages",
+   "unknown_reason": null,
+   "verification_state": "verified",
+   "verified": true
+  },
+  {
+   "facts": {
+    "blocked_work_package_count": "1",
+    "blocker_count": "2",
+    "diagnostic_count": "3",
+    "lifecycle_state": "waiting_evidence",
+    "run_status": "blocked"
+   },
+   "refs": [
+    "litalpha",
+    "wp_6646b59e63304021"
+   ],
+   "title": "阻塞 / blockers",
+   "unknown_reason": "evidence score 35 is below required 75; required work and result lineage are not closed loop; run_status=blocked; lifecycle_state=waiting_evidence; 1 work package(s) with status=blocked | diagnostics: Network search is disabled; only user-supplied seed papers were processed.; provider failure: ValueError: revision 1 must be > current max 1 for page paper_259d17dad9a54577 (append-only: revisions are never overwritten); provider failure: ValueError: revision 1 must be > current max 1 for page paper_259d17dad9a54577 (append-only: revisions are never overwritten)",
+   "verification_state": "blocked",
+   "verified": false
+  }
+ ],
+ "verification_state": "blocked"
+}

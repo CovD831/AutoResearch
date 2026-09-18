@@ -1,0 +1,95 @@
+{
+ "panel_id": "evidence",
+ "project_id": "bare",
+ "sections": [
+  {
+   "facts": {
+    "evidence_count": "0"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "证据项 / evidence items",
+   "unknown_reason": "GET /projects/{id}/evidence returned [] for this project",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "claim_group_count": "0"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "按 claim 归类 / grouped by claim",
+   "unknown_reason": "no evidence items to group",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "available_grouping": "claim,evidence_type,grade",
+    "gap": "G-4 evidence->run/action link not readable"
+   },
+   "refs": [],
+   "title": "按 run·action 归属 / grouped by run·action",
+   "unknown_reason": "EvidenceItem carries no run_id / invocation_id / action field, and no GET endpoint links evidence to a run or to the action that produced it (EvidenceCandidate has run_id but is not exposed by any GET endpoint)",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "gate_decision_count": "0"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "Gate 裁决 / gate decisions",
+   "unknown_reason": "no gate.evaluated event in the audit log: the project has not reached a gate decision yet, or the decision was never persisted",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "audit_report_count": "0",
+    "gate_verdict_count": "0",
+    "note": "verdict text (reasons/findings) is not copied; refs resolve it",
+    "review_ref_count": "0",
+    "reviewer_accept_count": "0"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "审查与裁决 / reviews & verdicts",
+   "unknown_reason": "no audit.report_created / gate.evaluated / reviewer handoff.accepted event for this project",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "review_report_count": "0"
+   },
+   "refs": [],
+   "title": "评审报告 / ReviewReport",
+   "unknown_reason": "ResearchState.review_ids is empty: no ReviewReport recorded",
+   "verification_state": "unverified",
+   "verified": false
+  },
+  {
+   "facts": {
+    "invalid_evidence_count": "0",
+    "query": "GET /projects/{id}/evidence?valid_only=false",
+    "retraction_event_count": "0",
+    "write_endpoint": "POST /evidence/{evidence_id}/invalidate"
+   },
+   "refs": [
+    "bare"
+   ],
+   "title": "回退入口 / retraction",
+   "unknown_reason": "no evidence is recorded for this project, so no retraction can exist yet; the retraction state was never observed",
+   "verification_state": "unverified",
+   "verified": false
+  }
+ ],
+ "verification_state": "unverified"
+}
