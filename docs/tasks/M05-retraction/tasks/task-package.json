@@ -1,0 +1,50 @@
+{
+  "task_id": "R007-L04-M05-RETRACTION",
+  "phase": "R007",
+  "owner_lane": "L-04 (retraction / OA / licence facts)",
+  "status": "reviewing",
+  "base_ref": "main@8dd8780",
+  "branch": "feat/r007-l04-retraction",
+  "depends_on": [],
+  "contracts": ["K10", "K8 (reference only)", "K11 (boundary: not implemented here)"],
+  "allowed_paths": [
+    "src/autoresearch/retraction.py",
+    "src/autoresearch/external_sources.py",
+    "tests/test_m05_retraction.py",
+    "tests/fixtures/m05_retraction/",
+    "docs/tasks/M05-retraction/",
+    ".ai-team/tasks/M05-RETRACTION.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/search_service.py",
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/knowledge.py",
+    "src/autoresearch/licensing.py",
+    "src/autoresearch/acl.py",
+    "src/autoresearch/telemetry.py",
+    "src/autoresearch/application.py",
+    "src/autoresearch/api.py",
+    "src/autoresearch/cli.py",
+    "tests/test_external_sources.py",
+    "tests/fixtures/external_sources/",
+    ".ai-team/TASK.md"
+  ],
+  "deliverables": [
+    "K10 RetractionStatus enum + total fail-closed projection from B5 SourceStatus (K10-1, K10-3)",
+    "K10-2: RETRACTED cannot be returned without a K8 propagation; missing sink raises (the claim set is not validated here -- K8-2 is the claim-set judge, so an empty claim set is the normal case, not an error)",
+    "InvalidationSink protocol port (call shape only; K8 type stays L-02's)",
+    "M05-06 access-basis facts: AccessStatus OPEN/RESTRICTED/UNAVAILABLE from Crossref license[]",
+    "N-3: paywall bypass refused for every work; recorded as K8 paywall_bypass/permanent_block",
+    "offline tests over real recorded Crossref payloads (5 DOIs, captured 2026-09-15)",
+    "L3 with the external_sources.py downstream-reader inventory and the discriminating-power evidence"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src <python> -m pytest tests/test_m05_retraction.py -q -o addopts=\"\" -W error",
+    "PYTHONPATH=src <python> -m pytest -q -o addopts=\"\" -W error",
+    "<python> -m ruff check src tests",
+    "<python> -m compileall -q src"
+  ],
+  "baseline": "537 passed / 2 skipped / 0 failed",
+  "next_step": "team-lead review; owner arbitration on D-M05-01 (404 projection) and D-M05-03/04 (licence rules, derived payloads)"
+}

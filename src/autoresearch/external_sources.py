@@ -16,12 +16,19 @@ notice); the resolver reads both accordingly. docling (MIT) is the default PDF p
 pymupdf4llm (AGPL) as a lightweight fallback. Live network calls are now in
 scope: the adapter performs real HTTP when a transport is available and falls
 back to an offline snapshot, then to ``unknown``, in that order.
+
+``CrossrefAdapter._from_live`` is the single place the ``updated-by[]``
+criterion is read; K10 (``autoresearch.retraction``) consumes its verdicts and
+never re-reads the relation arrays. ``licence()`` below answers only *what
+access basis the record states* -- who may read, export or delete is a policy
+question owned by K11 / ``licensing.py``.
 """
 
 from __future__ import annotations
 
 import re
 from enum import StrEnum
+from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, Field
@@ -65,6 +72,21 @@ class ParseStatus(StrEnum):
     EMPTY = "completed_empty"
 
 
+class AccessStatus(StrEnum):
+    """Whether the record states an unrestricted reading basis (M05-06).
+
+    ``UNAVAILABLE`` covers transport failures *and* records that state no
+    access basis at all. It is never collapsed into ``OPEN``: "we could not
+    determine the licence" and "the licence is permissive" are different
+    conclusions. This is the access axis of the same rule K10-1 states for the
+    retraction axis.
+    """
+
+    OPEN = "open"
+    RESTRICTED = "restricted"
+    UNAVAILABLE = "unavailable"
+
+
 # ---------------------------------------------------------------------------
 # Offline resolver snapshots (fallback before unknown)
 # ---------------------------------------------------------------------------
@@ -95,6 +117,27 @@ class DoiVerdict(BaseModel):
     source_uri: str | None = None
     transport: TransportOutcome = TransportOutcome.OK
     reasons: list[str] = Field(default_factory=list)
+
+
+class LicenceVerdict(BaseModel):
+    """Fact-only projection of Crossref ``license[]`` metadata (M05-06).
+
+    This is *the access basis the record states*, not a policy decision: who
+    may read, export or delete a resource is K11 / L-09's ``licensing.py``.
+    Callers that need an entitlement answer must combine this with their own
+    policy layer.
+    """
+
+    doi: str
+    status: AccessStatus
+    licence_urls: list[str] = Field(default_factory=list)
+    content_versions: list[str] = Field(default_factory=list)
+    transport: TransportOutcome = TransportOutcome.OK
+    reasons: list[str] = Field(default_factory=list)
+
+    @property
+    def open_access(self) -> bool:
+        return self.status is AccessStatus.OPEN
 
 
 def _normalize_doi(value: str) -> str:
@@ -337,6 +380,45 @@ class CrossrefAdapter:
             "related_source_ids": verdict.related_dois,
         }
 
+    def verdict_from_message(self, doi: str, message: dict) -> DoiVerdict:
+        """Classify an already-fetched Crossref ``message`` (offline entry point).
+
+        Runs the *same* ``updated-by[]`` criterion the live path runs, so a
+        recorded payload can be classified without a network call and without
+        any caller re-implementing the relation direction.
+        """
+
+        verdict = self._from_live(doi, TransportOutcome.OK, message)
+        if verdict is None:  # unreachable for a non-None message; keeps callers total
+            raise ValueError("a Crossref message is required to classify a verdict")
+        return verdict
+
+    def licence(self, doi: str, message: dict | None = None) -> LicenceVerdict:
+        """Determine the access basis the record states for ``doi`` (M05-06).
+
+        Fails closed: a transport failure, a 404, or a record that states no
+        licence all yield ``UNAVAILABLE``, never ``OPEN``.
+        """
+
+        if message is None:
+            if self.client is None:
+                return LicenceVerdict(
+                    doi=doi,
+                    status=AccessStatus.UNAVAILABLE,
+                    transport=TransportOutcome.UNAVAILABLE,
+                    reasons=["no Crossref client wired: access basis undetermined"],
+                )
+            outcome, fetched = self.client.get_work(doi)
+            if outcome is not TransportOutcome.OK or fetched is None:
+                return LicenceVerdict(
+                    doi=doi,
+                    status=AccessStatus.UNAVAILABLE,
+                    transport=outcome,
+                    reasons=[f"live transport {outcome.value}: access basis undetermined"],
+                )
+            message = fetched
+        return _licence_verdict_from_message(doi, message, TransportOutcome.OK)
+
 
 def _related_dois(*relation_groups: list) -> list[str]:
     """Collect related DOIs from Crossref relation arrays.
@@ -372,6 +454,138 @@ def _year(message: dict) -> int | None:
 
 def _doi_uri(doi: str) -> str:
     return f"https://doi.org/{re.sub(r'^https?://(dx\\.)?doi\\.org/', '', doi.strip())}"
+
+
+# ---------------------------------------------------------------------------
+# Crossref licence / access basis (M05-06)
+# ---------------------------------------------------------------------------
+
+# ``license[].content-version`` names the article version the licence covers.
+# ``tdm`` means text-and-data-mining use only, so it is never a *reading* basis
+# even where the URL looks permissive. Verified against recorded payloads:
+# Elsevier (https://www.elsevier.com/tdm/userlicense/1.0/) and Springer
+# (http://www.springer.com/tdm) both arrive as ``tdm`` and both are
+# subscription works, while the one open work captured (PLOS ONE, CC-BY)
+# arrives as ``unspecified``. A permissive URL therefore needs *both* a
+# recognised open marker and a non-``tdm`` content version.
+_TDM_CONTENT_VERSION = "tdm"
+
+# Only an explicit open licence counts. An unrecognised licence URL is not
+# evidence of open access -- it stays closed, because guessing open here is the
+# same failure as reading "unknown" as "fine". Matching is host/path based, not
+# substring based: a marker substring can appear in the path or query of an
+# unrelated host (e.g. ``https://example.com/creativecommons.org/licenses/by/4.0/``)
+# and would otherwise be misread as permissive.
+
+
+def _licence_entries(message: dict) -> list[dict]:
+    entries = message.get("license")
+    if not isinstance(entries, list):
+        return []
+    return [entry for entry in entries if isinstance(entry, dict)]
+
+
+def _entry_url(entry: dict) -> str:
+    return str(entry.get("URL") or "").strip()
+
+
+def _entry_content_version(entry: dict) -> str:
+    return str(entry.get("content-version") or "").strip()
+
+
+def _is_open_licence_url(url: str) -> bool:
+    """Whether ``url`` is an explicit open-licence landing URL on creativecommons.org.
+
+    Fail-closed: anything that is not an absolute ``http(s)`` URL whose host is
+    exactly ``creativecommons.org`` and whose path begins with ``/licenses/`` or
+    ``/publicdomain/`` is treated as *not* an open licence. Substring matching is
+    rejected because a marker can appear in the path or query of an unrelated
+    host (e.g. ``https://example.com/creativecommons.org/licenses/by/4.0/``) and
+    would be misread as permissive. A URL that cannot be parsed, has no scheme,
+    or has no host also fails closed rather than guessing open.
+    """
+
+    parsed = urlparse(url.strip())
+    if parsed.scheme not in ("http", "https"):
+        return False
+    if parsed.hostname is None:
+        return False
+    if parsed.hostname.casefold() != "creativecommons.org":
+        return False
+    path = parsed.path.casefold()
+    return path.startswith("/licenses/") or path.startswith("/publicdomain/")
+
+
+def _licence_verdict_from_message(
+    doi: str, message: dict, transport: TransportOutcome
+) -> LicenceVerdict:
+    if message.get("status") == "not_found":
+        return LicenceVerdict(
+            doi=doi,
+            status=AccessStatus.UNAVAILABLE,
+            transport=transport,
+            reasons=["crossref 404: no record, access basis undetermined"],
+        )
+
+    entries = _licence_entries(message)
+    if not entries:
+        return LicenceVerdict(
+            doi=doi,
+            status=AccessStatus.UNAVAILABLE,
+            transport=transport,
+            reasons=["no license[] metadata in the record: access basis undetermined"],
+        )
+
+    urls = sorted({_entry_url(entry) for entry in entries} - {""})
+    versions = sorted({_entry_content_version(entry) for entry in entries} - {""})
+
+    permissive = [entry for entry in entries if _is_open_licence_url(_entry_url(entry))]
+    open_entries = [
+        entry
+        for entry in permissive
+        if _entry_content_version(entry).casefold() != _TDM_CONTENT_VERSION
+    ]
+
+    if open_entries:
+        return LicenceVerdict(
+            doi=doi,
+            status=AccessStatus.OPEN,
+            licence_urls=urls,
+            content_versions=versions,
+            transport=transport,
+            reasons=[f"open licence recorded: {_entry_url(open_entries[0])}"],
+        )
+
+    reasons = ["licence recorded but not an open licence: " + ", ".join(urls)]
+    vetoed = [entry for entry in permissive if entry not in open_entries]
+    if vetoed:
+        reasons.append(
+            "permissive licence URL restricted to text-and-data-mining use "
+            f"(content-version={_TDM_CONTENT_VERSION}), not a reading basis: "
+            f"{_entry_url(vetoed[0])}"
+        )
+    if all(
+        _entry_content_version(entry).casefold() == _TDM_CONTENT_VERSION for entry in entries
+    ):
+        reasons.append(
+            "every recorded licence is text-and-data-mining only, so no reading basis is stated"
+        )
+    embargo_days = sorted(
+        entry["delay-in-days"]
+        for entry in entries
+        if isinstance(entry.get("delay-in-days"), int) and entry["delay-in-days"] > 0
+    )
+    if embargo_days:
+        reasons.append(f"licence carries an access delay (delay-in-days={embargo_days[0]})")
+
+    return LicenceVerdict(
+        doi=doi,
+        status=AccessStatus.RESTRICTED,
+        licence_urls=urls,
+        content_versions=versions,
+        transport=transport,
+        reasons=reasons,
+    )
 
 
 # ---------------------------------------------------------------------------
