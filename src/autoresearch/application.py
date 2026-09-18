@@ -8,6 +8,7 @@ from typing import Any
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Command
 
+from autoresearch.acl import AccessPolicyStore
 from autoresearch.adapter_search_service import AdapterBackedPaperSearchService
 from autoresearch.agents import (
     OrchestratorAgent,
@@ -156,6 +157,12 @@ class InvocationBoundedSearchPort:
 class AutoResearchApplication:
     def __init__(self, settings: Settings | None = None):
         self.settings = settings or get_settings()
+        #: ADR-01 slot 14 / K11. ``None`` means the release path runs in
+        #: "no policy enforced" mode, which the gate records rather than leaving
+        #: implicit: an absent authorization layer is a mode, not a silent pass.
+        self.access_policy = (
+            AccessPolicyStore() if self.settings.access_control_enabled else None
+        )
         self.settings.ensure_runtime_dirs()
         self.store = RecordStore(self.settings.db_path)
         self.evidence = EvidenceService(self.store)
@@ -245,6 +252,7 @@ class AutoResearchApplication:
             gates=self.gates,
             state_machine=self.state_machine,
             checkpointer=self._checkpointer,
+            access_policy=self.access_policy,
         )
         self._graph_lock = threading.RLock()
 
