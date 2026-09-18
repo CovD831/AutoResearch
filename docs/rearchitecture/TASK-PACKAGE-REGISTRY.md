@@ -5,11 +5,37 @@
 > **本文件下方的表格是历史记录（S1–S4 / O12–O14 世代），已不再作为派发依据。**
 > **当前唯一派发依据 = `docs/tasks/<MODULE>/tasks/task-package.json` 的 `status` 与 `archived_at` 字段。**
 >
-> ## 可派发的包（全部 3 个，均属 M11）
+> ## 可派发的包（**12 个**）
+>
+> ### A. 接线批次（9 个，`status: ready`）—— **本轮分派主体**
+>
+> 每个包的目标都是**把本模块的孤岛接上生产入口**。判据统一为 **`reached_by`：生产入口可达**，
+> 而不是「测试通过」——因为孤岛模块的既有测试现在**全都是绿的**，测试绿证明不了接线成功。
+>
+> | 包 | 承担者 | 孤岛（行数）| 接入点 |
+> |---|---|---|---|
+> | `M01-WIRE` | 成员 A | `context_assembler`(305) · `migration`(210) | `application.py` 装配路径 |
+> | `M02-WIRE` | 成员 A | `evidence_prefetch`(265) · `invalidation`(395) | L2+ 动作的统一入口 |
+> | `M04-WIRE` | 成员 B | `outbox`(880) | 交付/外部副作用链路 |
+> | `M05-WIRE` | 成员 A | `retraction`(537) | 接槽位 7 的 `_verify_doi` 上游 |
+> | `M08-WIRE` | **Owner** | `run_manifest`(193) | 新建 `executor.py`（七段里唯一从零的一段）|
+> | `M10-WIRE` | 成员 B | `audit_evidence`(894) · `audit_stdio`(132) | `cli.py audit` |
+> | `M11-WIRE` | 成员 A | `benchmark`(1833) | CLI 评估子命令 |
+> | `M13-WIRE` | **Owner** | `web_api`(1407) | `cli.py serve`（**1 行**）|
+> | `M14-WIRE` | 成员 B | `pii`(294) · `licensing`(305) · `telemetry`(502) | API/UI 读路径 + 出网 |
+>
+> **统一判据命令**（每个包都带）：
+> ```bash
+> PYTHONPATH=src python -m pytest -q -o addopts="" -W error
+> python -m ruff check src tests
+> python3 reviews/island-audit-2026-09-18/reach.py    # 必须不再列出本包的孤岛
+> ```
+>
+> ### B. M11 知识库续链（3 个，`status: planned`）
 >
 > | 模块 | 包 | status | base_ref | 说明 |
 > |---|---|---|---|---|
-> | M11 知识库 | `M11-MVP-02` 候选召回管线 | `planned` | `main` | MVP-01 **已合**（`780e051` / PR #36）→ 前置已满足，本包实际可开工 |
+> | M11 知识库 | `M11-MVP-02` 候选召回管线 | `planned` | `main` | MVP-01 **已合**（`780e051` / PR #36）→ 前置已满足 |
 > | M11 知识库 | `M11-MVP-03` 融合/去重/索引维护 | `planned` | `main` | 依赖 MVP-02 |
 > | M11 知识库 | `M11-MVP-04` 固定回归与验收证据 | `planned` | `main` | 依赖 MVP-03 |
 >

@@ -1,0 +1,47 @@
+{
+  "task_id": "M01-WIRE",
+  "phase": "R-008 / post-baseline（接线批次）",
+  "owner_lane": "M01",
+  "owner": "member A",
+  "status": "ready",
+  "base_ref": "main",
+  "branch": "feat/m01-wire",
+  "depends_on": [],
+  "merge_after": [],
+  "why_now": "M01 的包已 integrated，但产物仍是孤岛——「已合入」不等于「被调用」。本轮只做接线，不改语义。",
+  "goal": "把 K5 上下文装配与 K6 状态迁移接进生产入口。两者都已实现且测试通过，但没有任何生产调用者。",
+  "islands": [
+    "context_assembler.py (305)",
+    "migration.py (210)"
+  ],
+  "allowed_paths": [
+    "src/autoresearch/application.py"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/graph.py",
+    "src/autoresearch/agents/base.py"
+  ],
+  "deliverables": [
+    "application.py 在构造/装配路径上调用 ContextAssembler，使其成为真实 run 的一部分",
+    "StateMigration 有生产调用点（启动时的版本检查，或 schema_version bump 路径）",
+    "不改 context_assembler.py / migration.py 的既有语义（本任务是接线，不是重写）"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
+    "python -m ruff check src tests",
+    "python3 reviews/island-audit-2026-09-18/reach.py"
+  ],
+  "acceptance": {
+    "positive": [
+      "一次真实 run 的 checkpoint 里出现 ContextSlice；`reach.py` 输出中不再列出 context_assembler / migration"
+    ],
+    "negative": [
+      "不得为了「让它被调用」而写一个只被测试调用的空心入口（那会让闭包变绿而语义仍死）",
+      "全量测试不许下降；ruff 必须全绿"
+    ]
+  },
+  "reached_by": "一次真实 run 的 checkpoint 里出现 ContextSlice；`reach.py` 输出中不再列出 context_assembler / migration",
+  "reached_note": "判据是「生产入口可达」，不是「测试通过」。孤岛模块的既有测试现在都是绿的，所以测试绿不能证明接线成功。",
+  "next_package": null
+}

@@ -1,0 +1,45 @@
+{
+  "task_id": "M11-WIRE",
+  "phase": "R-008 / post-baseline（接线批次）",
+  "owner_lane": "M11",
+  "owner": "member A",
+  "status": "ready",
+  "base_ref": "main",
+  "branch": "feat/m11-wire",
+  "depends_on": [],
+  "merge_after": [],
+  "why_now": "benchmark 只被 web/dev 工具引用，生产入口不可达；且它是唯一 source 可比的评测设施。",
+  "goal": "把 benchmark harness 接上 CLI（评估子命令）。同时 M11 还有 MVP-02/03/04 的 planned 链可继续。",
+  "islands": [
+    "benchmark.py (1833)（工具可达、生产不可达）"
+  ],
+  "allowed_paths": [
+    "src/autoresearch/cli.py",
+    "docs/tasks/M11-knowledge-lane/"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/graph.py"
+  ],
+  "deliverables": [
+    "CLI 暴露一个可执行的条件对比子命令",
+    "benchmark 的 frozen corpus 保持不变（corpus.json 是冻结语料）"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
+    "python -m ruff check src tests",
+    "python3 reviews/island-audit-2026-09-18/reach.py"
+  ],
+  "acceptance": {
+    "positive": [
+      "`reach.py` 的 A 类（工具可达、生产不可达）不再列出 benchmark"
+    ],
+    "negative": [
+      "不得改动 corpus.json 的既有键或标签（测试逐标签比对）",
+      "全量测试不许下降；ruff 必须全绿"
+    ]
+  },
+  "reached_by": "`reach.py` 的 A 类（工具可达、生产不可达）不再列出 benchmark",
+  "reached_note": "判据是「生产入口可达」，不是「测试通过」。孤岛模块的既有测试现在都是绿的，所以测试绿不能证明接线成功。",
+  "next_package": null
+}

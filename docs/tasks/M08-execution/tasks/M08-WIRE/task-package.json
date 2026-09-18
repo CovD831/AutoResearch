@@ -1,0 +1,47 @@
+{
+  "task_id": "M08-WIRE",
+  "phase": "R-008 / post-baseline（接线批次）",
+  "owner_lane": "M08",
+  "owner": "Owner",
+  "status": "ready",
+  "base_ref": "main",
+  "branch": "feat/m08-exec",
+  "depends_on": [],
+  "merge_after": [],
+  "why_now": "全仓零 subprocess，图上无此节点；run_manifest 已就绪但没有执行者。本包不做，其他模块的接线再多也跑不到实验。",
+  "goal": "【Owner 自做】实验执行段：executor + run_manifest 接线。这是七段主干里唯一从零的一段。",
+  "islands": [
+    "run_manifest.py (193)"
+  ],
+  "allowed_paths": [
+    "src/autoresearch/executor.py（新建）",
+    "src/autoresearch/agents/orchestrator.py",
+    "src/autoresearch/graph.py"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py（如必须改，先在 L3 里说明理由）"
+  ],
+  "deliverables": [
+    "executor.py：受控命令执行（command/env/timeout/seed/raw outputs）",
+    "产出 RunManifest（K1，已在 main）",
+    "全仓出现第一处 subprocess",
+    "`orchestrator.plan_execution` 的 loop_closure 从 NOT_APPLICABLE 改为按实际执行结果给 OPEN/CLOSED"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
+    "python -m ruff check src tests",
+    "python3 reviews/island-audit-2026-09-18/reach.py"
+  ],
+  "acceptance": {
+    "positive": [
+      "`reach.py` 不再列出 run_manifest；一次真实 run 的循环边被走过（同一 run 内 ≥2 个 RunManifest）"
+    ],
+    "negative": [
+      "未运行必须仍是 R0；不得把「没跑」写成「跑了但没提升」",
+      "全量测试不许下降；ruff 必须全绿"
+    ]
+  },
+  "reached_by": "`reach.py` 不再列出 run_manifest；一次真实 run 的循环边被走过（同一 run 内 ≥2 个 RunManifest）",
+  "reached_note": "判据是「生产入口可达」，不是「测试通过」。孤岛模块的既有测试现在都是绿的，所以测试绿不能证明接线成功。",
+  "next_package": null
+}

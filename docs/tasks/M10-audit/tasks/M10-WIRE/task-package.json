@@ -1,0 +1,45 @@
+{
+  "task_id": "M10-WIRE",
+  "phase": "R-008 / post-baseline（接线批次）",
+  "owner_lane": "M10",
+  "owner": "member B",
+  "status": "ready",
+  "base_ref": "main",
+  "branch": "feat/m10-wire",
+  "depends_on": [],
+  "merge_after": [],
+  "why_now": "`cli.py audit` 已存在，但两个审计模块没有任何生产调用者。",
+  "goal": "把审计证据与 stdio 审计接到 CLI 的 audit 子命令。",
+  "islands": [
+    "audit_evidence.py (894)",
+    "audit_stdio.py (132)"
+  ],
+  "allowed_paths": [
+    "src/autoresearch/cli.py"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/graph.py"
+  ],
+  "deliverables": [
+    "`autoresearch audit` 的输出经 audit_stdio 模块（而非直接 print）",
+    "audit_evidence 的产物通过 audit 命令可达"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
+    "python -m ruff check src tests",
+    "python3 reviews/island-audit-2026-09-18/reach.py"
+  ],
+  "acceptance": {
+    "positive": [
+      "`reach.py` 不再列出 audit_evidence / audit_stdio"
+    ],
+    "negative": [
+      "不得把审计数据写成普通日志而丢失证据分级",
+      "全量测试不许下降；ruff 必须全绿"
+    ]
+  },
+  "reached_by": "`reach.py` 不再列出 audit_evidence / audit_stdio",
+  "reached_note": "判据是「生产入口可达」，不是「测试通过」。孤岛模块的既有测试现在都是绿的，所以测试绿不能证明接线成功。",
+  "next_package": null
+}

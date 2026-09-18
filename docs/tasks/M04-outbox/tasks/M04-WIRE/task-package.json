@@ -1,0 +1,44 @@
+{
+  "task_id": "M04-WIRE",
+  "phase": "R-008 / post-baseline（接线批次）",
+  "owner_lane": "M04",
+  "owner": "member B",
+  "status": "ready",
+  "base_ref": "main",
+  "branch": "feat/m04-wire",
+  "depends_on": [],
+  "merge_after": [],
+  "why_now": "880 行实现完整（意图与副作用分离是它的核心设计），但没有任何生产调用者。",
+  "goal": "把 K9 outbox 接进交付链路：外部副作用先落 outbox，再执行，保证幂等可重放。",
+  "islands": [
+    "outbox.py (880)"
+  ],
+  "allowed_paths": [
+    "交付/导出链路相关文件（写实现前先勘察确认，并在 L3 里写明）"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/graph.py",
+    "src/autoresearch/agents/base.py"
+  ],
+  "deliverables": [
+    "交付动作产生 OutboxEntry；重复投递不产生第二次副作用"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
+    "python -m ruff check src tests",
+    "python3 reviews/island-audit-2026-09-18/reach.py"
+  ],
+  "acceptance": {
+    "positive": [
+      "`reach.py` 不再列出 outbox；且幂等性有反例测试（同一条目投递两次只生效一次）"
+    ],
+    "negative": [
+      "不得在 outbox 之外直接做外部副作用（那正是它要防的事）",
+      "全量测试不许下降；ruff 必须全绿"
+    ]
+  },
+  "reached_by": "`reach.py` 不再列出 outbox；且幂等性有反例测试（同一条目投递两次只生效一次）",
+  "reached_note": "判据是「生产入口可达」，不是「测试通过」。孤岛模块的既有测试现在都是绿的，所以测试绿不能证明接线成功。",
+  "next_package": null
+}
