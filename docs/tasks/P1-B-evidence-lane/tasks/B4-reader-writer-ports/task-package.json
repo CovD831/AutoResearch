@@ -3,6 +3,8 @@
   "phase": "S3",
   "owner_lane": "evidence/domain",
   "status": "handoff",
+  "archived_at": "2026-09-18",
+  "archived_reason": "P1/S generation. Its products are in main; superseded by the module-based (M0x) handover. Not a dispatch source.",
   "base_ref": "main@437e15e",
   "branch": "codex/s3-reader-writer-ports",
   "depends_on": [

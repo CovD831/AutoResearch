@@ -3,6 +3,8 @@
   "phase": "S3",
   "owner_lane": "evidence/domain",
   "status": "reviewing",
+  "archived_at": "2026-09-18",
+  "archived_reason": "P1/S generation. Its products are in main; superseded by the module-based (M0x) handover. Not a dispatch source.",
   "base_ref": "main@380bd49",
   "branch": "codex/s3-b2-data-sources",
   "depends_on": [

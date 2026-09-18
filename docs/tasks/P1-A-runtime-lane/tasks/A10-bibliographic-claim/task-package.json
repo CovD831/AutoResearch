@@ -2,11 +2,18 @@
   "task_id": "S4-A6-BIBLIOGRAPHIC-CLAIM",
   "phase": "S4",
   "owner_lane": "integration/lead",
-  "status": "active",
+  "status": "integrated",
+  "integrated_at": "main@b5853bd (PR #23)",
+  "status_verified_at": "2026-09-18",
   "base_ref": "owner/a8-mainline-adapter",
   "branch": "owner/a8-mainline-adapter",
-  "depends_on": ["S4-A4-MAINLINE-ADAPTER", "S4-A5-HANDOFF-BY-REFERENCE"],
-  "merge_after": ["S4-A5-HANDOFF-BY-REFERENCE"],
+  "depends_on": [
+    "S4-A4-MAINLINE-ADAPTER",
+    "S4-A5-HANDOFF-BY-REFERENCE"
+  ],
+  "merge_after": [
+    "S4-A5-HANDOFF-BY-REFERENCE"
+  ],
   "allowed_paths": [
     "src/autoresearch/search_service.py",
     "src/autoresearch/adapter_search_service.py",

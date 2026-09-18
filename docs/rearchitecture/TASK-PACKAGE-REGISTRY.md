@@ -1,5 +1,49 @@
 # Task Package Registry
 
+> # 🔴 状态源口径（2026-09-18 重设）—— **派发前必读**
+>
+> **本文件下方的表格是历史记录（S1–S4 / O12–O14 世代），已不再作为派发依据。**
+> **当前唯一派发依据 = `docs/tasks/<MODULE>/tasks/task-package.json` 的 `status` 与 `archived_at` 字段。**
+>
+> ## 可派发的包（全部 3 个，均属 M11）
+>
+> | 模块 | 包 | status | base_ref | 说明 |
+> |---|---|---|---|---|
+> | M11 知识库 | `M11-MVP-02` 候选召回管线 | `planned` | `main` | MVP-01 **已合**（`780e051` / PR #36）→ 前置已满足，本包实际可开工 |
+> | M11 知识库 | `M11-MVP-03` 融合/去重/索引维护 | `planned` | `main` | 依赖 MVP-02 |
+> | M11 知识库 | `M11-MVP-04` 固定回归与验收证据 | `planned` | `main` | 依赖 MVP-03 |
+>
+> **其余 M0x 包全部 `integrated` —— 不要重复派发**：
+> `M01-CONTEXT` · `M02-PREFETCH` · `R007-L03-M04-OUTBOX` · `R007-L04-M05-RETRACTION` · `M08-01-RUN-MANIFEST` · `M13-UI` · `M11-MVP-01` · `O16-ARTIFACT-CORRECTNESS` · `S4-A4/A5/A6`
+> （各包的 `integrated_at` 字段写明合并证据）
+>
+> ## 已归档（13 个，**不再派发**）
+>
+> `P1-A-runtime-lane/tasks/{A1,A3,A4,A5,A6}` · `P1-A-runtime-recovery` · `P1-B-evidence-lane/tasks/{B1,B2,B4,B5}` · `P1-B-evidence-pipeline` · `O15-GATE-SCORING` · `O17-PDF-PIPELINE`
+>
+> 各自的 `task-package.json` 里带 `archived_at` 与 `archived_reason`。**产物均已并入 main，或已被明确作废。**
+>
+> ## `status` 的语义（只有这四个）
+>
+> | 取值 | 含义 |
+> |---|---|
+> | `planned` | 依赖未满足，**不可开工** |
+> | `ready` | 依赖满足，可创建 worktree（**当前无此类包**） |
+> | `integrated` | 已合入 main，**不得重复派发** |
+> | `archived_at` 非空 | 非派发源，仅历史保留 |
+>
+> ## 分发归属（2026-09-18 决定）
+>
+> | 承担者 | 持有模块 |
+> |---|---|
+> | **成员 A**（证据生产） | M01 上下文 · M05 检索/撤稿 · M06 阅读 · M07 分析 · M11 知识库 |
+> | **成员 B**（证据消费） | M09 写作 · M10 审核 · M04 交付 · M14/M15 安全与可观测 |
+> | **Owner** | M00 · M02 门禁 · M03 编排 · **M08 实验** · M12 经验 · M13 UI |
+>
+> **契约边界**：已冻结的 `EvidenceItem`。**全局串行文件**（`contracts.py` / `graph.py` / `agents/base.py` / `application.py`）归 Owner。
+>
+> ---
+
 > 这是全局任务队列和集成索引，不替代任务包中的详细说明。
 
 成员长期任务包：

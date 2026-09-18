@@ -1,0 +1,60 @@
+{
+  "task_id": "O15-GATE-SCORING",
+  "phase": "R-007",
+  "owner_lane": "owner",
+  "status": "blocked",
+  "archived_at": "2026-09-18",
+  "archived_reason": "Blocked on an owner decision about the gate-scoring criterion. Not a dispatch source until decided.",
+  "base_ref": "e4d88ec",
+  "branch": "owner/o15-gate-scoring",
+  "depends_on": [
+    "O17-PDF-PIPELINE"
+  ],
+  "merge_after": [
+    "O17-PDF-PIPELINE"
+  ],
+  "allowed_paths": [
+    "src/autoresearch/gates.py",
+    "tests/test_governance_services.py",
+    "tests/test_gate_scoring.py",
+    "tests/fixtures/gate_scoring/",
+    "docs/tasks/O15-gate-scoring/",
+    "docs/EVIDENCE_AND_GATES.md",
+    ".ai-team/tasks/O15-GATE-SCORING.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/writing_service.py",
+    "src/autoresearch/reader_service.py",
+    "src/autoresearch/application.py",
+    "src/autoresearch/agents/reviewer.py",
+    "src/autoresearch/state_machine.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "deliverables": [
+    "Gate score aggregation hardened so evidence count cannot substitute for evidence strength",
+    "structural precondition min_grade for L3/L4 thresholds",
+    "reason strings naming the missing strong evidence (not just a low score)",
+    "discriminating-power tests for the six scenario table",
+    "EVIDENCE_AND_GATES.md section 3 alignment with the implementation",
+    "baseline-vs-after full-suite delta with per-item explanation",
+    "L3/PROGRESS/HANDOFF and task-local ledger"
+  ],
+  "acceptance_commands": [
+    "ruff check src tests",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m compileall -q src",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m pytest -o addopts=\"\" -q",
+    "PATH=/Users/abab/.workbuddy/binaries/node/versions/22.22.2-2/bin:$PATH /Users/abab/.workbuddy/binaries/python/envs/default/bin/python scripts/check_pr_contract.py --base e4d88ec",
+    "PATH=/Users/abab/.workbuddy/binaries/node/versions/22.22.2-2/bin:$PATH node .ai-team/check.mjs --task .ai-team/tasks/O15-GATE-SCORING.md"
+  ],
+  "baseline_measured": {
+    "commit": "e4d88ec",
+    "command": "PYTHONPATH=src python -m pytest -o addopts=\"\" -q",
+    "result": "578 passed, 2 skipped"
+  },
+  "next_package": "O16-ARTIFACT-CORRECTNESS",
+  "blocked_reason": "Requires at least one E2-grade evidence item on the manuscript gate, but the real production path yields zero E2 (measured: 12xE1 + 1xE0). Merging first would make the manuscript gate permanently unreachable while the existing E2E tests stay green (they hand-inject E3). O17 wires the docling-first PDF parser so E2 becomes reachable."
+}

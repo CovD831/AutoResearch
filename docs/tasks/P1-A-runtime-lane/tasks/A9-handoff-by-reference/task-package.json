@@ -2,11 +2,17 @@
   "task_id": "S4-A5-HANDOFF-BY-REFERENCE",
   "phase": "S4",
   "owner_lane": "runtime",
-  "status": "active",
+  "status": "integrated",
+  "integrated_at": "main@b5853bd (PR #23)",
+  "status_verified_at": "2026-09-18",
   "base_ref": "owner/a8-mainline-adapter",
   "branch": "owner/a8-mainline-adapter",
-  "depends_on": ["S4-A4-MAINLINE-ADAPTER"],
-  "merge_after": ["S4-A4-MAINLINE-ADAPTER"],
+  "depends_on": [
+    "S4-A4-MAINLINE-ADAPTER"
+  ],
+  "merge_after": [
+    "S4-A4-MAINLINE-ADAPTER"
+  ],
   "allowed_paths": [
     "src/autoresearch/contracts.py",
     "src/autoresearch/agents/paper_search.py",

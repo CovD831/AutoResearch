@@ -2,11 +2,17 @@
   "task_id": "R007-L04-M05-RETRACTION",
   "phase": "R007",
   "owner_lane": "L-04 (retraction / OA / licence facts)",
-  "status": "reviewing",
+  "status": "integrated",
+  "integrated_at": "R007 lane merged into main (PR #25-#33 series)",
+  "status_verified_at": "2026-09-18",
   "base_ref": "main@8dd8780",
   "branch": "feat/r007-l04-retraction",
   "depends_on": [],
-  "contracts": ["K10", "K8 (reference only)", "K11 (boundary: not implemented here)"],
+  "contracts": [
+    "K10",
+    "K8 (reference only)",
+    "K11 (boundary: not implemented here)"
+  ],
   "allowed_paths": [
     "src/autoresearch/retraction.py",
     "src/autoresearch/external_sources.py",

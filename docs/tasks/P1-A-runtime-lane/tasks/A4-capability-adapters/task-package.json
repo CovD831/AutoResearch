@@ -3,10 +3,16 @@
   "phase": "S3",
   "owner_lane": "runtime",
   "status": "ready",
+  "archived_at": "2026-09-18",
+  "archived_reason": "P1/S generation. Its products are in main; superseded by the module-based (M0x) handover. Not a dispatch source.",
   "base_ref": "80e2277",
   "branch": "codex/s3-a-capability-adapters",
-  "depends_on": ["S2 promotion"],
-  "merge_after": ["S2 promotion"],
+  "depends_on": [
+    "S2 promotion"
+  ],
+  "merge_after": [
+    "S2 promotion"
+  ],
   "allowed_paths": [
     "src/autoresearch/capability_registry.py",
     "src/autoresearch/invocation_contracts.py",
