@@ -2,7 +2,8 @@
 
 - ID: `O16-ARTIFACT-CORRECTNESS`
 - Title: `Fix manuscript artifact correctness: extraction failure, dedup, delivery file`
-- Status: `integrated`（2026-09-18 人工审查通过并合入 main；原 `handoff`）
+- Status: `integrated`
+  （2026-09-18 人工审查通过并合入 main；原值 `handoff`）
 - Owner: `member B`
 - Next owner: `user/team`
 
