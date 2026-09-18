@@ -106,10 +106,14 @@ git checkout -b <包内 branch 字段> main
 - 第 3 条 = lint
 - 第 4 条 = `reach.py` 可达性报告（**附带项，单独不构成判据**）
 
-⚠️ **第 4 条目前在成员侧跑不了**：`reviews/island-audit-2026-09-18/` 整个目录
-**尚未入库**（`git ls-files` 计数为 0），clone 之后拿不到 `reach.py`。
-它是**附带项、不影响验收**——成员侧直接跳过第 4 条即可，以第 1/2/3 条为准；
-需要看可达性报告时向 owner 要。该目录是否入库由 owner 另行决定。
+第 4 条用的脚本随本分支一起入库（`reviews/island-audit-2026-09-18/reach.py`，纯标准库、无第三方依赖），
+clone 后即可运行：
+
+```bash
+PYTHONPATH=src python reviews/island-audit-2026-09-18/reach.py
+```
+
+它只做只读盘点，会打印孤岛清单；把 `/tmp` 当临时目录写快照，不碰仓库文件。**它列不列出某个模块，不构成通过/不通过的依据**——判据只看第 2 条。
 
 ⚠️ **先自检解释器**。裸 `python` / `python3` 可能指向一个**没装项目依赖**的解释器，实测报：
 
