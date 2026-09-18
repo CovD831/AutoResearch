@@ -40,6 +40,7 @@ from autoresearch.contracts import (
     GateDecision,
     GateRequest,
     GateStatus,
+    LoopClosure,
     RiskLevel,
     new_id,
     utc_now,
@@ -566,7 +567,10 @@ class BenchmarkTask:
     expected_outcome: CaseOutcome = CaseOutcome.ACCEPTED
     explicitly_rejected: bool = False
     human_approval: bool = False
-    work_closed_loop: bool = False
+    #: Was ``work_closed_loop: bool``. A benchmark case may legitimately exercise
+    #: a scoped pipeline (no experiment lane), which must not be conflated with an
+    #: open loop; see :class:`LoopClosure`.
+    loop_closure: LoopClosure = LoopClosure.OPEN
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
 
@@ -698,7 +702,19 @@ def _parse_task(row: Any) -> BenchmarkTask:
         expected_outcome=expected_outcome,
         explicitly_rejected=bool(row.get("explicitly_rejected", False)),
         human_approval=bool(row.get("human_approval", False)),
-        work_closed_loop=bool(row.get("work_closed_loop", False)),
+        # Back-compat: corpus rows frozen before the tri-state carried a bool
+        # ``work_closed_loop``. That fixture is a frozen benchmark corpus (the
+        # tests match it label-for-label), so the old key must keep its old
+        # meaning instead of silently degrading to OPEN and flipping every
+        # closure-requiring case to a rejection.
+        loop_closure=LoopClosure(
+            row.get("loop_closure")
+            or (
+                LoopClosure.CLOSED.value
+                if row.get("work_closed_loop")
+                else LoopClosure.OPEN.value
+            )
+        ),
         metadata=raw_metadata,
     )
 
@@ -1569,7 +1585,7 @@ class TrustBenchmarkRuntime:
                 risk_level=task.risk_level,
                 claim=task.question[:2000],
                 evidence_ids=list(evidence_ids),
-                work_closed_loop=task.work_closed_loop,
+                loop_closure=task.loop_closure,
                 explicitly_rejected=task.explicitly_rejected,
                 human_approval=task.human_approval,
             )

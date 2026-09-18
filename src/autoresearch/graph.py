@@ -107,7 +107,10 @@ def build_research_graph(
                     risk_level=RiskLevel.L4,
                     claim="A human rejected external release.",
                     evidence_ids=state.evidence_ids,
-                    work_closed_loop=True,
+                    # Pass the lane's own declaration through rather than
+                    # asserting closure: a human rejecting a scoped (no-experiment)
+                    # draft must not be recorded as if a result lineage existed.
+                    loop_closure=state.loop_closure,
                     explicitly_rejected=True,
                 )
             )
@@ -159,7 +162,7 @@ def build_research_graph(
                 risk_level=RiskLevel.L4,
                 claim="The reviewed manuscript may be released externally.",
                 evidence_ids=all_evidence,
-                work_closed_loop=True,
+                loop_closure=state.loop_closure,
                 human_approval=True,
             )
         )
