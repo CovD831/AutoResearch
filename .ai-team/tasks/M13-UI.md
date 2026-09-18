@@ -201,7 +201,7 @@
 
 ## Verification
 
-- [x] `PYTHONPATH=src pytest -q -o addopts="" -W error` → **581 passed, 2 skipped, 0 failed**（实测；原「577」公式 537+29=566≠577 已修正为实测值）
+- [x] `PYTHONPATH=src pytest -q -o addopts="" -W error` → **1035 passed, 2 skipped, 0 failed**（2026-09-18 合并核验：8 条 lane 全部并入 main 后的实测总值；本包交付态单独计 581 passed, 2 skipped）
 - [x] `python -m pytest tests/test_web_panels.py` → **43 passed**（含 3 条 `_pending_interrupt` 回归测试；本环境 playwright 已装，浏览器快照测试 0 skipped。无 playwright 时其中浏览器测试会 skip，计数相应下降）
 - [x] `python -m ruff check src tests` → `All checks passed!`
 - [x] `python -m compileall -q src` → ok
