@@ -55,7 +55,7 @@ class PaperReaderService:
             # installed. Ranking, not removal, is what keeps the fallback honest.
             parsed = PdfParser().parse(str(path))
             if parsed.status is ParseStatus.OK and parsed.markdown:
-                return parsed.markdown, list(parsed.locators) or ["document"]
+                return parsed.markdown, list(parsed.locators)
             reader = PdfReader(path)
             pages = [(page.extract_text() or "") for page in reader.pages]
             return "\n".join(pages), [f"p.{index + 1}" for index in range(len(pages))]
