@@ -14,31 +14,44 @@
     "outbox.py (880)"
   ],
   "allowed_paths": [
-    "交付/导出链路相关文件（写实现前先勘察确认，并在 L3 里写明）"
+    "src/autoresearch/graph.py",
+    "src/autoresearch/writing_service.py",
+    "tests/test_m04_wire_outbox.py",
+    ".ai-team/tasks/"
   ],
   "forbidden_paths": [
     "src/autoresearch/contracts.py",
-    "src/autoresearch/graph.py",
     "src/autoresearch/agents/base.py"
   ],
   "deliverables": [
-    "交付动作产生 OutboxEntry；重复投递不产生第二次副作用"
+    "交付动作产生 OutboxEntry；重复投递不产生第二次副作用",
+    "判别力测试：tests/test_m04_wire_outbox.py（本包 exclusive；判据型失败点见 discriminating_power）"
   ],
   "acceptance_commands": [
     "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
-    "python -m ruff check src tests",
-    "python3 reviews/island-audit-2026-09-18/reach.py"
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" tests/test_m04_wire_outbox.py",
+    "PYTHONPATH=src python -m ruff check src tests",
+    "PYTHONPATH=src python reviews/island-audit-2026-09-18/reach.py"
   ],
+  "acceptance_commands_note": "第1/3 条为回归与 lint（前置）；第2 条为判别力测试，是唯一判据型命令；第4 条 reach.py 为附带项，单独不构成判据。命令用可移植的 python。若本机 python 缺依赖（报 ModuleNotFoundError: No module named 'langgraph' 或 No module named ruff），先跑 python -c 'import langgraph, pytest, ruff' 自检再重试；owner 侧沙箱无依赖，用 /Users/abab/.workbuddy/binaries/python/envs/default/bin/python。",
   "acceptance": {
     "positive": [
-      "`reach.py` 不再列出 outbox；且幂等性有反例测试（同一条目投递两次只生效一次）"
+      "store 内该幂等键的 outbox entry 数 = 1（同键投递两次后仍为 1）（由第2条命令核对）",
+      "该次投递在 /audit-events 可见（由第2条命令核对）"
     ],
     "negative": [
       "不得在 outbox 之外直接做外部副作用（那正是它要防的事）",
+      "幂等性反例测试**不构成**「生产链路真走 outbox」的证据——判据是 store 里真实落了 entry，不是测试变绿",
       "全量测试不许下降；ruff 必须全绿"
     ]
   },
-  "reached_by": "`reach.py` 不再列出 outbox；且幂等性有反例测试（同一条目投递两次只生效一次）",
-  "reached_note": "判据是「生产入口可达」，不是「测试通过」。孤岛模块的既有测试现在都是绿的，所以测试绿不能证明接线成功。",
-  "next_package": null
+  "discriminating_power": {
+    "short_circuit": "在 graph.py 的 release_gate 里调一次公开的 Outbox.enqueue()（outbox.py:259），随后照旧在 outbox 之外直接做外部副作用，不经过 Outbox.deliver / effector。",
+    "assertion_turns_red_at": "tests/test_m04_wire_outbox.py 用 spy effector 计数并跑一次真实发布动作；断言 store 内该幂等键 outbox entry 数 == 1、副作用只经 Outbox.deliver 的 effector 被调用（effector 调用次数 == 1）、同键二次发布不增加 effector 调用。短路直做副作用时 effector spy 计数为 0（副作用绕过了 outbox）⇒ 该断言红。",
+    "self_proof": "在未接线基线上运行第2条命令，必须失败；且失败须为判据型（AssertionError：entry 数或 effector 调用计数不符），不得为符号缺失型（ImportError/AttributeError/collection error 指向接线后才出现的符号）。"
+  },
+  "reached_by": "一次真实的发布/导出动作产生 outbox entry（outbox.py:295 落 store）且该次投递可经 /audit-events 查到；同一幂等键重复投递不产生第二条 entry；reach.py 不再列出 outbox",
+  "reached_note": "判据是「一次真实 run 的运行时可见后果」，**不是「测试通过」，也不再是「reach.py 不再列出 X」**。反事实已实测：在本仓 `cli.py:33` 注入一个永不执行的 `import autoresearch.audit_evidence  # noqa: F401`，`reach.py` 可达模块数 44 → 45 且 audit_evidence 从孤岛清单消失，零生产调用。⇒ 静态可达性单独不构成判据，必须由运行时后果兜底。",
+  "next_package": null,
+  "decision_note": "主理人裁决 D-WIRE-02：『交付/导出链路』= 外部发布动作（graph.py:82 release_gate）。理由：全仓唯一既不可逆又对外的动作就是它（槽位 14 K11 的 ACL 也挂在这里）；export.py 至今不存在，不能作为接入点。"
 }

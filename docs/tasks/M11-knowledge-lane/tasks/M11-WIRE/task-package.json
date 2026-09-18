@@ -15,31 +15,43 @@
   ],
   "allowed_paths": [
     "src/autoresearch/cli.py",
-    "docs/tasks/M11-knowledge-lane/"
+    "docs/tasks/M11-knowledge-lane/",
+    "tests/test_m11_wire_benchmark_cli.py",
+    ".ai-team/tasks/"
   ],
   "forbidden_paths": [
     "src/autoresearch/contracts.py",
-    "src/autoresearch/graph.py"
+    "src/autoresearch/graph.py",
+    "src/autoresearch/agents/base.py"
   ],
   "deliverables": [
     "CLI 暴露一个可执行的条件对比子命令",
-    "benchmark 的 frozen corpus 保持不变（corpus.json 是冻结语料）"
+    "benchmark 的 frozen corpus 保持不变（corpus.json 是冻结语料）",
+    "判别力测试：tests/test_m11_wire_benchmark_cli.py（本包 exclusive；判据型失败点见 discriminating_power）"
   ],
   "acceptance_commands": [
     "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
-    "python -m ruff check src tests",
-    "python3 reviews/island-audit-2026-09-18/reach.py"
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" tests/test_m11_wire_benchmark_cli.py",
+    "PYTHONPATH=src python -m ruff check src tests",
+    "PYTHONPATH=src python reviews/island-audit-2026-09-18/reach.py"
   ],
+  "acceptance_commands_note": "第1/3 条为回归与 lint（前置）；第2 条为判别力测试，是唯一判据型命令；第4 条 reach.py 为附带项，单独不构成判据。命令用可移植的 python。若本机 python 缺依赖（报 ModuleNotFoundError: No module named 'langgraph' 或 No module named ruff），先跑 python -c 'import langgraph, pytest, ruff' 自检再重试；owner 侧沙箱无依赖，用 /Users/abab/.workbuddy/binaries/python/envs/default/bin/python。",
   "acceptance": {
     "positive": [
-      "`reach.py` 的 A 类（工具可达、生产不可达）不再列出 benchmark"
+      "stdout 的 corpus_id 等于 fixtures 里的值（benchmark.py:722）（由第2条命令核对）",
+      "stdout 含运行时从语料算出的量（cases 数 / 各 condition 的 case 计数 / corpus 摘要 digest），与 fixtures 逐项一致——非硬编码常量（由第2条命令核对）"
     ],
     "negative": [
       "不得改动 corpus.json 的既有键或标签（测试逐标签比对）",
       "全量测试不许下降；ruff 必须全绿"
     ]
   },
-  "reached_by": "`reach.py` 的 A 类（工具可达、生产不可达）不再列出 benchmark",
-  "reached_note": "判据是「生产入口可达」，不是「测试通过」。孤岛模块的既有测试现在都是绿的，所以测试绿不能证明接线成功。",
+  "discriminating_power": {
+    "short_circuit": "cli 子命令里硬编码 corpus_id 常量（从 tests/fixtures/benchmark/corpus.json 抄来），而不真正调用 benchmark.load_corpus（benchmark.py:722）。",
+    "assertion_turns_red_at": "tests/test_m11_wire_benchmark_cli.py 断言 stdout 含运行时从语料算出的量——cases 数、各 condition 的 case 计数、或 corpus 摘要 digest（benchmark.py:617 _canonical_digest）——并与 fixtures 逐项比对。短路硬编码 corpus_id 时这些量缺失或与 fixtures 不符 ⇒ 该断言红。",
+    "self_proof": "在未接线基线上运行第2条命令，必须失败；且失败须为判据型（AssertionError：语料导出的量缺失或不符），不得为符号缺失型（ImportError/AttributeError/collection error 指向接线后才出现的符号）。"
+  },
+  "reached_by": "一条新的 CLI 子命令，其 stdout 里的 BenchmarkReport 含冻结语料的 corpus_id 与三条件对比；reach.py 的 A 类（工具可达、生产不可达）不再列出 benchmark",
+  "reached_note": "判据是「一次真实 run 的运行时可见后果」，**不是「测试通过」，也不再是「reach.py 不再列出 X」**。反事实已实测：在本仓 `cli.py:33` 注入一个永不执行的 `import autoresearch.audit_evidence  # noqa: F401`，`reach.py` 可达模块数 44 → 45 且 audit_evidence 从孤岛清单消失，零生产调用。⇒ 静态可达性单独不构成判据，必须由运行时后果兜底。",
   "next_package": null
 }

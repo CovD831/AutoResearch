@@ -3,7 +3,7 @@
   "phase": "R-008 / post-baseline（接线批次）",
   "owner_lane": "M05",
   "owner": "member A",
-  "status": "ready",
+  "status": "blocked",
   "base_ref": "main",
   "branch": "feat/m05-wire",
   "depends_on": [],
@@ -15,11 +15,13 @@
   ],
   "allowed_paths": [
     "src/autoresearch/adapter_search_service.py",
-    "src/autoresearch/external_sources.py"
+    "src/autoresearch/external_sources.py",
+    ".ai-team/tasks/"
   ],
   "forbidden_paths": [
     "src/autoresearch/contracts.py",
-    "src/autoresearch/graph.py"
+    "src/autoresearch/graph.py",
+    "src/autoresearch/agents/base.py"
   ],
   "deliverables": [
     "核验到 retracted/corrected 的记录，其事实经 retraction 模块落到结构化产物（而非仅诊断文本）",
@@ -27,9 +29,10 @@
   ],
   "acceptance_commands": [
     "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
-    "python -m ruff check src tests",
-    "python3 reviews/island-audit-2026-09-18/reach.py"
+    "PYTHONPATH=src python -m ruff check src tests",
+    "PYTHONPATH=src python reviews/island-audit-2026-09-18/reach.py"
   ],
+  "acceptance_commands_note": "命令用可移植的 python。若本机 python 缺依赖（报 ModuleNotFoundError: No module named 'langgraph' 或 No module named ruff），先跑 python -c 'import langgraph, pytest, ruff' 自检再重试；owner 侧沙箱无依赖，用 /Users/abab/.workbuddy/binaries/python/envs/default/bin/python。",
   "acceptance": {
     "positive": [
       "`reach.py` 不再列出 retraction；且一条真 run 里被撤稿的记录能被断言为结构化状态"
@@ -40,6 +43,8 @@
     ]
   },
   "reached_by": "`reach.py` 不再列出 retraction；且一条真 run 里被撤稿的记录能被断言为结构化状态",
-  "reached_note": "判据是「生产入口可达」，不是「测试通过」。孤岛模块的既有测试现在都是绿的，所以测试绿不能证明接线成功。",
-  "next_package": null
+  "reached_note": "判据是「一次真实 run 的运行时可见后果」，**不是「测试通过」，也不再是「reach.py 不再列出 X」**。反事实已实测：在本仓 `cli.py:33` 注入一个永不执行的 `import autoresearch.audit_evidence  # noqa: F401`，`reach.py` 可达模块数 44 → 45 且 audit_evidence 从孤岛清单消失，零生产调用。⇒ 静态可达性单独不构成判据，必须由运行时后果兜底。",
+  "next_package": null,
+  "blocked_on_owner_decision": true,
+  "blocked_reason": "同 M02 的 K8 前缀缺口：『经 K8 传播 affected_claims 非空』在修好前物理不可达（诊断行本身可观测，但判据的另一半不可达）"
 }

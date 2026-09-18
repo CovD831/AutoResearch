@@ -3,7 +3,7 @@
   "phase": "R-008 / post-baseline（接线批次）",
   "owner_lane": "M02",
   "owner": "member A",
-  "status": "ready",
+  "status": "blocked",
   "base_ref": "main",
   "branch": "feat/m02-wire",
   "depends_on": [],
@@ -17,7 +17,8 @@
   "allowed_paths": [
     "src/autoresearch/agents/orchestrator.py",
     "src/autoresearch/agents/paper_search.py",
-    "src/autoresearch/gates.py"
+    "src/autoresearch/gates.py",
+    ".ai-team/tasks/"
   ],
   "forbidden_paths": [
     "src/autoresearch/contracts.py",
@@ -30,9 +31,10 @@
   ],
   "acceptance_commands": [
     "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
-    "python -m ruff check src tests",
-    "python3 reviews/island-audit-2026-09-18/reach.py"
+    "PYTHONPATH=src python -m ruff check src tests",
+    "PYTHONPATH=src python reviews/island-audit-2026-09-18/reach.py"
   ],
+  "acceptance_commands_note": "命令用可移植的 python。若本机 python 缺依赖（报 ModuleNotFoundError: No module named 'langgraph' 或 No module named ruff），先跑 python -c 'import langgraph, pytest, ruff' 自检再重试；owner 侧沙箱无依赖，用 /Users/abab/.workbuddy/binaries/python/envs/default/bin/python。",
   "acceptance": {
     "positive": [
       "`reach.py` 输出中不再列出 evidence_prefetch / invalidation；且有一条真实 run 的诊断能证明预取门被执行过"
@@ -43,6 +45,8 @@
     ]
   },
   "reached_by": "`reach.py` 输出中不再列出 evidence_prefetch / invalidation；且有一条真实 run 的诊断能证明预取门被执行过",
-  "reached_note": "判据是「生产入口可达」，不是「测试通过」。孤岛模块的既有测试现在都是绿的，所以测试绿不能证明接线成功。",
-  "next_package": null
+  "reached_note": "判据是「一次真实 run 的运行时可见后果」，**不是「测试通过」，也不再是「reach.py 不再列出 X」**。反事实已实测：在本仓 `cli.py:33` 注入一个永不执行的 `import autoresearch.audit_evidence  # noqa: F401`，`reach.py` 可达模块数 44 → 45 且 audit_evidence 从孤岛清单消失，零生产调用。⇒ 静态可达性单独不构成判据，必须由运行时后果兜底。",
+  "next_package": null,
+  "blocked_on_owner_decision": true,
+  "blocked_reason": "K8 claim 图前缀未定：invalidation.py:163-164 默认前缀 claim_/gate_，而 knowledge.py:171-174 的 add_edge 端点是 wiki page id ⇒ **默认路径构造即抛 K8-3 校验错**（invalidation.py:119-124 的 affected_claims 非空校验）；全仓无人注入自定义 ClaimGraph（grep 仅命中 invalidation.py 自身与其测试）⇒ invalidation.propagated 事件永不触发，本包判据在修好前物理不可达"
 }

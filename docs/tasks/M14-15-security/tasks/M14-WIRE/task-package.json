@@ -3,7 +3,7 @@
   "phase": "R-008 / post-baseline（接线批次）",
   "owner_lane": "M14",
   "owner": "member B",
-  "status": "ready",
+  "status": "blocked",
   "base_ref": "main",
   "branch": "feat/m14-wire",
   "depends_on": [],
@@ -16,13 +16,16 @@
     "telemetry.py (502)"
   ],
   "allowed_paths": [
+    "src/autoresearch/external_sources.py",
     "src/autoresearch/api.py",
     "src/autoresearch/web_api.py",
-    "src/autoresearch/cli.py"
+    "src/autoresearch/cli.py",
+    ".ai-team/tasks/"
   ],
   "forbidden_paths": [
     "src/autoresearch/contracts.py",
-    "src/autoresearch/graph.py"
+    "src/autoresearch/graph.py",
+    "src/autoresearch/agents/base.py"
   ],
   "deliverables": [
     "出网路径经 pii 的敏感标签检查（有反例：未标注的敏感数据不得出网）",
@@ -31,9 +34,10 @@
   ],
   "acceptance_commands": [
     "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
-    "python -m ruff check src tests",
-    "python3 reviews/island-audit-2026-09-18/reach.py"
+    "PYTHONPATH=src python -m ruff check src tests",
+    "PYTHONPATH=src python reviews/island-audit-2026-09-18/reach.py"
   ],
+  "acceptance_commands_note": "命令用可移植的 python。若本机 python 缺依赖（报 ModuleNotFoundError: No module named 'langgraph' 或 No module named ruff），先跑 python -c 'import langgraph, pytest, ruff' 自检再重试；owner 侧沙箱无依赖，用 /Users/abab/.workbuddy/binaries/python/envs/default/bin/python。",
   "acceptance": {
     "positive": [
       "`reach.py` 不再列出 pii / licensing / telemetry"
@@ -44,6 +48,8 @@
     ]
   },
   "reached_by": "`reach.py` 不再列出 pii / licensing / telemetry",
-  "reached_note": "判据是「生产入口可达」，不是「测试通过」。孤岛模块的既有测试现在都是绿的，所以测试绿不能证明接线成功。",
-  "next_package": null
+  "reached_note": "判据是「一次真实 run 的运行时可见后果」，**不是「测试通过」，也不再是「reach.py 不再列出 X」**。反事实已实测：在本仓 `cli.py:33` 注入一个永不执行的 `import autoresearch.audit_evidence  # noqa: F401`，`reach.py` 可达模块数 44 → 45 且 audit_evidence 从孤岛清单消失，零生产调用。⇒ 静态可达性单独不构成判据，必须由运行时后果兜底。",
+  "next_package": null,
+  "blocked_on_owner_decision": true,
+  "blocked_reason": "policy 层挂点未定：egress 唯一路径是 external_sources.py，读路径是 knowledge search；pii/licensing 挂哪一层会决定真实 allowed_paths（含是否触碰 knowledge.py 这一全局串行点）"
 }
