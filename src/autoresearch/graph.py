@@ -165,8 +165,12 @@ def build_research_graph(
         #
         # Default deny applies: a release with no policy naming this reviewer on
         # this manuscript is refused. The refusal is recorded as a blocker rather
-        # than raised, so the run stays resumable once a policy is granted -- the
-        # same shape as a failed gate.
+        # than raised, so the failure carries a stated reason instead of surfacing
+        # as an exception -- but it is NOT resumable: this path writes only
+        # ``RunStatus.BLOCKED`` and a blocker, never an interrupt, and ``resume``
+        # refuses a run with no interrupt (application.py:342-343). Once a policy
+        # is granted the release must therefore be re-published as a new run;
+        # there is no supported retry entry for a policy-refused release yet.
         if access_policy is not None:
             acl_decision = access_policy.check(
                 reviewer_name,

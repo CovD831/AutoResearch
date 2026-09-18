@@ -37,7 +37,7 @@ a mechanical change, so it is deliberately left out.
 - [x] ADR-01 slot 3 delegates PDF parsing to `PdfParser` (docling first), with the old `pypdf` pass retained and explicitly ranked last rather than removed.
 - [x] ADR-01 slot 7 verifies persisted DOIs against Crossref and surfaces retracted/corrected verdicts in the run diagnostics.
 - [x] ADR-01 slot 14 (K11) is evaluated at the external release, the one irreversible outward-facing action; off by default and **stated as such** in the run warnings.
-- [x] Access control denies by default when enabled, and records the refusal as a blocker rather than raising, so the run stays resumable.
+- [x] Access control denies by default when enabled, and records the refusal as a blocker rather than raising. Note: the refusal path leaves no interrupt, and `resume` refuses a run with no interrupt, so re-publishing after a policy grant requires a fresh run — there is no supported retry entry for a policy-refused release yet.
 - [x] The four ACL states are pinned by tests (off / on+no policy / on+granted / on+ungranted) because a layer that denies everything would satisfy a denies-only suite.
 - [x] R006-P0 is archived out of the production package with its negative result recorded.
 - [x] All 28 task packages carry a status backed by a measurement, with `integrated_at` or `archived_at` evidence pointers.
