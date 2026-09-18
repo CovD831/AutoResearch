@@ -370,8 +370,14 @@ jobs:
 
           [features.rollout_budget]
           enabled = true
-          limit_tokens = 1500000
-          reminder_at_remaining_tokens = [400000, 150000]
+          # 2026-09-18: raised 1500000 -> 3000000 (user-approved).
+          # 2,031-line diff (#28) hit 1,285,938 with no truncation; the 2,511-line
+          # diff (#29) reached 1,506,675 and was cut off mid-investigation -- the
+          # 1.5M cap was the wall, not the prompt. Re-test at the new cap; if
+          # review quality still drops at 2-3M, treat it as a prompt problem and
+          # narrow the diff scope rather than raise the cap further.
+          limit_tokens = 3000000
+          reminder_at_remaining_tokens = [800000, 300000]
           TOML
 
       - name: Run the review
