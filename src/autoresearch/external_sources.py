@@ -182,6 +182,25 @@ class CrossrefClient:
             headers={"User-Agent": f"AutoResearch-B5/0.1 (mailto:{mailto})"},
         )
 
+    def close(self) -> None:
+        """Release the underlying connection pool.
+
+        ``httpx.Client`` holds keep-alive sockets; without an explicit close the
+        pool is only reclaimed when the object is garbage-collected, which
+        surfaces as a ``ResourceWarning`` (and, under ``-W error``, fails the
+        suite) long after the call that leaked it. The client was previously
+        unclosable, so *every* caller leaked — that went unnoticed while this
+        module had no production consumer.
+        """
+
+        self._client.close()
+
+    def __enter__(self) -> CrossrefClient:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.close()
+
     def get_work(self, doi: str) -> tuple[TransportOutcome, dict | None]:
         url = f"https://api.crossref.org/works/{doi}"
         try:

@@ -44,6 +44,11 @@ from autoresearch.contracts import (
     PaperRecord,
 )
 from autoresearch.evidence import EvidenceService
+from autoresearch.external_sources import (
+    CrossrefAdapter,
+    CrossrefClient,
+    SourceStatus,
+)
 from autoresearch.knowledge import KnowledgeService
 from autoresearch.search_adapters import (
     RetrievalError,
@@ -78,6 +83,8 @@ class AdapterBackedPaperSearchService:
         adapters: dict[str, Any] | None = None,
         network_enabled: bool = False,
         actor: str = "paper_search",
+        doi_verification_limit: int = 10,
+        crossref_mailto: str = "autoresearch@example.invalid",
     ) -> None:
         self.store = store
         self.evidence = evidence
@@ -91,6 +98,15 @@ class AdapterBackedPaperSearchService:
         self.adapters = (
             adapters if adapters is not None else build_search_adapters(settings=settings)
         )
+        #: ADR-01 slot 7 (Crossref / Retraction Watch). Keyed by normalized DOI so
+        #: the same work retrieved from two sources is verified once: the bound
+        #: exists to cap network round-trips, and re-checking a duplicate would
+        #: spend it on a question already answered.
+        self._verified_dois: set[str] = set()
+        #: One network round-trip per DOI, so it is bounded: a run that retrieves
+        #: 15 papers must not become 15 sequential calls on the critical path.
+        self.doi_verification_limit = doi_verification_limit
+        self._crossref_mailto = crossref_mailto
 
     # -- persistence (mirrors PaperSearchService._persist) ------------------ #
 
@@ -236,6 +252,9 @@ class AdapterBackedPaperSearchService:
                 )
                 continue
             outcome.papers.append(persisted[0])
+            # ADR-01 slot 7: verify only after the record is durable, so a
+            # retraction verdict is attached to a paper the run actually holds.
+            self._verify_doi(outcome, persisted[0])
 
         if not outcome.papers:
             # Two different situations must not collapse into one decision. The
@@ -267,6 +286,52 @@ class AdapterBackedPaperSearchService:
             actor=self.actor,
         )
         return outcome
+
+    def _verify_doi(self, outcome: SearchOutcome, paper: PaperRecord) -> None:
+        """Ask Crossref whether this DOI is retracted or corrected (ADR-01 slot 7).
+
+        A retracted paper entering Related Work is a bibliography defect the
+        pipeline should *surface*, not one it should discover later by accident.
+
+        The verdict is recorded in the run's diagnostics rather than used to drop
+        the record. Dropping it would be a behaviour change for a lane whose
+        contract this package does not own -- so the fact is made visible and the
+        decision stays with the caller. That is the same split the rest of this
+        service uses: it reports, it does not adjudicate.
+
+        Bounded by ``doi_verification_limit`` because each check is a network
+        round-trip; a run that retrieves 15 papers must not silently become 15
+        sequential calls on the critical path.
+        """
+
+        if not self.network_enabled or not paper.doi:
+            return
+        key = paper.doi.lower().strip()
+        if key in self._verified_dois:
+            return
+        if len(self._verified_dois) >= self.doi_verification_limit:
+            return
+        # Counted before the call: the bound caps *attempts*, and an attempt that
+        # fails has still spent a round-trip.
+        self._verified_dois.add(key)
+        # Each verification gets its own short-lived client and closes it on
+        # every path. A run performs at most ``doi_verification_limit`` checks,
+        # so pooling across them saves nothing measurable while holding sockets
+        # open for the whole run.
+        try:
+            with CrossrefClient(mailto=self._crossref_mailto) as client:
+                verdict = CrossrefAdapter(client=client).resolve(paper.doi)
+        except Exception as exc:  # a verification outage must not stop retrieval
+            outcome.diagnostics.append(
+                f"doi verification unavailable for {paper.doi}: {type(exc).__name__}"
+            )
+            return
+        if verdict.status in (SourceStatus.RETRACTED, SourceStatus.CORRECTED):
+            outcome.diagnostics.append(
+                f"bibliographic alert: doi {paper.doi} is "
+                f"{verdict.status.value} per Crossref; it must not be cited as a "
+                "valid finding without stating its status"
+            )
 
     def rate_limit_summary(self) -> dict[str, object]:
         """Per-source limit monitor across every adapter the mainline used."""
