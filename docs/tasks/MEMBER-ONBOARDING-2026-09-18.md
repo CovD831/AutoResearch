@@ -157,7 +157,7 @@ python -c "import langgraph, pytest, ruff; print('ok')"
 
 ## 5. 边界与提交纪律
 
-- `allowed_paths` / `forbidden_paths` 是硬边界。`contracts.py` **全包禁改**；`graph.py` 仅 `M04` / `M08` 合法；`agents/base.py` 除 `M04` / `M08` 外全禁。
+- `allowed_paths` / `forbidden_paths` 是硬边界。`contracts.py` **全包禁改**；`graph.py` 仅 `M04` / `M08` 合法；`agents/base.py` **10 包全禁（无豁免，`M04`/`M08` 也禁）** —— `WorkflowState` 是全 lane 共享状态契约；`loop_closure` / `diagnostics` / `warnings` / `blockers` 已声明，本批 6 个 `ready` 包无一需要新增键（D-WIRE-04）。
 - 不得 `--no-verify`，不得 force push 到共享分支。
 - **不要读仓库或项目的 `.env`**，不要把任何 key 写进代码、测试或提交信息。
 - 提交信息里凡是「已通过/已修复」的声称，都要能对应到你自己跑过的命令输出。
