@@ -54,6 +54,7 @@ from autoresearch.invocation_contracts import (
     request_fingerprint,
 )
 from autoresearch.knowledge import KnowledgeService
+from autoresearch.knowledge_retrieval import EmbeddingProvider
 from autoresearch.llm import LLMService
 from autoresearch.pipeline_contracts import (
     EvaluationSectionPipelineResult,
@@ -167,6 +168,10 @@ class AutoResearchApplication:
         self.store = RecordStore(self.settings.db_path)
         self.evidence = EvidenceService(self.store)
         self.gates = GateService(self.evidence, self.store)
+        # Unscoped write/index handle, shared by search / reader / profile /
+        # experiences. It deliberately has no project scope, so ``retrieve`` on it
+        # fails closed; retrieval goes through ``knowledge_scope(project_id)``
+        # (M11-MVP-02 / ledger D-M11-02-01).
         self.knowledge = KnowledgeService(self.store)
         self.handoffs = HandoffService(self.store)
         self.state_machine = StateMachine()
@@ -255,6 +260,28 @@ class AutoResearchApplication:
             access_policy=self.access_policy,
         )
         self._graph_lock = threading.RLock()
+
+    def knowledge_scope(
+        self,
+        project_id: str,
+        *,
+        embedding_provider: EmbeddingProvider | None = None,
+    ) -> KnowledgeService:
+        """A ``KnowledgeService`` bound to one project, sharing this app's store.
+
+        Retrieval is project-scoped, so every caller that runs ``retrieve`` must say
+        which project it is asking about. ``self.knowledge`` is the unscoped
+        write/index handle the other services share; this factory is the only
+        sanctioned way to obtain a handle that may retrieve (M11-MVP-02 /
+        ledger D-M11-02-01). Passing ``project_id`` positionally is impossible by
+        construction -- the scope is not optional and cannot be omitted silently.
+        """
+
+        return KnowledgeService(
+            self.store,
+            project_id=project_id,
+            embedding_provider=embedding_provider,
+        )
 
     @staticmethod
     def _interrupts(result: dict[str, Any]) -> list[dict[str, Any]]:

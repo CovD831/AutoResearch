@@ -173,6 +173,7 @@ def create_api(application: AutoResearchApplication | None = None) -> FastAPI:
 
     @app.get("/knowledge/search")
     def search_knowledge(
+        project_id: str = Query(min_length=1, description="Project scope for the query"),
         q: str = Query(min_length=1),
         partitions: str = "papers,knowledge,experiences",
         level: int = Query(default=1, ge=1, le=2),
@@ -187,7 +188,9 @@ def create_api(application: AutoResearchApplication | None = None) -> FastAPI:
             ]
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
-        return runtime.knowledge.retrieve(
+        # `project_id` is required, not optional: an unscoped knowledge query is
+        # refused instead of being widened to every project (M11-MVP-02).
+        return runtime.knowledge_scope(project_id).retrieve(
             q,
             partitions=selected,
             level=level,

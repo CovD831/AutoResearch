@@ -273,6 +273,10 @@ def add_evidence(
 @app.command("search-knowledge")
 def search_knowledge(
     query: Annotated[str, typer.Argument()],
+    project: Annotated[
+        str,
+        typer.Option("--project", help="Project scope for the query (required)"),
+    ],
     partitions: Annotated[
         str,
         typer.Option("--partitions", help="Comma-separated partition names"),
@@ -280,7 +284,7 @@ def search_knowledge(
     level: Annotated[int, typer.Option("--level", min=1, max=2)] = 1,
     require_evidence: Annotated[bool, typer.Option("--require-evidence")] = False,
 ) -> None:
-    """Run partition-aware lexical or lexical+graph retrieval."""
+    """Run project-scoped partition-aware lexical or lexical+graph retrieval."""
     selected = [
         KnowledgePartition(value.strip()) for value in partitions.split(",") if value.strip()
     ]
@@ -289,7 +293,7 @@ def search_knowledge(
         _echo(
             [
                 hit.model_dump(mode="json")
-                for hit in runtime.knowledge.retrieve(
+                for hit in runtime.knowledge_scope(project).retrieve(
                     query,
                     partitions=selected,
                     level=level,

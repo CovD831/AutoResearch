@@ -23,7 +23,9 @@ from autoresearch.storage import RecordStore
 
 @pytest.fixture
 def svc(tmp_path: Path) -> KnowledgeService:
-    return KnowledgeService(RecordStore(tmp_path / "wiki.sqlite3"))
+    # ``_page`` writes into project "demo"; the service is scoped to it because
+    # ``retrieve`` refuses to run without a project scope (M11-MVP-02, D-M11-02-01).
+    return KnowledgeService(RecordStore(tmp_path / "wiki.sqlite3"), project_id="demo")
 
 
 def _page(

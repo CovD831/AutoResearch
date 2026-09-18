@@ -162,7 +162,7 @@ def test_partitioned_wiki_graph_retrieval(runtime: AutoResearchApplication, proj
             )
         )
 
-    hits = runtime.knowledge.retrieve(
+    hits = runtime.knowledge_scope("demo").retrieve(
         "provenance",
         partitions=[KnowledgePartition.PAPERS],
         level=2,
