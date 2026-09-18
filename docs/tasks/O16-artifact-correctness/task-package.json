@@ -1,0 +1,40 @@
+{
+  "task_id": "O16-ARTIFACT-CORRECTNESS",
+  "phase": "R-007",
+  "owner_lane": "writer",
+  "status": "handoff",
+  "base_ref": "fab8de3",
+  "branch": "codex/o16-artifact-correctness",
+  "depends_on": [],
+  "merge_after": [],
+  "allowed_paths": [
+    "src/autoresearch/reader_service.py",
+    "src/autoresearch/writing_service.py",
+    "tests/test_workflow.py",
+    "tests/test_pipeline_orchestration.py",
+    "tests/test_mainline_e2e.py",
+    "tests/test_artifact_correctness.py",
+    "tests/fixtures/artifact_correctness/",
+    "docs/tasks/O16-artifact-correctness/",
+    ".ai-team/tasks/O16-ARTIFACT-CORRECTNESS.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/gates.py",
+    "src/autoresearch/application.py",
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/pipeline_contracts.py",
+    "src/autoresearch/agents/reviewer.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "deliverables": [
+    "extraction failure expressed as empty findings, never a sentinel string",
+    "Related Work and References deduplicated with the same _unique primitive as claims",
+    "delivery file (MANUSCRIPT_DRAFT.md) no longer diverges from the registry latest revision",
+    "discriminating-power tests proving each fix on pre-fix code",
+    "L3/PROGRESS/HANDOFF and task-local ledger"
+  ],
+  "next_package": "O17-WRITING-HEAD"
+}
