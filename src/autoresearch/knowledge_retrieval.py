@@ -7,8 +7,10 @@ Stages, in the order they must run:
 - ``L1``  lexical recall -- field-weighted BM25 over title / tags / body, replacing
   the previous naive substring count (``TASK-SPECS.md:420``);
 - ``L2``  vector recall -- cosine similarity against an injected ``EmbeddingProvider``;
-  when no provider is available the arm reports a degradation reason instead of
-  inventing a vector result (``TASK-SPECS.md:438``);
+  when no provider is available **or the provider raises**, the arm reports a
+  degradation reason instead of inventing a vector result, and a partially computed
+  vector pass is discarded rather than mixed into the ranking
+  (``TASK-SPECS.md:438``);
 - ``L2``  graph expansion -- same-partition neighbours of the surviving candidates,
   preserving the M11-MVP-01 semantics (``TASK-SPECS.md:432``).
 
@@ -263,6 +265,41 @@ def vector_scores(
     return scores
 
 
+def vector_arm(
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    query: str,
+    embedder: EmbeddingProvider | None,
+) -> tuple[dict[str, float], str | None]:
+    """Run the vector arm behind a degradation boundary (``TASK-SPECS.md:438``).
+
+    Returns ``(scores, degradation_reason)``. When the arm produced scores the
+    reason is ``None``; when the arm could not run the scores are ``{}`` -- never a
+    partial vector result, because mixing half a vector pass into the ranking would
+    silently produce an incomplete result set.
+
+    An ``EmbeddingProvider`` is an external capability boundary: the model file may
+    be missing, the model may fail to load, the dimensions may disagree, or the
+    provider may simply have a bug. None of those may abort a query that the
+    lexical arm can still answer, so ``embed`` is allowed to raise here and the
+    reason keeps both the exception type and its message.
+
+    ``BaseException`` is deliberately **not** caught: ``KeyboardInterrupt`` and
+    ``SystemExit`` are process-level signals, not capability failures. See ledger
+    ``D-M11-02-08``.
+    """
+
+    if embedder is None:
+        return {}, "no embedding provider"
+    if not query.strip():
+        return {}, None
+    try:
+        scores = vector_scores(pages, query, embedder)
+    except Exception as exc:
+        return {}, f"vector provider failed: {type(exc).__name__}: {exc}"
+    return scores, None
+
+
 def expand_graph(
     *,
     edges: Iterable[Mapping[str, Any]],
@@ -411,12 +448,7 @@ def recall(
     timings[STAGE_LEXICAL] = round((clock() - started) * 1000.0, 6)
 
     started = clock()
-    if embedder is None:
-        vector: dict[str, float] = {}
-        degradation: str | None = "no embedding provider"
-    else:
-        vector = vector_scores(pool, query, embedder) if query.strip() else {}
-        degradation = None
+    vector, degradation = vector_arm(pool, query=query, embedder=embedder)
     timings[STAGE_VECTOR] = round((clock() - started) * 1000.0, 6)
 
     scores: dict[str, float] = {}

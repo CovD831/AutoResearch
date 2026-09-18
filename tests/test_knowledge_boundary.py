@@ -79,7 +79,10 @@ def _load_offline_fixture() -> dict:
 
 def _run_offline_fixture(database: Path, payload: dict) -> dict:
     store = RecordStore(database)
-    knowledge = KnowledgeService(store)
+    # The fixture is a single-project corpus; retrieval is scoped to that project
+    # because ``retrieve`` now refuses to run without one (M11-MVP-02, D-M11-02-01).
+    project_id = payload["pages"][0]["project_id"]
+    knowledge = KnowledgeService(store, project_id=project_id)
     EvidenceService(store).add(EvidenceItem.model_validate(payload["evidence"]))
     for raw_page in payload["pages"]:
         knowledge.add_page(WikiPage.model_validate(raw_page))
@@ -468,7 +471,7 @@ def test_relation_registry_rejects_conflicting_policy_registration():
 
 def test_bridge_edge_does_not_bypass_explicit_partition_selection(tmp_path: Path):
     store = RecordStore(tmp_path / "records.sqlite3")
-    service = KnowledgeService(store)
+    service = KnowledgeService(store, project_id="demo")
     service.add_page(
         _page("experience", partition=KnowledgePartition.EXPERIENCES)
     )

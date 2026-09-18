@@ -12,7 +12,11 @@ from autoresearch.contracts import (
     RetrievalHit,
     WikiPage,
 )
-from autoresearch.knowledge_retrieval import describe_retrieval_level, recall
+from autoresearch.knowledge_retrieval import (
+    EmbeddingProvider,
+    describe_retrieval_level,
+    recall,
+)
 from autoresearch.recall_audit import RecallAuditWriter, build_record
 from autoresearch.storage import RecordStore
 
@@ -20,6 +24,14 @@ from autoresearch.storage import RecordStore
 # record rather than through the versioned ``wiki_page`` table. The version
 # table is append-only (one row per revision_id), so a bare id never matches.
 WIKI_PAGE_HEAD_KIND = "wiki_page_head"
+
+
+class KnowledgeScopeRequiredError(ValueError):
+    """Raised when ``retrieve`` is asked to run without a project scope.
+
+    Fail-closed: a missing scope must stop the query, not be reinterpreted as
+    "every project". See ledger ``D-M11-02-01``.
+    """
 
 
 class GraphEdgeRelationPolicy(StrEnum):
@@ -86,6 +98,10 @@ class KnowledgeService:
         self,
         store: RecordStore,
         relation_registry: GraphEdgeRelationRegistry | None = None,
+        *,
+        project_id: str | None = None,
+        embedding_provider: EmbeddingProvider | None = None,
+        recall_audit_enabled: bool = True,
     ):
         self.store = store
         self.relation_registry = (
@@ -93,6 +109,14 @@ class KnowledgeService:
             if relation_registry is not None
             else GraphEdgeRelationRegistry.core()
         )
+        # Project scope and the optional vector capability are creation-time inputs,
+        # never ambient attributes set after the fact: a caller that forgets them
+        # gets a loud failure from ``retrieve`` instead of a silently unscoped
+        # query, and a reader of the constructor can see that ``project_id`` is a
+        # lifecycle input rather than an optional extra (D-M11-02-01).
+        self.project_id = project_id
+        self.embedding_provider = embedding_provider
+        self.recall_audit_enabled = recall_audit_enabled
 
     def add_page(self, page: WikiPage) -> WikiPage:
         # The head read, contiguous-revision check, immutable version insert,
@@ -212,13 +236,19 @@ class KnowledgeService:
         meaning. ``score`` becomes a BM25 / cosine value instead of a naive substring
         count, and ``retrieval_level`` now names the arms that actually ran, carrying
         the degradation reason when the vector arm could not run.
+
+        Raises ``KnowledgeScopeRequiredError`` when the service was created without a
+        project scope. An unscoped query is refused rather than widened to every
+        project: "we do not know the scope" must never read as "every scope"
+        (D-M11-02-01).
         """
 
-        # L0 needs a project scope, but this package may not change ``__init__`` and
-        # may not touch ``application.py``. Read it as an optional attribute so the
-        # filter is real and testable today; production wiring belongs to the owner
-        # (ledger D-M11-02-01).
-        project_id: str | None = getattr(self, "project_id", None)
+        if not self.project_id:
+            raise KnowledgeScopeRequiredError(
+                "KnowledgeService project scope is required for retrieve(); "
+                "construct it as KnowledgeService(store, project_id=...)"
+            )
+        project_id: str = self.project_id
         pages = [
             page.model_dump()
             for partition in partitions
@@ -246,7 +276,7 @@ class KnowledgeService:
             project_id=project_id,
             partitions=partitions,
             require_evidence=require_evidence,
-            embedder=getattr(self, "embedding_provider", None),
+            embedder=self.embedding_provider,
             edges=edges,
             resolve_page=resolve_page,
         )
@@ -254,7 +284,7 @@ class KnowledgeService:
         # L8 recall audit (R-006 C8): one row per retrieve, switchable off.
         RecallAuditWriter(
             self.store,
-            enabled=bool(getattr(self, "recall_audit_enabled", True)),
+            enabled=self.recall_audit_enabled,
         ).write(
             build_record(
                 query=query,
