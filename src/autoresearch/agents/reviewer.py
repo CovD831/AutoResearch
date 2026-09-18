@@ -145,7 +145,12 @@ class ReviewerAgent:
                 risk_level=RiskLevel.L3,
                 claim="The manuscript is evidence-complete and its result lineage is closed.",
                 evidence_ids=manuscript.evidence_ids,
-                work_closed_loop=not manuscript.unresolved_gaps,
+                # Read the experiment lane's own declaration instead of inferring
+                # closure from "are there any gaps?". A manuscript can be gap-free
+                # while the lane never ran, and a pass that is merely *scoped* must
+                # not be recorded as a verified result lineage. The lane owns the
+                # fact; the gate only consumes it.
+                loop_closure=state.loop_closure,
             )
         )
         report = ReviewReport(

@@ -39,6 +39,16 @@ class Settings(BaseSettings):
         default=Path("paper-projects/_template"), alias="AUTORESEARCH_TEMPLATE_DIR"
     )
     network_enabled: bool = Field(default=False, alias="AUTORESEARCH_NETWORK_ENABLED")
+    #: ADR-01 slot 14 / K11 (``acl.py``). Off by default: in a single-operator
+    #: local run every "grant" would be a formality, so enforcing authorization
+    #: would add records without adding control. Turn it on where a release is
+    #: actually authorized by someone other than the person running the CLI --
+    #: that is the situation K11's default-deny exists for. The flag is explicit
+    #: so that "no policies are enforced" is a stated mode rather than a silent
+    #: fail-open, and the release path records which mode ran.
+    access_control_enabled: bool = Field(
+        default=False, alias="AUTORESEARCH_ACCESS_CONTROL_ENABLED"
+    )
 
     @property
     def llm_configured(self) -> bool:

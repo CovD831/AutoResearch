@@ -2,7 +2,9 @@
   "task_id": "S4-A4-MAINLINE-ADAPTER",
   "phase": "S4",
   "owner_lane": "runtime",
-  "status": "active",
+  "status": "integrated",
+  "integrated_at": "main@b5853bd (PR #23)",
+  "status_verified_at": "2026-09-18",
   "base_ref": "04ce9a9",
   "branch": "owner/a8-mainline-adapter",
   "depends_on": [

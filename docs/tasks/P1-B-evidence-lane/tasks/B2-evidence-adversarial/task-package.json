@@ -3,10 +3,16 @@
   "phase": "P1/S1",
   "owner_lane": "evidence/domain",
   "status": "active",
+  "archived_at": "2026-09-18",
+  "archived_reason": "P1/S generation. Its products are in main; superseded by the module-based (M0x) handover. Not a dispatch source.",
   "base_ref": "main@c1dbefc",
   "branch": "codex/p1-evidence-adversarial",
-  "depends_on": ["P1-B-EVIDENCE-PIPELINE"],
-  "merge_after": ["P1-B"],
+  "depends_on": [
+    "P1-B-EVIDENCE-PIPELINE"
+  ],
+  "merge_after": [
+    "P1-B"
+  ],
   "next_package": "S2-B-AUDIT-EVIDENCE",
   "allowed_paths": [
     "src/autoresearch/evidence.py",

@@ -1,0 +1,55 @@
+{
+  "task_id": "M13-WIRE",
+  "phase": "R-008 / post-baseline（接线批次）",
+  "owner_lane": "M13",
+  "owner": "Owner",
+  "status": "ready",
+  "base_ref": "main",
+  "branch": "feat/m13-wire",
+  "depends_on": [],
+  "merge_after": [],
+  "why_now": "`cli.py:serve()` 挂的是旧 create_api；create_web_api（含 /ui/panels）全仓唯一调用者是测试。⇒ 面板在生产入口上全部 404。",
+  "goal": "【Owner 自做，1 行改动】把四面板挂上生产入口。",
+  "islands": [
+    "web_api.py (1407)"
+  ],
+  "allowed_paths": [
+    "src/autoresearch/cli.py",
+    "tests/test_m13_wire_serve_panels.py",
+    ".ai-team/tasks/"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/graph.py",
+    "src/autoresearch/agents/base.py",
+    "src/autoresearch/web_api.py"
+  ],
+  "deliverables": [
+    "`autoresearch serve` 挂 create_web_api（它内部已 mount create_api 到 /api）",
+    "判别力测试：tests/test_m13_wire_serve_panels.py（本包 exclusive；判据型失败点见 discriminating_power）"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" tests/test_m13_wire_serve_panels.py",
+    "PYTHONPATH=src python -m ruff check src tests",
+    "PYTHONPATH=src python reviews/island-audit-2026-09-18/reach.py"
+  ],
+  "acceptance_commands_note": "第1/3 条为回归与 lint（前置）；第2 条为判别力测试，是唯一判据型命令；第4 条 reach.py 为附带项，单独不构成判据。命令用可移植的 python。若本机 python 缺依赖（报 ModuleNotFoundError: No module named 'langgraph' 或 No module named ruff），先跑 python -c 'import langgraph, pytest, ruff' 自检再重试；owner 侧沙箱无依赖，用 /Users/abab/.workbuddy/binaries/python/envs/default/bin/python。",
+  "acceptance": {
+    "positive": [
+      "GET /ui/panels = 200（web_api.py:1357），且由 serve 实际挂载的 app 提供（由第2条命令核对）"
+    ],
+    "negative": [
+      "不得破坏既有 24 个端点的可用性（create_web_api 已把 api 挂在 /api）",
+      "全量测试不许下降；ruff 必须全绿"
+    ]
+  },
+  "discriminating_power": {
+    "short_circuit": "在 cli.py 的 serve 内手写一个假 `/ui/panels` 路由让它单独返回 200，而不改用 create_web_api。",
+    "assertion_turns_red_at": "tests/test_m13_wire_serve_panels.py monkeypatch `uvicorn.run` 捕获 serve 实际交给 uvicorn 的 ASGI app，断言该 app 的 route 表同时含 `/ui/panels` 与既有 create_api 端点（如 `/health` 或 mount `/api`）——证明是 create_web_api 的挂载结构而非手写单路由；再经 httpx ASGITransport 打 `GET /ui/panels` 与 `GET /api/health` 均 200。未接线基线（serve 挂 create_api）时 route 表无 `/ui/panels` ⇒ 该断言红。（现有 tests/test_web_panels.py 直测 create_web_api、绕过 serve，故无判别力。）",
+    "self_proof": "在未接线基线上运行第2条命令，必须失败；且失败须为判据型（AssertionError：serve 的 app 无 /ui/panels 路由），不得为符号缺失型（ImportError/AttributeError/collection error 指向接线后才出现的符号）。"
+  },
+  "reached_by": "`autoresearch serve` 之后 GET /ui/panels 返回 200 且响应含 panel_ids；reach.py 不再列出 web_api",
+  "reached_note": "判据是「一次真实 run 的运行时可见后果」，**不是「测试通过」，也不再是「reach.py 不再列出 X」**。反事实已实测：在本仓 `cli.py:33` 注入一个永不执行的 `import autoresearch.audit_evidence  # noqa: F401`，`reach.py` 可达模块数 44 → 45 且 audit_evidence 从孤岛清单消失，零生产调用。⇒ 静态可达性单独不构成判据，必须由运行时后果兜底。",
+  "next_package": null
+}

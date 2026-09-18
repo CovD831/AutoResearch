@@ -5,6 +5,7 @@ from typing import Any
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
+from autoresearch.acl import AccessPolicyStore, ResourceAction, ResourceKind
 from autoresearch.agents.base import WorkflowState
 from autoresearch.agents.orchestrator import OrchestratorAgent
 from autoresearch.agents.paper_reader import PaperReaderAgent
@@ -56,6 +57,7 @@ def build_research_graph(
     gates: GateService,
     state_machine: StateMachine,
     checkpointer: Any,
+    access_policy: AccessPolicyStore | None = None,
 ):
     """Build the parent workflow from five business-agent subgraphs and one policy node."""
 
@@ -107,7 +109,10 @@ def build_research_graph(
                     risk_level=RiskLevel.L4,
                     claim="A human rejected external release.",
                     evidence_ids=state.evidence_ids,
-                    work_closed_loop=True,
+                    # Pass the lane's own declaration through rather than
+                    # asserting closure: a human rejecting a scoped (no-experiment)
+                    # draft must not be recorded as if a result lineage existed.
+                    loop_closure=state.loop_closure,
                     explicitly_rejected=True,
                 )
             )
@@ -151,6 +156,44 @@ def build_research_graph(
                 ),
                 actor=reviewer_name,
             )
+        # ADR-01 slot 14 / K11: an external release is an ELEVATED export -- it
+        # leaves the system and cannot be taken back -- so it is *authorized*,
+        # not merely approved. The human approval above is the justification for
+        # an elevated action; the policy is the authorization. K11-3 exists
+        # precisely to keep those apart, and the difference is "someone said yes"
+        # versus "this someone was allowed to say yes".
+        #
+        # Default deny applies: a release with no policy naming this reviewer on
+        # this manuscript is refused. The refusal is recorded as a blocker rather
+        # than raised, so the failure carries a stated reason instead of surfacing
+        # as an exception -- but it is NOT resumable: this path writes only
+        # ``RunStatus.BLOCKED`` and a blocker, never an interrupt, and ``resume``
+        # refuses a run with no interrupt (application.py:342-343). Once a policy
+        # is granted the release must therefore be re-published as a new run;
+        # there is no supported retry entry for a policy-refused release yet.
+        if access_policy is not None:
+            acl_decision = access_policy.check(
+                reviewer_name,
+                ResourceKind.ARTIFACT,
+                state.manuscript_id or state.run_id,
+                ResourceAction.EXPORT,
+            )
+            if not acl_decision.allowed:
+                return state.model_copy(
+                    update={
+                        "run_status": RunStatus.BLOCKED,
+                        "blockers": [
+                            *state.blockers,
+                            "release refused by access policy: "
+                            f"{acl_decision.reason} "
+                            f"(subject={reviewer_name!r}, "
+                            f"artifact={state.manuscript_id!r})",
+                        ],
+                        "last_agent": AgentId.REVIEWER,
+                        "updated_at": utc_now(),
+                    }
+                ).model_dump(mode="json")
+
         all_evidence = list(dict.fromkeys([*state.evidence_ids, approval_evidence.evidence_id]))
         decision = gates.evaluate(
             GateRequest(
@@ -159,7 +202,7 @@ def build_research_graph(
                 risk_level=RiskLevel.L4,
                 claim="The reviewed manuscript may be released externally.",
                 evidence_ids=all_evidence,
-                work_closed_loop=True,
+                loop_closure=state.loop_closure,
                 human_approval=True,
             )
         )
@@ -173,6 +216,19 @@ def build_research_graph(
             )
             status = RunStatus.BLOCKED
             blockers = [*state.blockers, *decision.reasons]
+        if access_policy is None:
+            # Stated mode, not a silent pass: a reader of the run record must be
+            # able to tell that the release was authorized by human approval
+            # alone. Otherwise "K11 is wired" and "K11 is not wired" produce
+            # identical records.
+            warnings = [
+                *state.warnings,
+                "access control is not enabled "
+                "(AUTORESEARCH_ACCESS_CONTROL_ENABLED=false); the external release "
+                "was authorized by human approval alone, with no policy check",
+            ]
+        else:
+            warnings = list(state.warnings)
         return state.model_copy(
             update={
                 "lifecycle_state": target,
@@ -180,6 +236,7 @@ def build_research_graph(
                 "evidence_ids": all_evidence,
                 "gate_decision_ids": [*state.gate_decision_ids, decision.decision_id],
                 "blockers": blockers,
+                "warnings": warnings,
                 "last_agent": AgentId.REVIEWER,
                 "updated_at": utc_now(),
             }

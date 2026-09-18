@@ -26,6 +26,12 @@ class WorkflowState(TypedDict, total=False):
     gate_decision_ids: list[str]
     handoff: dict[str, Any] | None
     diagnostics: list[str]
+    #: Carry the experiment lane's declared closure state (see ``LoopClosure``).
+    #: This key MUST be declared here: langgraph keeps only the keys the state
+    #: schema declares and silently drops the rest, so a node that writes
+    #: ``loop_closure`` without a declaration here would have it vanish before
+    #: the closure-requiring gate ever reads it.
+    loop_closure: str
     #: Non-blocking warnings carried through the graph. This key MUST be declared
     #: here: langgraph keeps only the keys the state schema declares and silently
     #: drops the rest, so a warning written by a node without a declaration here

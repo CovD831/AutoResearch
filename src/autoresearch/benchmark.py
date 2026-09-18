@@ -40,6 +40,7 @@ from autoresearch.contracts import (
     GateDecision,
     GateRequest,
     GateStatus,
+    LoopClosure,
     RiskLevel,
     new_id,
     utc_now,
@@ -256,11 +257,30 @@ def safety_score(
 
 
 class BenchmarkCondition(StrEnum):
-    """The comparison conditions fixed by ``docs/BENCHMARK.md``."""
+    """The comparison conditions fixed by ``docs/BENCHMARK.md`` and R006-P0.
+
+    The four ``experience_*`` conditions are the R006-P0-BASELINE addition
+    (DESIGN.md §2.4): the only variable between them is whether and how an
+    experience is injected into the drafting step.  They deliberately reuse the
+    existing runtime branching -- ``GATE_ON`` is the only condition that triggers
+    the gate, so every ``experience_*`` condition is treated like ``gate_off``
+    for enforcement (retrieval + validation run, nothing blocks).  The actual
+    experience-injection agent is a separate lane and is *not* wired here.
+    """
 
     BARE_LLM = "bare_llm"
     GATE_OFF = "gate_off"
     GATE_ON = "gate_on"
+    EXPERIENCE_OFF = "experience_off"
+    #: Length-matched, content-free control (R006-P0 review B2).  Injecting
+    #: experience necessarily lengthens the prompt, and prompt length alone moves
+    #: LLM output -- so a comparison against ``experience_off`` would confound
+    #: "the experience content" with "the prompt got longer".  This condition
+    #: injects filler of equivalent length, isolating the content variable.
+    EXPERIENCE_PLACEHOLDER = "experience_placeholder"
+    EXPERIENCE_CLEAN = "experience_clean"
+    EXPERIENCE_NOISY = "experience_noisy"
+    EXPERIENCE_WRONG = "experience_wrong"
 
 
 DEFAULT_CONDITIONS: tuple[BenchmarkCondition, ...] = (
@@ -547,7 +567,10 @@ class BenchmarkTask:
     expected_outcome: CaseOutcome = CaseOutcome.ACCEPTED
     explicitly_rejected: bool = False
     human_approval: bool = False
-    work_closed_loop: bool = False
+    #: Was ``work_closed_loop: bool``. A benchmark case may legitimately exercise
+    #: a scoped pipeline (no experiment lane), which must not be conflated with an
+    #: open loop; see :class:`LoopClosure`.
+    loop_closure: LoopClosure = LoopClosure.OPEN
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
 
@@ -679,7 +702,19 @@ def _parse_task(row: Any) -> BenchmarkTask:
         expected_outcome=expected_outcome,
         explicitly_rejected=bool(row.get("explicitly_rejected", False)),
         human_approval=bool(row.get("human_approval", False)),
-        work_closed_loop=bool(row.get("work_closed_loop", False)),
+        # Back-compat: corpus rows frozen before the tri-state carried a bool
+        # ``work_closed_loop``. That fixture is a frozen benchmark corpus (the
+        # tests match it label-for-label), so the old key must keep its old
+        # meaning instead of silently degrading to OPEN and flipping every
+        # closure-requiring case to a rejection.
+        loop_closure=LoopClosure(
+            row.get("loop_closure")
+            or (
+                LoopClosure.CLOSED.value
+                if row.get("work_closed_loop")
+                else LoopClosure.OPEN.value
+            )
+        ),
         metadata=raw_metadata,
     )
 
@@ -1279,6 +1314,7 @@ class TrustBenchmarkRuntime:
         corpus: BenchmarkCorpus,
         metric_definition: MetricDefinition,
         agent: BenchmarkAgent | None = None,
+        condition_agents: Mapping[BenchmarkCondition, BenchmarkAgent] | None = None,
         budget: ResourceBudget | None = None,
         materials: MaterialsProvider | None = None,
         admission: AdmissionPort | None = None,
@@ -1296,6 +1332,13 @@ class TrustBenchmarkRuntime:
         self.corpus = corpus
         self.metric_definition = metric_definition
         self.agent = agent or RecordedAgent()
+        #: Per-condition agent override (R006-P0).  ``None`` keeps the historical
+        #: behaviour exactly: every condition uses ``self.agent``.  This exists
+        #: because the ``experience_*`` conditions must vary *which* agent drafts,
+        #: while everything else stays fixed -- the pipeline was previously
+        #: single-agent, so there was no seam to express "same run, different
+        #: drafter".
+        self.condition_agents = dict(condition_agents or {})
         self.budget = budget or ResourceBudget()
         self.materials = materials
         self.admission = admission or CorpusLabelAdmission()
@@ -1336,8 +1379,18 @@ class TrustBenchmarkRuntime:
         declared = {str(item) for item in self.metric_definition.conditions}
         undeclared = sorted({item.value for item in requested} - declared)
         if undeclared:
+            # The frozen definition is the gate on which conditions may run; do
+            # not weaken it.  Make the failure actionable instead: the R006-P0
+            # conditions ship in their own definition version, and a caller that
+            # asks for them without that definition gets this.
+            hint = ""
+            if any(item.startswith("experience_") for item in undeclared):
+                hint = (
+                    "; the experience_* conditions are declared by"
+                    " tests/fixtures/benchmark/metric-definition-experience.json"
+                )
             raise ValueError(
-                f"conditions not declared in the frozen metric definition: {undeclared}"
+                f"conditions not declared in the frozen metric definition: {undeclared}{hint}"
             )
 
         self._ran = True
@@ -1501,11 +1554,17 @@ class TrustBenchmarkRuntime:
         if candidates:
             evidence_ids = tuple(self.admission.admit(candidates, project_id=self.project_id))
 
+        # Which agent drafts is itself the mechanism variable for the R006-P0
+        # conditions, so the drafter is resolved per condition.  With no
+        # ``condition_agents`` entry this is exactly ``self.agent`` -- the four
+        # historical conditions keep their previous behaviour byte for byte.
+        drafter = self.condition_agents.get(condition, self.agent)
+
         draft, failure = self._step(
             task,
             condition,
             "drafting",
-            self.agent.draft,
+            drafter.draft,
             (task,),
             None,
             **budget_kwargs,
@@ -1526,7 +1585,7 @@ class TrustBenchmarkRuntime:
                 risk_level=task.risk_level,
                 claim=task.question[:2000],
                 evidence_ids=list(evidence_ids),
-                work_closed_loop=task.work_closed_loop,
+                loop_closure=task.loop_closure,
                 explicitly_rejected=task.explicitly_rejected,
                 human_approval=task.human_approval,
             )

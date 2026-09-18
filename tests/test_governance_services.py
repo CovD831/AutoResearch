@@ -11,6 +11,7 @@ from autoresearch.contracts import (
     GateStatus,
     GraphEdge,
     KnowledgePartition,
+    LoopClosure,
     RiskLevel,
     WikiPage,
 )
@@ -45,7 +46,7 @@ def test_gate_fails_closed_and_deduplicates_sources(
         risk_level=RiskLevel.L3,
         claim="The result is manuscript ready.",
         evidence_ids=[first.evidence_id, duplicate_source.evidence_id],
-        work_closed_loop=True,
+        loop_closure=LoopClosure.CLOSED,
     )
     decision = runtime.gates.evaluate(request)
     assert decision.status == GateStatus.REVISE
@@ -75,7 +76,7 @@ def test_l4_requires_named_human_approval_even_with_strong_evidence(
             risk_level=RiskLevel.L4,
             claim="Release reviewed manuscript.",
             evidence_ids=[item.evidence_id for item in items],
-            work_closed_loop=True,
+            loop_closure=LoopClosure.CLOSED,
         )
     )
     assert decision.status == GateStatus.INTERRUPT

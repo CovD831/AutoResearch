@@ -1,0 +1,60 @@
+{
+  "task_id": "M01-WIRE",
+  "phase": "R-008 / post-baseline（接线批次）",
+  "owner_lane": "M01",
+  "owner": "member A",
+  "status": "ready",
+  "base_ref": "main",
+  "branch": "feat/m01-wire",
+  "depends_on": [],
+  "merge_after": [],
+  "why_now": "M01 的包已 integrated，但产物仍是孤岛——「已合入」不等于「被调用」。本轮只做接线，不改语义。",
+  "goal": "把 K5 上下文装配与 K6 状态迁移接进生产入口。两者都已实现且测试通过，但没有任何生产调用者。",
+  "islands": [
+    "context_assembler.py (305)",
+    "migration.py (210)"
+  ],
+  "allowed_paths": [
+    "src/autoresearch/application.py",
+    "tests/test_m01_wire_context.py",
+    ".ai-team/tasks/"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/graph.py",
+    "src/autoresearch/agents/base.py"
+  ],
+  "deliverables": [
+    "application.py 在构造/装配路径上调用 ContextAssembler，使其成为真实 run 的一部分",
+    "StateMigration 有生产调用点（启动时的版本检查，或 schema_version bump 路径）",
+    "不改 context_assembler.py / migration.py 的既有语义（本任务是接线，不是重写）",
+    "判别力测试：tests/test_m01_wire_context.py（本包 exclusive；判据型失败点见 discriminating_power）"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" tests/test_m01_wire_context.py",
+    "PYTHONPATH=src python -m ruff check src tests",
+    "PYTHONPATH=src python reviews/island-audit-2026-09-18/reach.py"
+  ],
+  "acceptance_commands_note": "第1/3 条为回归与 lint（前置）；第2 条为判别力测试，是唯一判据型命令；第4 条 reach.py 为附带项，单独不构成判据。命令用可移植的 python。若本机 python 缺依赖（报 ModuleNotFoundError: No module named 'langgraph' 或 No module named ruff），先跑 python -c 'import langgraph, pytest, ruff' 自检再重试；owner 侧沙箱无依赖，用 /Users/abab/.workbuddy/binaries/python/envs/default/bin/python。",
+  "acceptance": {
+    "positive": [
+      "run 记录（store 的 run 分区，application.py:288-291 落盘）中 diagnostics 含装配出的 slice 摘要（由第2条命令核对）",
+      "该摘要的 evidence refs 与同一 run 的 evidence_ids 对应，断言对象不是硬编码字符串（由第2条命令核对）"
+    ],
+    "negative": [
+      "不得为了产出一条 diagnostic 而写死文案；diagnostics 必须由真实装配路径派生",
+      "base.py 保持 forbidden：新 state 键须在 base.py 声明，而 langgraph 丢弃未声明键（base.py:30-38）⇒ 不开放 base.py 是本包边界，不是遗漏",
+      "全量测试不许下降；ruff 必须全绿"
+    ]
+  },
+  "discriminating_power": {
+    "short_circuit": "在 application.py 装配处手工 append 一条与 evidence 数相符（或写死文案）的 diagnostics 字符串，而不真正调用 ContextAssembler.assemble。",
+    "assertion_turns_red_at": "tests/test_m01_wire_context.py 先跑一次动态注入 N 条 evidence 的 run，再断言 run 记录 diagnostics 中 slice 摘要行的 refs 集合 == 该 run 实际 evidence_ids 的非空子集、且摘要行的 kind 与注入的 ContextItem.kind 一致。短路写死文案时 refs 对不上或无 slice 行 ⇒ 该断言红。",
+    "self_proof": "在未接线基线上运行第2条命令，必须失败；且失败须为判据型（AssertionError：diagnostics 无 slice 行或 refs 不匹配），不得为符号缺失型（ImportError/AttributeError/collection error 指向接线后才出现的符号）。"
+  },
+  "reached_by": "一次真实 run 的 run 记录里 state.diagnostics 出现由 ContextAssembler 实际装配产生的 slice 摘要，其 evidence slice 的 refs 数量 = 该 run 的合格 evidence_ids 条数（非硬编码）；且 reach.py 不再列出 context_assembler / migration",
+  "reached_note": "判据是「一次真实 run 的运行时可见后果」，**不是「测试通过」，也不再是「reach.py 不再列出 X」**。反事实已实测：在本仓 `cli.py:33` 注入一个永不执行的 `import autoresearch.audit_evidence  # noqa: F401`，`reach.py` 可达模块数 44 → 45 且 audit_evidence 从孤岛清单消失，零生产调用。⇒ 静态可达性单独不构成判据，必须由运行时后果兜底。",
+  "next_package": null,
+  "decision_note": "主理人裁决 D-WIRE-01：取 A（降级为 run 记录 diagnostics），不开放 base.py。理由：base.py 的 WorkflowState 是全 lane 共享的状态契约，为一个模块的可观测性新增键会影响所有 lane；而 diagnostics 已是既有通道（base.py:28），无需契约变更。"
+}

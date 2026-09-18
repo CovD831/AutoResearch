@@ -3,10 +3,17 @@
   "phase": "S2",
   "owner_lane": "runtime",
   "status": "ready",
+  "archived_at": "2026-09-18",
+  "archived_reason": "P1/S generation. Its products are in main; superseded by the module-based (M0x) handover. Not a dispatch source.",
   "base_ref": "dad4658",
   "branch": "codex/s2-a-audit-runtime",
-  "depends_on": ["S1 promotion", "P1-A2-RUNTIME-HARDENING"],
-  "merge_after": ["S1 promotion"],
+  "depends_on": [
+    "S1 promotion",
+    "P1-A2-RUNTIME-HARDENING"
+  ],
+  "merge_after": [
+    "S1 promotion"
+  ],
   "allowed_paths": [
     "src/autoresearch/audit.py",
     "src/autoresearch/audit_contracts.py",

@@ -1,0 +1,67 @@
+{
+  "task_id": "S3-B3-PORT-ACTIVATION",
+  "phase": "S3-B（端口激活）",
+  "owner_lane": "evidence/domain",
+  "owner": "member B",
+  "status": "ready",
+  "base_ref": "main",
+  "branch": "feat/s3b3-port-activation",
+  "depends_on": [],
+  "merge_after": [],
+  "why_now": "已实测：reader_writer_ports.py(580) 与 lane_llm_adapter.py(94) 在生产链上均无入口，src/ 内无人 import 后者（唯一真引用者是 tests/test_lane_llm_adapter.py:16）。StructuredReader/WriterAdapter 自身不发 provider 调用（:325/:375 禁 NATIVE），只把外部传入的 payload 包成契约形状；lane_llm_adapter(:68-94) 是 O12↔B4 的薄接缝。compare_writer_parity(:540)/ParityReport(:527)/AdapterParity(:517)/ParityStatus(:53) 在 src/ 内零外部引用 ⇒ ADR-01 的 L2 承诺「语义不随实现变」在生产路径从未被执行过。",
+  "goal": "把端口层激活：既有 reader_service / writing_service 包成第三条 service 轨，使 native / service / llm 三轨并存，让 compare_writer_parity 第一次有可比较对象。",
+  "islands": [
+    "reader_writer_ports.py (580)",
+    "lane_llm_adapter.py (94)"
+  ],
+  "allowed_paths": [
+    "src/autoresearch/reader_writer_ports.py",
+    "src/autoresearch/application.py",
+    "tests/test_reader_writer_ports.py",
+    "tests/test_lane_llm_adapter.py",
+    "tests/test_s3b3_wire_parity.py",
+    ".ai-team/tasks/"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/graph.py",
+    "src/autoresearch/agents/base.py",
+    "src/autoresearch/reader_service.py",
+    "src/autoresearch/writing_service.py",
+    ".project-to-act/",
+    ".ai-team/TASK.md"
+  ],
+  "deliverables": [
+    "service 轨注册进端口层，与 native 轨并存",
+    "真实 run 返回 dict 增 parity 字段并经 _echo 打印",
+    "store 落一条 parity_report 记录",
+    "判别力测试：tests/test_s3b3_wire_parity.py（本包 exclusive；判据型失败点见 discriminating_power）"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" tests/test_s3b3_wire_parity.py",
+    "PYTHONPATH=src python -m ruff check src tests",
+    "PYTHONPATH=src python reviews/island-audit-2026-09-18/reach.py"
+  ],
+  "acceptance_commands_note": "第1/3 条为回归与 lint（前置）；第2 条为判别力测试，是唯一判据型命令；第4 条 reach.py 为附带项，单独不构成判据。命令用可移植的 python。若本机 python 缺依赖（报 ModuleNotFoundError: No module named 'langgraph' 或 No module named ruff），先跑 python -c 'import langgraph, pytest, ruff' 自检再重试；owner 侧沙箱无依赖，用 /Users/abab/.workbuddy/binaries/python/envs/default/bin/python。",
+  "acceptance": {
+    "positive": [
+      "真实 run 返回 dict 含 parity；store 有 parity_report；报告含 native + service 两行、overall=PASS、binding 100%（由第2条命令核对）"
+    ],
+    "negative": [
+      "短路新接线（不调 compare_writer_parity 或未注册 service 轨）时，**同一次真实 run** 返回 dict 无 parity、store 无该记录、断言在此点变红",
+      "绝不靠『reach.py 不再列出它』变绿（反事实已实测该判据可被一个永不执行的 import 满足）",
+      "不得改 reader_service.py / writing_service.py 的既有语义（本包只把它们包成一条轨，不重写）",
+      "全量测试不许下降；ruff 必须全绿"
+    ]
+  },
+  "discriminating_power": {
+    "short_circuit": "手写一条 parity_report 直接 put 到 store，并在 run 返回 dict 手加 `parity` 键，而不真正调用 compare_writer_parity（reader_writer_ports.py:540）、也不注册 service 轨。",
+    "assertion_turns_red_at": "tests/test_s3b3_wire_parity.py 在同一次真实 run 内断言：report 的 native 与 service 两行来自两条轨对同一批输入的实际产出（用 spy/计数证明 compare_writer_parity 被调用且读到同 run 同输入的产出），overall=PASS 与 binding 100% 仅在两轨都被执行时成立。短路手写时缺 service 行或 binding ≠ 100% ⇒ 该断言红。",
+    "self_proof": "在未接线基线上运行第2条命令，必须失败；且失败须为判据型（少一条轨、binding ≠ 100%、或 compare_writer_parity 未被调用），不得为符号缺失型（ImportError/AttributeError/collection error 指向接线后才出现的符号）。"
+  },
+  "reached_by": "真实 `autoresearch run` 跑完后（cli.py:103 runtime.run → application.py:334 graph.invoke）：(i) 返回 dict 增 parity 字段并由 cli.py:103 _echo 打印；(ii) store 落一条 parity_report 记录。承载点均为既有落盘：reading_card 写于 reader_service.py:152、manuscript 写于 writing_service.py:156。 ⚠️ `parity` 键必须在 application.py 于 graph.invoke() 返回**之后**加进 run 记录（例如读 store 里的 parity_report 再组装），**不得依赖 graph state** —— 未在 `WorkflowState` 声明的键会被 langgraph 静默丢弃（base.py:30-38）。",
+  "reached_note": "判据是「一次真实 run 的运行时可见后果」，**不是「测试通过」，也不再是「reach.py 不再列出 X」**。反事实已实测：在本仓 `cli.py:33` 注入一个永不执行的 `import autoresearch.audit_evidence  # noqa: F401`，`reach.py` 可达模块数 44 → 45 且 audit_evidence 从孤岛清单消失，零生产调用。⇒ 静态可达性单独不构成判据，必须由运行时后果兜底。",
+  "decision_note": "主理人裁决 D-WIRE-03：parity 的两条轨**必须同 run、同输入、同批产出**。理由：parity 的语义是『同一输入下不同实现产出一致形状』；不同 run 或不同输入下比对不证明任何东西。代价：native 轨在真实 run 中会被执行一次（它是确定性离线的，成本可接受）。",
+  "next_package": null
+}

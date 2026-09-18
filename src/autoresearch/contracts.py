@@ -57,6 +57,32 @@ class GateStatus(StrEnum):
     INTERRUPT = "interrupt"
 
 
+class LoopClosure(StrEnum):
+    """Whether the work/result lineage is closed — three states, not two.
+
+    A ``bool`` cannot express the difference between *"the experiment lane is not
+    enabled yet"* and *"the experiment ran and it did not close"*. Collapsing both
+    into ``False`` makes the gate unable to tell a **scoped baseline** from a
+    **failure**, so a pipeline that legitimately has no experiment stage would be
+    reported as broken — and, worse, a real open loop could be excused as "not
+    enabled yet".
+
+    * ``CLOSED`` — results exist and the lineage is closed.
+    * ``NOT_APPLICABLE`` — the experiment lane is not enabled. The run is scoped
+      to literature evidence; the gate passes **but the scope is recorded**, so a
+      reader of the ledger can see the manuscript carries no experimental result.
+    * ``OPEN`` — the lane is enabled and the lineage did not close. This is the
+      only value that blocks.
+
+    The default is ``OPEN`` on purpose: a caller that forgets to declare closure
+    is treated as unclosed rather than silently waved through.
+    """
+
+    CLOSED = "closed"
+    NOT_APPLICABLE = "not_applicable"
+    OPEN = "open"
+
+
 class RiskLevel(StrEnum):
     L0 = "L0"
     L1 = "L1"
@@ -285,7 +311,11 @@ class GateRequest(BaseModel):
     risk_level: RiskLevel
     claim: str
     evidence_ids: list[str] = Field(default_factory=list)
-    work_closed_loop: bool = False
+    #: Was ``work_closed_loop: bool``. A gate that only needs the lineage closed
+    #: must distinguish "not enabled yet" from "ran and stayed open"; see
+    #: :class:`LoopClosure`. Defaults to ``OPEN`` so an undeclared caller fails
+    #: closed rather than passing by omission.
+    loop_closure: LoopClosure = LoopClosure.OPEN
     explicitly_rejected: bool = False
     human_approval: bool = False
 
@@ -298,6 +328,11 @@ class GateDecision(BaseModel):
     risk_level: RiskLevel
     score: int = Field(ge=0, le=100)
     independent_sources: int = Field(ge=0)
+    #: Carried onto the decision so the ledger records *why* a closure-requiring
+    #: gate passed: ``NOT_APPLICABLE`` means the pass is scoped to literature
+    #: evidence, not that a result lineage was verified. Without this the pass
+    #: would be indistinguishable from a genuinely closed loop.
+    loop_closure: LoopClosure = LoopClosure.OPEN
     reasons: list[str]
     qualifying_evidence_ids: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
@@ -700,6 +735,13 @@ class ResearchState(BaseModel):
     gate_decision_ids: list[str] = Field(default_factory=list)
     handoff: dict[str, Any] | None = None
     diagnostics: list[str] = Field(default_factory=list)
+    #: The experiment lane declares *its own* closure state here (see
+    #: :class:`LoopClosure`), and the closure-requiring gate reads it. The owner
+    #: is the lane, not the gate: only the stage that would run the work knows
+    #: whether it was enabled, so only it can honestly say "not applicable".
+    #: Defaults to ``OPEN`` so a run that never reaches the experiment stage
+    #: fails closed instead of passing by omission.
+    loop_closure: LoopClosure = LoopClosure.OPEN
     #: Non-blocking warnings. Distinct from ``blockers`` on purpose: a blocker
     #: stops the run, a warning means the run continues but something the
     #: operator must know happened. A partially failed retrieval belongs here --

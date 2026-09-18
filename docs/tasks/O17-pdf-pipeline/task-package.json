@@ -1,0 +1,66 @@
+{
+  "task_id": "O17-PDF-PIPELINE",
+  "phase": "R-007",
+  "owner_lane": "reader",
+  "status": "rejected-pending-revision",
+  "archived_at": "2026-09-18",
+  "archived_reason": "Withdrawn after the two-gate review found three fatal defects (premise false, headline scenario tautological, self-contradictory acceptance). Not a dispatch source.",
+  "base_ref": "e4d88ec",
+  "branch": "codex/o17-pdf-pipeline",
+  "depends_on": [],
+  "merge_after": [],
+  "allowed_paths": [
+    "src/autoresearch/reader_service.py",
+    "src/autoresearch/external_sources.py",
+    "tests/test_reader_writer_ports.py",
+    "tests/test_workflow.py",
+    "tests/test_mainline_e2e.py",
+    "tests/test_pdf_pipeline.py",
+    "tests/fixtures/pdf_pipeline/",
+    "docs/tasks/O17-pdf-pipeline/",
+    ".ai-team/tasks/O17-PDF-PIPELINE.md"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/gates.py",
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/evidence.py",
+    "src/autoresearch/storage.py",
+    "src/autoresearch/writing_service.py",
+    "src/autoresearch/application.py",
+    ".ai-team/TASK.md",
+    ".project-to-act/"
+  ],
+  "deliverables": [
+    "reader_service._read_file wired to the existing docling-first PdfParser instead of bare pypdf",
+    "docling install already present; pymupdf4llm deliberately left absent (AGPL fallback per ADR-01)",
+    "a real-PDF fixture and six acceptance scenarios including two fail-closed cases",
+    "end-to-end evidence showing E2 count goes 0 -> >=1, with the pre-change baseline showing 0",
+    "diagnostics transport decision documented in L3 (the signature has no room for it)",
+    "L3/PROGRESS/HANDOFF and task-local ledger"
+  ],
+  "acceptance_commands": [
+    "ruff check src tests",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m compileall -q src",
+    "PYTHONPATH=src /Users/abab/.workbuddy/binaries/python/envs/default/bin/python -m pytest -o addopts=\"\" -q",
+    "PATH=/Users/abab/.workbuddy/binaries/node/versions/22.22.2-2/bin:$PATH /Users/abab/.workbuddy/binaries/python/envs/default/bin/python scripts/check_pr_contract.py --base e4d88ec",
+    "PATH=/Users/abab/.workbuddy/binaries/node/versions/22.22.2-2/bin:$PATH node .ai-team/check.mjs --task .ai-team/tasks/O17-PDF-PIPELINE.md"
+  ],
+  "baseline_measured": {
+    "commit": "e4d88ec",
+    "command": "PYTHONPATH=src python -m pytest -o addopts=\"\" -q",
+    "result": "578 passed, 2 skipped",
+    "grade_baseline": "{'E1': 12, 'E0': 1} — zero E2 on the real production path"
+  },
+  "next_package": "O15-GATE-SCORING",
+  "review_gates": {
+    "status": "FAILED",
+    "adversarial_independent_review": "FAILED — see reviews/O17-TWO-GATE-REVIEW-2026-09-16.md",
+    "bidirectional_steelman": "FAILED — ruling: do not dispatch as-is",
+    "fatal_findings": [
+      "full_text_path is never assigned on the production path (zero writers in src/); changing _read_file cannot make production E2 reachable.",
+      "Scenario 8.1 #1 (real PDF -> E2) already PASSES on pre-change code once full_text_path is set, so it is a tautological criterion, not a discriminating one.",
+      "Its 'baseline E2=0' claim and its 'must fail before the change' requirement are mutually contradictory (same input cannot do both)."
+    ],
+    "note": "DO NOT DISPATCH. The task's premise is false and its acceptance criteria are self-contradictory. Await owner decision among three options in reviews/O17-TWO-GATE-REVIEW-2026-09-16.md section 4."
+  }
+}

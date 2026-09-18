@@ -11,6 +11,7 @@ from autoresearch.contracts import (
     EvidenceType,
     HandoffEnvelope,
     LifecycleState,
+    LoopClosure,
     ResearchState,
     RunStatus,
     WorkPackage,
@@ -252,6 +253,16 @@ class OrchestratorAgent:
         return state.model_copy(
             update={
                 "lifecycle_state": target,
+                # The experiment lane is the only stage that can honestly declare
+                # its own closure state, so this node declares it. Today the lane
+                # does not execute: this node issues work packages and hands off
+                # to the writer without running anything (there is no `subprocess`
+                # anywhere in the repo). ``NOT_APPLICABLE`` therefore states a fact
+                # rather than requesting an exemption -- the closure-requiring
+                # gate will pass, and will record that the pass is scoped to
+                # literature evidence. Once the lane actually runs, this must
+                # become ``OPEN`` or ``CLOSED`` based on what ran.
+                "loop_closure": LoopClosure.NOT_APPLICABLE,
                 "handoff": handoff.model_dump(mode="json"),
                 "last_agent": self.agent_id,
                 "updated_at": utc_now(),

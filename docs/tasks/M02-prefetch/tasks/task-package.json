@@ -2,11 +2,17 @@
   "task_id": "M02-PREFETCH",
   "phase": "R007",
   "owner_lane": "L-02",
-  "status": "handoff",
+  "status": "integrated",
+  "integrated_at": "R007 lane merged into main (PR #25-#33 series)",
+  "status_verified_at": "2026-09-18",
   "base_ref": "8dd8780",
   "branch": "feat/r007-l02-prefetch",
-  "depends_on": ["K1 RunManifest (L-05) for run_id wiring only -- blocking only that one field"],
-  "merge_after": ["K1 RunManifest frozen (optional: only needed to populate PrefetchRecord.run_id)"],
+  "depends_on": [
+    "K1 RunManifest (L-05) for run_id wiring only -- blocking only that one field"
+  ],
+  "merge_after": [
+    "K1 RunManifest frozen (optional: only needed to populate PrefetchRecord.run_id)"
+  ],
   "allowed_paths": [
     "src/autoresearch/evidence_prefetch.py",
     "src/autoresearch/invalidation.py",

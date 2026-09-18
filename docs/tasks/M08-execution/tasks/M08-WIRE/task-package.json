@@ -1,0 +1,60 @@
+{
+  "task_id": "M08-WIRE",
+  "phase": "R-008 / post-baseline（接线批次）",
+  "owner_lane": "M08",
+  "owner": "Owner",
+  "status": "ready",
+  "base_ref": "main",
+  "branch": "feat/m08-exec",
+  "depends_on": [],
+  "merge_after": [],
+  "why_now": "全仓零 subprocess，图上无此节点；run_manifest 已就绪但没有执行者。本包不做，其他模块的接线再多也跑不到实验。",
+  "goal": "【Owner 自做】实验执行段：executor + run_manifest 接线。这是七段主干里唯一从零的一段。",
+  "islands": [
+    "run_manifest.py (193)"
+  ],
+  "allowed_paths": [
+    "src/autoresearch/executor.py",
+    "src/autoresearch/agents/orchestrator.py",
+    "src/autoresearch/graph.py",
+    "tests/test_m08_wire_executor.py",
+    ".ai-team/tasks/"
+  ],
+  "forbidden_paths": [
+    "src/autoresearch/contracts.py",
+    "src/autoresearch/agents/base.py"
+  ],
+  "deliverables": [
+    "executor.py：受控命令执行（command/env/timeout/seed/raw outputs）",
+    "产出 RunManifest（K1，已在 main）",
+    "全仓出现第一处 subprocess",
+    "`orchestrator.plan_execution` 的 loop_closure 从 NOT_APPLICABLE 改为按实际执行结果给 OPEN/CLOSED",
+    "判别力测试：tests/test_m08_wire_executor.py（本包 exclusive；判据型失败点见 discriminating_power）"
+  ],
+  "acceptance_commands": [
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" -W error",
+    "PYTHONPATH=src python -m pytest -q -o addopts=\"\" tests/test_m08_wire_executor.py",
+    "PYTHONPATH=src python -m ruff check src tests",
+    "PYTHONPATH=src python reviews/island-audit-2026-09-18/reach.py"
+  ],
+  "acceptance_commands_note": "第1/3 条为回归与 lint（前置）；第2 条为判别力测试，是唯一判据型命令；第4 条 reach.py 为附带项，单独不构成判据。命令用可移植的 python。若本机 python 缺依赖（报 ModuleNotFoundError: No module named 'langgraph' 或 No module named ruff），先跑 python -c 'import langgraph, pytest, ruff' 自检再重试；owner 侧沙箱无依赖，用 /Users/abab/.workbuddy/binaries/python/envs/default/bin/python。",
+  "acceptance": {
+    "positive": [
+      "loop_closure ≠ NOT_APPLICABLE（orchestrator.py:265 现在是硬编码的 NOT_APPLICABLE）（由第2条命令核对）",
+      "同一 run 内 ≥2 条 RunManifest，且 manifest 携带真实执行痕迹（exit_code 非 None、output_hashes 命名的产物确有落盘 raw 文件）（由第2条命令核对）"
+    ],
+    "negative": [
+      "未运行必须仍是 R0；不得把『没跑』写成『跑了但没提升』",
+      "全量测试不许下降；ruff 必须全绿"
+    ]
+  },
+  "discriminating_power": {
+    "short_circuit": "orchestrator.plan_execution 无条件把 loop_closure 写成 CLOSED，并手造 ≥2 条 RunManifest 直接 put 落 store，而不启动任何 subprocess。",
+    "assertion_turns_red_at": "tests/test_m08_wire_executor.py 经生产入口 runtime.run(...) 触发执行段，再断言 RunManifest 携带真实执行痕迹——exit_code is not None、output_hashes 命名的产物确有落盘 raw 文件、且存在 executor 记录的 raw stdout/pid。短路无 subprocess ⇒ 无 raw stdout/exit_code 痕迹 ⇒ 该断言红。",
+    "self_proof": "在未接线基线上运行第2条命令，必须失败；且失败须为判据型（AssertionError：loop_closure 仍为 NOT_APPLICABLE 或 manifest 无执行痕迹）。⚠️ 该 test 必须经 runtime.run(...) 后读 run 记录/store 断言，**不得** `from autoresearch import executor`——executor.py 在基线上不存在，直接 import 会退化为符号缺失型失败，不满足要求。"
+  },
+  "reached_by": "一次真实 run 的 run 记录里 state.loop_closure 由 NOT_APPLICABLE 变为按实际执行结果的 OPEN/CLOSED；同一 run 内落 ≥2 条 run_manifest 且可经 /audit-events 查到；reach.py 不再列出 run_manifest",
+  "reached_note": "判据是「一次真实 run 的运行时可见后果」，**不是「测试通过」，也不再是「reach.py 不再列出 X」**。反事实已实测：在本仓 `cli.py:33` 注入一个永不执行的 `import autoresearch.audit_evidence  # noqa: F401`，`reach.py` 可达模块数 44 → 45 且 audit_evidence 从孤岛清单消失，零生产调用。⇒ 静态可达性单独不构成判据，必须由运行时后果兜底。",
+  "next_package": null,
+  "decision_note": "graph.py 口径：9 包中**仅 M08 合法**（它是唯一新增执行节点的挂载处）。其余 8 包一律禁 graph.py。"
+}

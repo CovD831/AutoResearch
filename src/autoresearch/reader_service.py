@@ -19,6 +19,7 @@ from autoresearch.contracts import (
     WikiPage,
 )
 from autoresearch.evidence import EvidenceService
+from autoresearch.external_sources import ParseStatus, PdfParser
 from autoresearch.knowledge import KnowledgeService
 from autoresearch.storage import RecordStore
 
@@ -42,6 +43,19 @@ class PaperReaderService:
         if not path.is_file():
             return "", [f"missing full text: {path}"]
         if path.suffix.lower() == ".pdf":
+            # ADR-01 slot 3: docling (MIT) is the selected parser, with
+            # pymupdf4llm as the light fallback — ``PdfParser`` owns that choice
+            # and reports which backend actually ran, so the choice is never
+            # silently re-made here.
+            #
+            # The ``pypdf`` pass below is kept as the *last* resort on purpose:
+            # its layout quality is the lowest of the three (no reading order, no
+            # tables, no OCR), so it must rank last — but it also guarantees the
+            # reader never degrades to "no text at all" when neither backend is
+            # installed. Ranking, not removal, is what keeps the fallback honest.
+            parsed = PdfParser().parse(str(path))
+            if parsed.status is ParseStatus.OK and parsed.markdown:
+                return parsed.markdown, list(parsed.locators)
             reader = PdfReader(path)
             pages = [(page.extract_text() or "") for page in reader.pages]
             return "\n".join(pages), [f"p.{index + 1}" for index in range(len(pages))]

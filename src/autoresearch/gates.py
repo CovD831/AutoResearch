@@ -7,6 +7,7 @@ from autoresearch.contracts import (
     GateDecision,
     GateRequest,
     GateStatus,
+    LoopClosure,
     RiskLevel,
 )
 from autoresearch.evidence import EvidenceService
@@ -79,12 +80,27 @@ class GateService:
                     f"independent sources {sources} are below required "
                     f"{threshold.independent_sources}"
                 )
-            if threshold.closed_loop and not request.work_closed_loop:
+            # Only an OPEN loop blocks. NOT_APPLICABLE means the experiment lane
+            # is not enabled: the pass is legitimate but *scoped*, and the scope
+            # is recorded both on the decision and restated in ``reasons`` below,
+            # so the ledger never reads as though a result lineage had been
+            # verified. Treating the two as one ``False`` is what made a scoped
+            # baseline indistinguishable from a defect.
+            if threshold.closed_loop and request.loop_closure is LoopClosure.OPEN:
                 reasons.append("required work and result lineage are not closed loop")
             status = GateStatus.PASS if not reasons else GateStatus.REVISE
 
         if not reasons:
             reasons.append("all deterministic evidence and closure requirements passed")
+            if (
+                threshold.closed_loop
+                and request.loop_closure is LoopClosure.NOT_APPLICABLE
+            ):
+                reasons.append(
+                    "loop closure not applicable: the experiment lane is not enabled; "
+                    "this pass is scoped to literature evidence and carries no "
+                    "experimental result"
+                )
 
         decision = GateDecision(
             project_id=request.project_id,
@@ -93,6 +109,7 @@ class GateService:
             risk_level=request.risk_level,
             score=score,
             independent_sources=sources,
+            loop_closure=request.loop_closure,
             reasons=reasons,
             qualifying_evidence_ids=qualifying_ids,
         )

@@ -2,11 +2,17 @@
   "task_id": "M01-CONTEXT",
   "phase": "R-007",
   "owner_lane": "L-01",
-  "status": "handoff",
+  "status": "integrated",
+  "integrated_at": "R007 lane merged into main (PR #25-#33 series)",
+  "status_verified_at": "2026-09-18",
   "base_ref": "8dd8780",
   "branch": "feat/r007-l01-context",
-  "depends_on": ["R-007 L1/L2 accepted (K5, K6 frozen)"],
-  "merge_after": ["owner approval to commit"],
+  "depends_on": [
+    "R-007 L1/L2 accepted (K5, K6 frozen)"
+  ],
+  "merge_after": [
+    "owner approval to commit"
+  ],
   "allowed_paths": [
     "src/autoresearch/context_assembler.py",
     "src/autoresearch/migration.py",

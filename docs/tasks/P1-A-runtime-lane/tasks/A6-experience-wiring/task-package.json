@@ -3,10 +3,17 @@
   "phase": "S4",
   "owner_lane": "runtime",
   "status": "handoff",
+  "archived_at": "2026-09-18",
+  "archived_reason": "P1/S generation. Its products are in main; superseded by the module-based (M0x) handover. Not a dispatch source.",
   "base_ref": "1e7e196",
   "branch": "codex/s4-a2-experience-wiring",
-  "depends_on": ["A3/B3 accepted", "O7 S3 promotion"],
-  "merge_after": ["A3/B3 accepted"],
+  "depends_on": [
+    "A3/B3 accepted",
+    "O7 S3 promotion"
+  ],
+  "merge_after": [
+    "A3/B3 accepted"
+  ],
   "allowed_paths": [
     "src/autoresearch/experience_sink.py",
     "src/autoresearch/application.py",

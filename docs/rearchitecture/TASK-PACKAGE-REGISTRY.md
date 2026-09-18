@@ -1,5 +1,117 @@
 # Task Package Registry
 
+> # 🔴 状态源口径（2026-09-18 重设）—— **派发前必读**
+>
+> **本文件下方的表格是历史记录（S1–S4 / O12–O14 世代），已不再作为派发依据。**
+> **当前唯一派发依据 = `docs/tasks/<MODULE>/tasks/task-package.json` 的 `status` 与 `archived_at` 字段。**
+>
+> ## 可派发的包（**9 个**：6 个接线/激活 + 3 个 M11 续链）
+>
+> ### ⚠️ 判据口径已重设（2026-09-18 第二轮）—— 旧口径可被空壳刷绿
+>
+> 旧判据含「`reach.py` 输出不再列出 X 模块」。**反事实已实测证伪**：
+> 在 `cli.py:33` 注入一个**永不执行**的 `import autoresearch.audit_evidence  # noqa: F401` 后，
+> `reach.py` 可达模块数 **44 → 45**，`audit_evidence`（894 行）从孤岛清单消失，**零生产调用**。
+> 因为 `reach.py` 的图只由 `ast.Import` / `ast.ImportFrom` 构成（`reach.py:15-34`；`ast.walk` 连函数内 import 都收），
+> **没有任何运行时证据**。
+>
+> **⇒ 新口径：判据必须是「一次真实 run 的运行时可见后果」**，静态可达性至多作附带项。
+> 运行时通道已实测存在：run 记录经 `application.py:288-291` 落 store、`cli.py:155` 打印、`api.py:60` 可查；
+> `WorkflowState` 已声明 `diagnostics` / `warnings` / `blockers`（`base.py:28` / `:33-40`）。
+> 另注：`base.py:30-38` 注释明写 **langgraph 只保留 state schema 声明过的键、其余静默丢弃** —— 任何新 state 键都必须在 `base.py` 声明。
+>
+> ### A. 可派发（6 个，`status: ready`）
+>
+> | 包 | 承担者 | 孤岛（行数）| 接入点 | 运行时判据（观测点）|
+> |---|---|---|---|---|
+> | `M01-WIRE` | 成员 A | `context_assembler`(305) · `migration`(210) | `application.py` 装配路径 | run 记录 `state.diagnostics` 出现真实装配出的 slice 摘要 |
+> | `M04-WIRE` | 成员 B | `outbox`(880) | `graph.py:82 release_gate`（外部发布）| store 里该幂等键的 outbox entry 数=1（`outbox.py:295`）|
+> | `M08-WIRE` | **Owner** | `run_manifest`(193) | 新建 `executor.py` + `graph.py` | run 记录 `state.loop_closure` 不再恒为 `NOT_APPLICABLE`；同 run ≥2 条 RunManifest |
+> | `M11-WIRE` | 成员 A | `benchmark`(1833) | CLI 评估子命令 | 子命令 stdout 含冻结语料 `corpus_id`（`benchmark.py:722`）|
+> | `M13-WIRE` | **Owner** | `web_api`(1407) | `cli.py serve` | `GET /ui/panels` = 200（`web_api.py:1357`）|
+> | `S3-B3-PORT-ACTIVATION` | 成员 B | `reader_writer_ports`(580) · `lane_llm_adapter`(94) | 端口层激活，native/service/llm 三轨并存 | 真实 run 返回 dict 含 `parity`；store 落 `parity_report` |
+>
+> **统一判据命令**（6 个 `ready` 包都带；命令用**可移植的 `python`**，成员机应能直接跑）：
+> ```bash
+> PYTHONPATH=src python -m pytest -q -o addopts="" -W error
+> PYTHONPATH=src python -m pytest -q -o addopts="" <该包判别力测试路径>   # 唯一判据型命令
+> PYTHONPATH=src python -m ruff check src tests
+> PYTHONPATH=src python reviews/island-audit-2026-09-18/reach.py   # 附带项，单独不构成判据
+> ```
+> 若本机 `python` 缺依赖（报 `ModuleNotFoundError: No module named 'langgraph'` 或 `No module named ruff`），先跑 `python -c 'import langgraph, pytest, ruff'` 自检再重试；owner 侧沙箱无依赖，用 `/Users/abab/.workbuddy/binaries/python/envs/default/bin/python`。
+>
+> **统一条款（老板裁决）**：**每条判据必须绑定一条可执行命令，且该命令必须在「未接线」的基线上失败（判据型失败）。**
+> 散文式判据（无命令核对）一律不成立——实测现状三条命令在未接线树上全绿，判别力为 0，故新增第 2 条判别力测试命令为唯一判据型核对。
+>
+> **第三轮新增字段 `discriminating_power`**（每个 ready 包）= `{ short_circuit, assertion_turns_red_at, self_proof }`。
+> 判据型 vs 符号缺失型：判别力测试必须在**未接线基线**上以 `AssertionError`（判据型）失败，
+> **不得**以 `ImportError` / `AttributeError` / collection error（符号缺失型）失败。各包 `allowed_paths` 已补齐其测试路径。
+>
+> | 包 | 判别力测试（本包 exclusive）|
+> |---|---|
+> | `M01-WIRE` | `tests/test_m01_wire_context.py` |
+> | `M04-WIRE` | `tests/test_m04_wire_outbox.py` |
+> | `M08-WIRE` | `tests/test_m08_wire_executor.py` |
+> | `M11-WIRE` | `tests/test_m11_wire_benchmark_cli.py` |
+> | `M13-WIRE` | `tests/test_m13_wire_serve_panels.py` |
+> | `S3-B3-PORT-ACTIVATION` | `tests/test_s3b3_wire_parity.py` |
+>
+> **`forbidden_paths` 统一口径（registry 口径，已与 10 包 JSON 对齐）**：`contracts.py` **10 包全禁**；
+> `graph.py` **仅 M04 与 M08 合法**（M04 挂在发布门、M08 新增执行节点），其余一律禁；
+> `agents/base.py` **10 包全禁（无豁免）** —— `WorkflowState` 是全 lane 共享状态契约；已声明 `loop_closure` / `diagnostics` / `warnings` / `blockers`，本批 6 个 ready 包无一需要新增键（D-WIRE-04）。
+>
+> ### ⛔ 不可派发（4 个，`status: blocked`）—— 卡在 owner 裁决
+>
+> | 包 | 卡点 |
+> |---|---|
+> | `M02-WIRE` · `M05-WIRE` | **K8 claim 图前缀缺口**：`invalidation.py:163-164` 默认前缀 `claim_`/`gate_`，而 `knowledge.py:171-174` 的 `add_edge` 端点是 **wiki page id** ⇒ **默认路径构造即抛 K8-3 校验错**（`invalidation.py:119-124`）；**全仓无人注入自定义 `ClaimGraph`**（grep 只命中 `invalidation.py` 自身与其测试）⇒ `invalidation.propagated` 永不触发 ⇒ 判据物理不可达 |
+> | `M10-WIRE` | **哪套审计引擎是正典未定**：`cli audit` 现走 `audit.py:AuditRuntime`，而 `audit_evidence`(894)/`audit_stdio`(132) 是**另一套**引擎。合并 / 废弃 / 并行未裁决 ⇒ 本包形状未定，不应以「接线」形式派发 |
+> | `M14-WIRE` | **policy 层挂点未定**：egress 唯一路径是 `external_sources.py`，读路径是 knowledge search；`pii`/`licensing` 挂哪一层决定真实 `allowed_paths`（含是否触碰 `knowledge.py` 这一全局串行点）|
+>
+> ### 孤岛认领覆盖
+>
+> 新增认领 `reader_writer_ports`(580) 与 `lane_llm_adapter`(94) —— 这两个是此前 9 个包的 `islands` 字段**都未覆盖**的。
+> 二者互为依赖（后者是前者在 `src/` 内的唯一引用者），故并入同一包。
+>
+> ### B. M11 知识库续链（3 个，`status: planned`）
+>
+> | 模块 | 包 | status | base_ref | 说明 |
+> |---|---|---|---|---|
+> | M11 知识库 | `M11-MVP-02` 候选召回管线 | `planned` | `main` | MVP-01 **已合**（`780e051` / PR #36）→ 前置已满足 |
+> | M11 知识库 | `M11-MVP-03` 融合/去重/索引维护 | `planned` | `main` | 依赖 MVP-02 |
+> | M11 知识库 | `M11-MVP-04` 固定回归与验收证据 | `planned` | `main` | 依赖 MVP-03 |
+>
+> **其余 M0x 包全部 `integrated` —— 不要重复派发**：
+> `M01-CONTEXT` · `M02-PREFETCH` · `R007-L03-M04-OUTBOX` · `R007-L04-M05-RETRACTION` · `M08-01-RUN-MANIFEST` · `M13-UI` · `M11-MVP-01` · `O16-ARTIFACT-CORRECTNESS` · `S4-A4/A5/A6`
+> （各包的 `integrated_at` 字段写明合并证据）
+>
+> ## 已归档（13 个，**不再派发**）
+>
+> `P1-A-runtime-lane/tasks/{A1,A3,A4,A5,A6}` · `P1-A-runtime-recovery` · `P1-B-evidence-lane/tasks/{B1,B2,B4,B5}` · `P1-B-evidence-pipeline` · `O15-GATE-SCORING` · `O17-PDF-PIPELINE`
+>
+> 各自的 `task-package.json` 里带 `archived_at` 与 `archived_reason`。**产物均已并入 main，或已被明确作废。**
+>
+> ## `status` 的语义（只有这四个）
+>
+> | 取值 | 含义 |
+> |---|---|
+> | `planned` | 依赖未满足，**不可开工** |
+> | `ready` | 依赖满足，可创建 worktree（**当前无此类包**） |
+> | `integrated` | 已合入 main，**不得重复派发** |
+> | `archived_at` 非空 | 非派发源，仅历史保留 |
+>
+> ## 分发归属（2026-09-18 决定）
+>
+> | 承担者 | 持有模块 |
+> |---|---|
+> | **成员 A**（证据生产） | M01 上下文 · M05 检索/撤稿 · M06 阅读 · M07 分析 · M11 知识库 |
+> | **成员 B**（证据消费） | M09 写作 · M10 审核 · M04 交付 · M14/M15 安全与可观测 |
+> | **Owner** | M00 · M02 门禁 · M03 编排 · **M08 实验** · M12 经验 · M13 UI |
+>
+> **契约边界**：已冻结的 `EvidenceItem`。**全局串行文件**（`contracts.py` / `graph.py` / `agents/base.py` / `application.py`）归 Owner。
+>
+> ---
+
 > 这是全局任务队列和集成索引，不替代任务包中的详细说明。
 
 成员长期任务包：
